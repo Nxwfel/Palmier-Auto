@@ -3,7 +3,7 @@ import Header from '../Components/Header'
 import Car from '../assets/Main-car.jpg'
 const LandingPage = () => {
   return (
-    <div className='h-screen w-screen bg-[#fafafa] justify-start items-center flex flex-col'>
+    <div className='h-[102vh] rounded-b-[5vh] w-screen bg-[#fafafa] justify-start items-center flex flex-col'>
         <Header />
         <h1 className='absolute text-[34vh] tracking-wider flex mt-[24.5vh] text-emerald-900 opacity-30 italic uppercase font-main'>Palmier</h1>
         {/* Img slider */}

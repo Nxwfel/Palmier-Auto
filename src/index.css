@@ -1,9 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&family=Redressed&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
 .font-main{
   font-family: 'Lexend', sans-serif;
+}
+.font-redressed{
+  font-family: 'Redressed', cursive;
 }
 @custom-variant dark (&:is(.dark *));
 
