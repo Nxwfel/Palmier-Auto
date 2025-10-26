@@ -2,6 +2,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+::-webkit-scrollbar{
+  display: none;
+}
 .font-main{
   font-family: 'Lexend', sans-serif;
 }

@@ -1,12 +1,10 @@
 import React from 'react'
-
+import Cover from '../assets/Cover.png'
 const About = () => {
   return (
-    <div className='h-screen w-screen bg-black justify-start items-center flex flex-col'>
-     {/* Logo slider */}
-     <div className='h-[20vh] w-full bg-emerald-700'>
+    <div
+    className='h-screen w-screen bg-emerald-700 justify-start items-center flex flex-col'>
 
-     </div>
 
     </div>
   )
