@@ -1,0 +1,6 @@
+projectKey=palmier_auto
+serverUrl=http://localhost:9000
+serverVersion=25.10.0.114319
+dashboardUrl=http://localhost:9000/dashboard?id=palmier_auto
+ceTaskId=052e91cb-cbd6-45fd-890a-67f8895ed143
+ceTaskUrl=http://localhost:9000/api/ce/task?id=052e91cb-cbd6-45fd-890a-67f8895ed143
