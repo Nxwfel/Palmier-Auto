@@ -3,6 +3,7 @@ import Lenis from 'lenis'
 import LandingPage from './Pages/LandingPage.jsx'
 import About from './Pages/About.jsx'
 import InventoryFlex from './Pages/Inventoryflex.jsx'
+import Contact from './Pages/Contact.jsx'
 import './index.css'
 const App = () => {
 
@@ -18,8 +19,9 @@ const App = () => {
   return (
     <div className='min-h-screen w-screen bg-emerald-700 overflow-hidden'>
       <LandingPage />
-      <About />
       <InventoryFlex />
+      <About />
+      <Contact />
     </div>
   )
 }
