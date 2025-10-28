@@ -48,7 +48,7 @@ const LandingPage = () => {
        </div>
        {/* Image Slider */}
         <div
-  style={{ backgroundImage: `url(${Cover})` , backgroundPosition:'center' }}
+  
         className='absolute bg-emerald-400 z-10 h-screen w-screen top-0 left-0'>
 
         </div>
