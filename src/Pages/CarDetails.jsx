@@ -20,7 +20,6 @@ const CarDetails = () => {
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 absolute top-4 left-5 cursor-pointer">
           <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
         </svg>
-
       <div className='h-[70%] w-[80%] bg-white bg-opacity-60 backdrop-blur-md  flex p-8 gap-8 text-black shadow-2xl'>
         {/* Preview */}
         <div className='w-1/2 flex flex-col items-center justify-center gap-6'>
