@@ -10,7 +10,7 @@ const Inventory = () => {
             initial={{scale:1}}
             whileHover={{scale:1.02}}
             whileTap={{scale:1}}
-            className='font-main cursor-pointer font-thin text-[2vw]'>Palmier Auto</motion.h1>
+            className='font-main cursor-pointer font-thin text-[2vw] max-md:text-[5vw]'>Palmier Auto</motion.h1>
         </div>
         <div className='h-[10vh] w-full flex justify-between items-center gap-[2vw]'>
            <motion.div
@@ -31,12 +31,12 @@ const Inventory = () => {
           initial={{scale:1}}
           whileHover={{scale:1.06}}
           whileTap={{scale:1}}
-          className='h-[49vh] w-[18vw] flex flex-col bg-white shadow-lg '>
+          className='h-[49vh] w-[18vw] cursor-pointer max-md:w-[50vw]  max-md:ml-auto max-md:mr-auto flex flex-col bg-white shadow-lg '>
              <div className='h-[77%] w-[full] bg-neutral-600 '>
 
              </div>
-             <h1 className='font-main text-[1.4vw] text-black px-2'>Kia Sportage</h1>
-             <h1 className='font-main font-extralight text-[1.4vw] text-black px-2'>250 Millions</h1>
+             <h1 className='font-main text-[1.4vw] max-md:text-[5vw] text-black px-2'>Kia Sportage</h1>
+             <h1 className='font-main font-extralight max-md:text-[3vw] text-[1.4vw] text-black px-2'>250 Millions</h1>
           </motion.div>
         </div>
 
