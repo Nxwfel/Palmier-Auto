@@ -17,7 +17,7 @@ createRoot(document.getElementById('root')).render(
         <Route path='/auth' element={<AuthPage/>} />
         <Route path='/admin' element={<Admin/>} />
         <Route path='/inventory' element={<Inventory/>} />
-        <Route path='/car/:id' element={<CarDetails/>} />
+        <Route path='/car' element={<CarDetails/>} />
         <Route path='/account' element={<UserAccount/>} />
       </Routes>
     </BrowserRouter>

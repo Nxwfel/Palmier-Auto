@@ -72,7 +72,7 @@ const Inventoryflex = () => {
                 <div className='h-[80%] w-full bg-white rounded-lg overflow-hidden flex items-center justify-center'>
                   <img src={car.img} alt={car.name} className='object-cover h-full w-full'/>
                 </div>
-                <h1 className='font-main text-[2vh] text-black mt-2'>{car.name}</h1>
+                <h1 className='font-main text-[2vh] text-white mt-2'>{car.name}</h1>
                 <p className='font-main font-thins text-[1.7vh] text-neutral-400'>{car.desc}</p>
               </div>
             ))}

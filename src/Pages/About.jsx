@@ -12,7 +12,7 @@ const About = () => {
      <h1 className='font-main text-[8vh]'>
       Notre Service
      </h1>
-     <p className='font-main font-light text-neutral-400 p-3'>
+     <p className='font-main font-light text-[2vh] text-neutral-400 p-3'>
       Palmier Auto est une entreprise spécialisée dans l’importation et la distribution de véhicules provenant des quatre coins du monde. Grâce à des partenariats solides établis en Europe, en Asie, en Amérique du Nord et au Moyen-Orient, Palmier Auto offre à ses clients un large choix de voitures alliant performance, fiabilité et élégance.
 Notre mission est de rendre l’achat de véhicules internationaux simple, transparent et accessible. 
      </p>

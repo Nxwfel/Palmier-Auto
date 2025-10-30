@@ -1,68 +1,221 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import gsap from "gsap";
 
 const CarDetails = () => {
   const colors = [
-    { name: 'Red', hex: '#EF4444' },
-    { name: 'Blue', hex: '#3B82F6' },
-    { name: 'Black', hex: '#111827' },
-    { name: 'White', hex: '#F3F4F6' }
+    { name: "Bleu Glacier", hex: "#A7C7E7" },
+    { name: "Noir Mat", hex: "#111827" },
+    { name: "Gris Argenté", hex: "#D1D5DB" },
+    { name: "Rouge Passion", hex: "#DC2626" },
   ];
   const [selectedColor, setSelectedColor] = useState(colors[0]);
+  const containerRef = useRef(null);
+  const previewRef = useRef(null);
 
   const handleBuy = () => {
-    // Placeholder: wire this up to real checkout or route
-    alert(`Thank you — you've selected the car in ${selectedColor.name}. Proceeding to checkout...`);
-  }
+    gsap.to(".buy-btn", {
+      scale: 1.05,
+      yoyo: true,
+      repeat: 1,
+      duration: 0.2,
+      ease: "power2.inOut",
+    });
+    alert(`🚗 Merci ! Vous avez choisi la couleur ${selectedColor.name}.`);
+  };
+
+  // GSAP animation on mount
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.from(".fade-up", {
+        y: 60,
+        opacity: 0,
+        duration: 1.2,
+        stagger: 0.2,
+        ease: "power3.out",
+      });
+      gsap.from(".car-img", {
+        scale: 0.9,
+        opacity: 0,
+        duration: 1.5,
+        delay: 0.3,
+        stagger: 0.15,
+        ease: "power3.out",
+      });
+    }, containerRef);
+    return () => ctx.revert();
+  }, []);
+
+  // GSAP color transition
+  useEffect(() => {
+    gsap.to(previewRef.current, {
+      backgroundColor: selectedColor.hex,
+      duration: 0.8,
+      ease: "power2.inOut",
+    });
+  }, [selectedColor]);
 
   return (
     <div
-      className='h-screen w-screen flex justify-center items-center'>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 absolute top-4 left-5 cursor-pointer">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-        </svg>
-      <div className='h-[70%] w-[80%] bg-white bg-opacity-60 backdrop-blur-md  flex p-8 gap-8 text-black shadow-2xl'>
-        {/* Preview */}
-        <div className='w-1/2 flex flex-col items-center justify-center gap-6'>
+      ref={containerRef}
+      className="min-h-screen w-full bg-gradient-to-b from-gray-100 to-gray-200 text-gray-900 flex flex-col items-center py-12 px-6 overflow-hidden"
+    >
+      {/* HEADER */}
+      <motion.div
+        initial={{ opacity: 0, y: -30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7 }}
+        className="w-full max-w-7xl flex justify-between items-center mb-10 fade-up"
+      >
+        <h1 className="text-3xl font-bold tracking-tight text-gray-800">
+          Palmier Auto — <span className="text-blue-600">Model X</span>
+        </h1>
+        <button
+          onClick={() => window.history.back()}
+          className="flex items-center text-gray-600 hover:text-black transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-5 h-5 mr-1"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+            />
+          </svg>
+          Retour
+        </button>
+      </motion.div>
+
+      {/* MAIN CONTENT */}
+      <div className="w-full max-w-7xl bg-white shadow-2xl rounded-3xl p-10 grid grid-cols-1 lg:grid-cols-2 gap-12 fade-up">
+        {/* LEFT SECTION */}
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              "https://images.unsplash.com/photo-1604147495798-57c855a70ef8",
+              "https://images.unsplash.com/photo-1604147706283-3727c707b3ed",
+              "https://images.unsplash.com/photo-1604147705911-6a2d9b6b9d4b",
+            ].map((img, idx) => (
+              <motion.img
+                key={idx}
+                src={img}
+                alt="Car"
+                className="car-img rounded-lg object-cover w-full h-40 shadow-md"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 150 }}
+              />
+            ))}
+          </div>
+
           <div
-            className='h-[80%] w-full shadow-lg flex items-center justify-center'
+            ref={previewRef}
+            className="w-full h-72 rounded-xl flex items-center justify-center shadow-inner transition-all"
             style={{ backgroundColor: selectedColor.hex }}
           >
-            <span className={`text-2xl font-semibold ${selectedColor.name === 'White' ? 'text-white' : 'text-black'}`}>
-              Car preview ({selectedColor.name})
-            </span>
+            <motion.h2
+              className={`text-2xl font-semibold ${
+                selectedColor.name === "Noir Mat" ? "text-white" : "text-black"
+              }`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
+            >
+              Aperçu ({selectedColor.name})
+            </motion.h2>
           </div>
-          <p className='text-sm text-gray-300'>Preview updates when you pick a color.</p>
         </div>
 
-        {/* Details & controls */}
-        <div className='w-1/2 flex flex-col justify-center'>
-          <h2 className='text-4xl font-semibold'>Palmier Auto — Model X</h2>
-          <p className='mt-3 text-black'>Un véhicule moderne, fiable et entretenu par des spécialistes. Options disponibles et personnalisation selon vos besoins.</p>
-          <p className='mt-6 text-2xl font-bold'>€29,999</p>
+        {/* RIGHT SECTION */}
+        <div className="flex flex-col justify-between">
+          <div>
+            <h2 className="text-3xl font-semibold mb-3 text-gray-800 fade-up">
+              Voiture Électrique Haut de Gamme
+            </h2>
+            <p className="text-gray-600 text-sm leading-relaxed fade-up">
+              Confort, puissance et innovation. Découvrez une expérience de
+              conduite futuriste avec un design raffiné et des performances
+              électrisantes.
+            </p>
 
-          <div className='mt-6'>
-            <p className='text-sm text-black'>Choose color</p>
-            <div className='flex gap-3 mt-3 items-center'>
-              {colors.map(c => (
-                <button
-                  key={c.name}
-                  onClick={() => setSelectedColor(c)}
-                  aria-label={`Select ${c.name}`}
-                  className={`h-10 w-10 rounded-full border-2 focus:outline-none ${selectedColor.name === c.name ? 'ring-2 ring-white' : ''}`}
-                  style={{ backgroundColor: c.hex }}
-                />
-              ))}
-              <div className='ml-4 text-sm'>Selected: <span className='font-medium'>{selectedColor.name}</span></div>
+            <motion.h3
+              className="text-4xl font-bold text-gray-900 mt-8 mb-4 fade-up"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4, duration: 0.7 }}
+            >
+              €29,999
+            </motion.h3>
+
+            {/* COLORS */}
+            <div className="mt-4 fade-up">
+              <p className="text-gray-700 font-medium mb-2">Couleur</p>
+              <div className="flex gap-3 mt-2 items-center">
+                {colors.map((c) => (
+                  <motion.button
+                    key={c.name}
+                    onClick={() => setSelectedColor(c)}
+                    whileHover={{ scale: 1.15 }}
+                    className={`h-9 w-9 rounded-full border-2 shadow-inner ${
+                      selectedColor.name === c.name
+                        ? "ring-2 ring-gray-700"
+                        : ""
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                ))}
+                <span className="ml-3 text-sm text-gray-600">
+                  Sélectionné :{" "}
+                  <span className="font-semibold">{selectedColor.name}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* SPECS */}
+            <div className="mt-8 fade-up">
+              <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                Spécifications Techniques
+              </h4>
+              <div className="border-t border-gray-200">
+                {[
+                  ["Puissance maximale", "510 ch"],
+                  ["Vitesse maximale", "200 km/h"],
+                  ["Autonomie (WLTP)", "510 km"],
+                  ["0–100 km/h", "4.5 s"],
+                  ["Transmission", "Intégrale"],
+                  ["Poids", "2290 kg"],
+                ].map(([label, value], idx) => (
+                  <div
+                    key={idx}
+                    className="flex justify-between py-2 text-sm text-gray-700 border-b border-gray-100"
+                  >
+                    <span>{label}</span>
+                    <span className="font-medium">{value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className='mt-8'>
-            <button onClick={handleBuy} className='px-6 py-3 bg-black text-white rounded-md font-medium'>Buy now</button>
-          </div>
+          {/* BUY BUTTON */}
+          <motion.button
+            onClick={handleBuy}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 200 }}
+            className="buy-btn w-full mt-10 py-4 bg-black text-white rounded-xl font-semibold text-lg shadow-lg hover:bg-gray-800 fade-up"
+          >
+            Acheter maintenant
+          </motion.button>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default CarDetails
+export default CarDetails;
