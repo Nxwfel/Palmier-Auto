@@ -17,7 +17,7 @@ const App = () => {
 
   }, [])
   return (
-    <div className='min-h-screen w-screen bg-emerald-700 overflow-hidden'>
+    <div className='min-h-screen w-screen overflow-hidden'>
       <LandingPage />
       <InventoryFlex />
       <About />
