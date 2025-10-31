@@ -19,6 +19,8 @@ createRoot(document.getElementById('root')).render(
         <Route path='/inventory' element={<Inventory/>} />
         <Route path='/car' element={<CarDetails/>} />
         <Route path='/account' element={<UserAccount/>} />
+        <Route path='*' element={<h1 className='text-center mt-20 text-3xl'>404 - Page Not Found</h1>} />
+        <Route path='/admin' element={<Admin/>} />
       </Routes>
     </BrowserRouter>
   </StrictMode>
