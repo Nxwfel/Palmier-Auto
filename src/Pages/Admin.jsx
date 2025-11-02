@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import {
-  DollarSign,
-  Truck,
   Car,
   Users,
   Plus,
-  Eye,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Menu,
   Lock,
   CreditCard,
   BarChart3,
   Trash,
-  Edit,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -33,27 +33,6 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
   </Card>
 );
 
-const BarChart = ({ data = [] }) => {
-  const max = Math.max(...data.map((d) => d.value), 1);
-  return (
-    <div className="space-y-4">
-      {data.map((d) => (
-        <div key={d.label}>
-          <div className="flex justify-between mb-1 text-sm text-gray-300">
-            <span>{d.label}</span>
-            <span className="font-semibold">${d.value.toLocaleString()}</span>
-          </div>
-          <div className="w-full bg-neutral-800 rounded h-3">
-            <div
-              className="h-3 rounded"
-              style={{ width: `${(d.value / max) * 100}%`, background: d.color }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -65,6 +44,9 @@ const Admin = () => {
     CanadianDollar: 7.3,
   });
 
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const toggleMenu = () => setMenuOpen(!menuOpen);
   const [cars, setCars] = useState([
     {
       id: "ORD-1203",
@@ -103,7 +85,7 @@ const Admin = () => {
     douane: 7000,
   });
 
-  const [commercials, setCommercials] = useState([
+  const [commercials2, setCommercials] = useState([
     {
       id: 1,
       name: "Yacine",
@@ -187,6 +169,28 @@ const Admin = () => {
       c.distributor.toLowerCase().includes(search.toLowerCase()) ||
       c.id.toLowerCase().includes(search.toLowerCase())
   );
+    const stats = [
+      { title: "Voitures Entrées", value: 42, icon: <Car />, color: "bg-blue-600" },
+      { title: "Voitures Vendues", value: 31, icon: <TrendingUp />, color: "bg-green-600" },
+      { title: "Dépenses Totales", value: "120,000 DZD", icon: <TrendingDown />, color: "bg-red-600" },
+      { title: "Profit Net", value: "340,000 DZD", icon: <DollarSign />, color: "bg-emerald-600" },
+    ];
+  
+    const carsEntered = [
+      { id: 1, model: "Toyota Corolla", price: "250,000 DZD", distributor: "Palmier Import", transport: "12,000 DZD" },
+      { id: 2, model: "BMW X3", price: "500,000 DZD", distributor: "AutoLine China", transport: "20,000 DZD" },
+    ];
+  
+    const carsSold = [
+      { id: 1, model: "Toyota Corolla", price: "320,000 DZD", commercial: "Yassine", profit: "58,000 DZD" },
+      { id: 2, model: "BMW X3", price: "600,000 DZD", commercial: "Amine", profit: "80,000 DZD" },
+    ];
+  
+    const commercials = [
+      { name: "Yassine", totalProfit: "58,000 DZD" },
+      { name: "Amine", totalProfit: "80,000 DZD" },
+      { name: "Nour", totalProfit: "45,000 DZD" },
+    ];
 
   return (
     <div className="min-h-screen font-main bg-gradient-to-br from-neutral-950 via-black to-neutral-900 text-white flex">
@@ -235,8 +239,8 @@ const Admin = () => {
                 />
                 <StatCard
                   icon={Users}
-                  label="Commercials"
-                  value={commercials.length}
+                  label="commercials"
+                  value={commercials2.length}
                   color="text-amber-400"
                 />
                 <StatCard
@@ -331,6 +335,104 @@ const Admin = () => {
               transition={{ duration: 0.4 }}
               className="space-y-6"
             >
+              <div className="flex-1 flex flex-col p-6 space-y-6">
+                      {/* Header */}
+                      <div className="flex justify-between items-center">
+                        <h1 className="text-2xl font-semibold">Comptabilité Générale</h1>
+                        <button onClick={toggleMenu} className="md:hidden">
+                          <Menu />
+                        </button>
+                      </div>
+              
+                      {/* Stats Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {stats.map((s, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.1 }}
+                            className={`p-5 rounded-2xl ${s.color} bg-opacity-20 border border-neutral-800 flex flex-col gap-2`}
+                          >
+                            <div className="flex justify-between items-center">
+                              <div className="text-lg font-semibold">{s.title}</div>
+                              <div className="text-2xl">{s.icon}</div>
+                            </div>
+                            <div className="text-2xl font-bold">{s.value}</div>
+                          </motion.div>
+                        ))}
+                      </div>
+              
+                      {/* Cars Entered */}
+                      <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
+                        <h2 className="text-xl font-semibold mb-4">Voitures Entrées</h2>
+                        <table className="w-full text-left border-collapse">
+                          <thead className="text-neutral-400 border-b border-neutral-800">
+                            <tr>
+                              <th className="p-2">Modèle</th>
+                              <th className="p-2">Prix</th>
+                              <th className="p-2">Distributeur</th>
+                              <th className="p-2">Transport</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {carsEntered.map((c) => (
+                              <tr key={c.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
+                                <td className="p-2">{c.model}</td>
+                                <td className="p-2">{c.price}</td>
+                                <td className="p-2">{c.distributor}</td>
+                                <td className="p-2">{c.transport}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+              
+                      {/* Cars Sold */}
+                      <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
+                        <h2 className="text-xl font-semibold mb-4">Voitures Vendues</h2>
+                        <table className="w-full text-left border-collapse">
+                          <thead className="text-neutral-400 border-b border-neutral-800">
+                            <tr>
+                              <th className="p-2">Modèle</th>
+                              <th className="p-2">Prix de Vente</th>
+                              <th className="p-2">Commercial</th>
+                              <th className="p-2">Profit</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {carsSold.map((c) => (
+                              <tr key={c.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
+                                <td className="p-2">{c.model}</td>
+                                <td className="p-2">{c.price}</td>
+                                <td className="p-2">{c.commercial}</td>
+                                <td className="p-2 text-emerald-400">{c.profit}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+              
+                      {/* Commercials Profit */}
+                      <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
+                        <h2 className="text-xl font-semibold mb-4">Profit par Commercial</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {commercials.map((c, i) => (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.1 }}
+                              className="p-4 bg-neutral-800 rounded-xl border border-neutral-700"
+                            >
+                              <div className="text-lg font-semibold">{c.name}</div>
+                              <div className="text-emerald-400 font-bold mt-1">{c.totalProfit}</div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  
               <h1 className="text-3xl font-bold mb-4">
                 Payments & Financials
               </h1>
@@ -453,7 +555,7 @@ const Admin = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {commercials.map((c) => (
+                    {commercials2.map((c) => (
                       <tr
                         key={c.id}
                         className="border-b border-neutral-800/50 hover:bg-white/5 transition"

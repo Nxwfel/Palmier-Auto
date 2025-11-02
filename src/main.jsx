@@ -6,8 +6,11 @@ import CarDetails from './Pages/CarDetails.jsx'
 import UserAccount from './Pages/UserAccount.jsx'
 import AuthPage from './Pages/Authpage.jsx'
 import Admin from './Pages/Admin.jsx'
-import './index.css'
 import App from './App.jsx'
+import Commercials from './Pages/Commercials.jsx'
+import Accountant from './Pages/Accountant.jsx'
+import MarketingAgent from './Pages/MarketingAgent.jsx'
+import './index.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -21,6 +24,9 @@ createRoot(document.getElementById('root')).render(
         <Route path='/account' element={<UserAccount/>} />
         <Route path='*' element={<h1 className='text-center mt-20 text-3xl'>404 - Page Not Found</h1>} />
         <Route path='/admin' element={<Admin/>} />
+        <Route path='/commercials' element={<Commercials/>} />
+        <Route path='/accountant' element={<Accountant/>} />
+        <Route path='/marketing' element={<MarketingAgent/>} />
       </Routes>
     </BrowserRouter>
   </StrictMode>

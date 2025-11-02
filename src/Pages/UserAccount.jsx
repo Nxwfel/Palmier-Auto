@@ -145,7 +145,6 @@ const UserAccount = () => {
        <ArrowBigLeft className=" rounded-xl relative group transition-all cursor-pointer"/>
         {[
           { id: "dashboard", icon: Home, label: "Dashboard" },
-          { id: "profile", icon: User, label: "Profile" },
           { id: "orders", icon: Package, label: "Orders" },
           { id: "billing", icon: CreditCard, label: "Billing" },
         ].map(({ id, icon: Icon, label }) => (
@@ -229,7 +228,7 @@ const UserAccount = () => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="ml-20 md:ml-28 w-full py-10 px-6 md:px-10 space-y-10">
+      <main className="ml-20 md:ml-28 w-full py-10 px-6 md:px-10 space-y-10 max-w-screen overflow-hidden">
         <AnimatePresence mode="wait">
           {activeTab === "dashboard" && (
             <motion.div
@@ -244,7 +243,34 @@ const UserAccount = () => {
                 Manage your orders, payments, and account details.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+               <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                    <Card className="max-w-full mx-auto flex flex-col justify-center items-center gap-8">
+                      <div className="h-24 w-24 md:h-32 md:w-32 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-main">
+                        FM
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 text-center w-full">
+                        <div>
+                          <span className="text-gray-400">Full Name:</span>{" "}
+                          <span className="ml-2 font-medium">Farid Mahomoudi</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Phone:</span>{" "}
+                          <span className="ml-2 font-medium">0676159221</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Dealer:</span>{" "}
+                          <span className="ml-2 font-medium">
+                            Skikda Palmier-Auto
+                          </span>
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
                 <StatCard label="Cars Ordered" value={orders.length} />
                 <StatCard
                   label="Total Paid"
@@ -257,37 +283,6 @@ const UserAccount = () => {
                   color="text-amber-400"
                 />
               </div>
-            </motion.div>
-          )}
-
-          {activeTab === "profile" && (
-            <motion.div
-              key="profile"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <Card className="max-w-2xl mx-auto flex flex-col md:flex-row items-center gap-8">
-                <div className="h-24 w-24 md:h-32 md:w-32 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-main">
-                  FM
-                </div>
-                <div className="grid grid-cols-1 gap-3 text-left w-full">
-                  <div>
-                    <span className="text-gray-400">Full Name:</span>{" "}
-                    <span className="ml-2 font-medium">Farid Mahomoudi</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Phone:</span>{" "}
-                    <span className="ml-2 font-medium">0676159221</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Dealer:</span>{" "}
-                    <span className="ml-2 font-medium">
-                      Skikda Palmier-Auto
-                    </span>
-                  </div>
-                </div>
-              </Card>
             </motion.div>
           )}
 
@@ -309,7 +304,7 @@ const UserAccount = () => {
               </div>
 
               <Card>
-                <div className="overflow-x-auto">
+                <div className="max-w-screen overflow-x-scroll">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-gray-400 border-b border-neutral-700">
