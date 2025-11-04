@@ -68,72 +68,29 @@ export default function AdminSuperPanel() {
   // active tab
   const [tab, setTab] = useState("overview");
   const [search, setSearch] = useState("");
-
-  // Core data structures (mocked local state)
-  const [cars, setCars] = useState([
-    {
-      id: "C-1203",
-      model: "BMW X5",
-      fournisseur: "Munich Motors",
-      buyPrice: 67000,
-      sellPrice: 72000,
-      currency: "EUR",
-      status: "Available",
-      transportFee: 5000,
-      otherFees: 1200,
-      quantity: 3,
-      colors: ["Noir", "Blanc"],
-      image: null,
-      description: "SUV haut de gamme importé d'Allemagne.",
-      paidToFournisseur: 40000,
-    },
-    {
-      id: "C-1579",
-      model: "Toyota Corolla",
-      fournisseur: "Palmier Import",
-      buyPrice: 25000,
-      sellPrice: 32000,
-      currency: "DZD",
-      status: "Available",
-      transportFee: 12000,
-      otherFees: 2000,
-      quantity: 10,
-      colors: ["Blanc", "Gris", "Rouge"],
-      image: null,
-      description: "Economique et fiable.",
-      paidToFournisseur: 150000,
-    },
-  ]);
-
-  const [fournisseurs, setFournisseurs] = useState([
-    { id: 1, name: "Munich Motors", country: "DE", paid: 40000, remaining: 27000 },
-    { id: 2, name: "Palmier Import", country: "CN", paid: 150000, remaining: 0 },
-  ]);
-
-  const [commercials, setCommercials] = useState([
-    { id: 1, name: "Yacine", email: "yacine@dealer.com", phone: "066...", commissionRate: 5, sold: 5, earnings: 2500 },
-    { id: 2, name: "Amir", email: "amir@dealer.com", phone: "067...", commissionRate: 4, sold: 3, earnings: 1800 },
-  ]);
-
-  const [requests, setRequests] = useState([
-    { id: "R-001", commercialId: 2, model: "Tesla Model Y", message: "Client interested — not available.", status: "Pending", date: "2025-11-03" },
-  ]);
-
+  const [earnings, setEarnings] = useState('');
+  const [expenses, setExpenses] = useState([]);
+  const [profit , setProfit] = useState('');
+  const [requests , setRequests] = useState([]);
+  const [carsvalue , setCarsValue] = useState('');
+  const [cars , setCars] = useState([]);
+  const [fournisseurs, setFournisseurs] = useState([]);
+  const [commercials, setCommercials] = useState([]);
   const [logs, setLogs] = useState([]);
-
-  const [expenses, setExpenses] = useState({ transport: 12000, douane: 7000, other: 3000 });
-
-  // modal states
+    const CurrenciesList = {
+    usd: '',
+    eur: '',
+    aed: '',
+    cad: '',
+  }
+  const [currencies , setCurrencies] = useState(CurrenciesList)
   const [showAddCar, setShowAddCar] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
-
-  // form state for add/edit car
   const initialCarForm = {
     model: "",
-    fournisseur: "",
     buyPrice: "",
     sellPrice: "",
-    currency: "DZD",
+    currency: "",
     transportFee: "",
     otherFees: "",
     quantity: 1,
@@ -142,8 +99,6 @@ export default function AdminSuperPanel() {
     imageFile: null,
   };
   const [carForm, setCarForm] = useState(initialCarForm);
-
-  // utility: add log
   const pushLog = (actor, action) => {
     setLogs((p) => [{ id: Date.now(), actor, action, date: new Date().toISOString() }, ...p]);
   };
@@ -286,13 +241,6 @@ export default function AdminSuperPanel() {
   useEffect(() => {
     setFournisseurs((prev) => prev.map((f) => ({ ...f, remaining: Math.max(0, (f.remaining || 0)) })));
   }, []);
-  const [currencies, setCurrencies] = useState({
-usd: 135.0,
-eur: 145.0,
-aed: 37.0,
-cad: 100.0,
-});
-
   // render
   return (
     <div className="min-h-screen font-main bg-gradient-to-br from-neutral-950 via-black to-neutral-900 text-white flex">
@@ -599,7 +547,7 @@ cad: 100.0,
           {tab === "logs" && (
             <motion.div key="logs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-semibold">Operations Log</h2>
+                <h2 className="text-3xl font-semibold">Historique d'Activité</h2>
                 <div className="text-sm text-neutral-400">Total operations: {logs.length}</div>
               </div>
 
