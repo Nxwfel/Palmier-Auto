@@ -1,528 +1,594 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
+  BarChart3,
   Car,
   Users,
-  Plus,
-  DollarSign,
+  CreditCard,
+  FilePlus,
+  Trash2,
+  Edit2,
   TrendingUp,
   TrendingDown,
-  Menu,
+  Clock,
+  X,
+  Image as ImageIcon,
   Lock,
-  CreditCard,
-  BarChart3,
-  Trash,
+  DollarSign,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
-// Simple reusable card
+// Reusable small UI pieces
 const Card = ({ children, className = "" }) => (
-  <div
-    className={`bg-neutral-900/70 backdrop-blur-xl border border-neutral-800 rounded-2xl p-6 ${className}`}
-  >
+  <div className={`bg-neutral-900/70 backdrop-blur-xl border border-neutral-800 rounded-2xl p-6 ${className}`}>
     {children}
   </div>
 );
 
-const StatCard = ({ icon: Icon, label, value, color }) => (
-  <Card className="flex items-center justify-between">
+const Stat = ({ label, value, icon: Icon }) => (
+  <div className="p-4 rounded-2xl bg-neutral-900/50 border border-neutral-800 flex items-center justify-between">
     <div>
-      <p className="text-gray-400 text-sm mb-[2vh]">{label}</p>
-      <h3 className={`text-2xl font-bold ${color}`}>{value}</h3>
+      <p className="text-neutral-400 text-sm">{label}</p>
+      <div className="text-2xl font-bold">{value}</div>
     </div>
-    <Icon className={`${color} w-8 h-8`} />
-  </Card>
+    <Icon className="w-8 h-8 text-neutral-300" />
+  </div>
 );
 
+// Modal component
+const Modal = ({ open, onClose, title, children }) => (
+  <AnimatePresence>
+    {open && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center"
+      >
+        <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 20, opacity: 0 }}
+          className="relative z-10 w-[95%] md:w-[70%] lg:w-[50%] p-6 bg-neutral-900 rounded-2xl border border-neutral-800"
+        >
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold">{title}</h3>
+            <button onClick={onClose} className="p-2 rounded hover:bg-white/5">
+              <X />
+            </button>
+          </div>
+          {children}
+        </motion.div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
 
-const Admin = () => {
-  const [activeTab, setActiveTab] = useState("overview");
+export default function AdminSuperPanel() {
+  // active tab
+  const [tab, setTab] = useState("overview");
   const [search, setSearch] = useState("");
-  const [currencies, setCurrencies] = useState({
-    Dirham: 1,
-    Euro: 10.9,
-    Dollar: 10.2,
-    CanadianDollar: 7.3,
-  });
 
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const toggleMenu = () => setMenuOpen(!menuOpen);
+  // Core data structures (mocked local state)
   const [cars, setCars] = useState([
     {
-      id: "ORD-1203",
+      id: "C-1203",
       model: "BMW X5",
-      distributor: "Munich Motors",
-      price: 67000,
-      currency: "Euro",
-      status: "Ordered",
+      fournisseur: "Munich Motors",
+      buyPrice: 67000,
+      sellPrice: 72000,
+      currency: "EUR",
+      status: "Available",
+      transportFee: 5000,
+      otherFees: 1200,
+      quantity: 3,
+      colors: ["Noir", "Blanc"],
+      image: null,
+      description: "SUV haut de gamme importé d'Allemagne.",
+      paidToFournisseur: 40000,
     },
     {
-      id: "ORD-1432",
-      model: "Tesla Model 3",
-      distributor: "EV World",
-      price: 51000,
-      currency: "Dollar",
-      status: "In Storage",
-    },
-    {
-      id: "ORD-1579",
-      model: "Mercedes C-Class",
-      distributor: "AutoLux Paris",
-      price: 58000,
-      currency: "Euro",
-      status: "Delivered",
+      id: "C-1579",
+      model: "Toyota Corolla",
+      fournisseur: "Palmier Import",
+      buyPrice: 25000,
+      sellPrice: 32000,
+      currency: "DZD",
+      status: "Available",
+      transportFee: 12000,
+      otherFees: 2000,
+      quantity: 10,
+      colors: ["Blanc", "Gris", "Rouge"],
+      image: null,
+      description: "Economique et fiable.",
+      paidToFournisseur: 150000,
     },
   ]);
 
-  const [distributors, setDistributors] = useState([
-    { id: 1, name: "Munich Motors", owes: 12000, paid: 20000 },
-    { id: 2, name: "AutoLux Paris", owes: 0, paid: 30000 },
+  const [fournisseurs, setFournisseurs] = useState([
+    { id: 1, name: "Munich Motors", country: "DE", paid: 40000, remaining: 27000 },
+    { id: 2, name: "Palmier Import", country: "CN", paid: 150000, remaining: 0 },
   ]);
 
-  const [expenses, setExpenses] = useState({
-    transport: 12000,
-    carFees: 80000,
-    douane: 7000,
-  });
-
-  const [commercials2, setCommercials] = useState([
-    {
-      id: 1,
-      name: "Yacine",
-      phone: "0667452891",
-      email: "yacine@dealer.com",
-      password: "******",
-      sold: 5,
-      earnings: 2500,
-    },
-    {
-      id: 2,
-      name: "Amir",
-      phone: "0671128457",
-      email: "amir@dealer.com",
-      password: "******",
-      sold: 3,
-      earnings: 1800,
-    },
+  const [commercials, setCommercials] = useState([
+    { id: 1, name: "Yacine", email: "yacine@dealer.com", phone: "066...", commissionRate: 5, sold: 5, earnings: 2500 },
+    { id: 2, name: "Amir", email: "amir@dealer.com", phone: "067...", commissionRate: 4, sold: 3, earnings: 1800 },
   ]);
 
-  const finances = {
-    profit: 124000,
-    expenses:
-      expenses.transport + expenses.carFees + expenses.douane,
-    distributorsRemaining: distributors.reduce(
-      (acc, d) => acc + d.owes,
-      0
-    ),
+  const [requests, setRequests] = useState([
+    { id: "R-001", commercialId: 2, model: "Tesla Model Y", message: "Client interested — not available.", status: "Pending", date: "2025-11-03" },
+  ]);
+
+  const [logs, setLogs] = useState([]);
+
+  const [expenses, setExpenses] = useState({ transport: 12000, douane: 7000, other: 3000 });
+
+  // modal states
+  const [showAddCar, setShowAddCar] = useState(false);
+  const [editingCar, setEditingCar] = useState(null);
+
+  // form state for add/edit car
+  const initialCarForm = {
+    model: "",
+    fournisseur: "",
+    buyPrice: "",
+    sellPrice: "",
+    currency: "DZD",
+    transportFee: "",
+    otherFees: "",
+    quantity: 1,
+    colors: "",
+    description: "",
+    imageFile: null,
+  };
+  const [carForm, setCarForm] = useState(initialCarForm);
+
+  // utility: add log
+  const pushLog = (actor, action) => {
+    setLogs((p) => [{ id: Date.now(), actor, action, date: new Date().toISOString() }, ...p]);
   };
 
-  // 🔧 Handlers
-  const addCar = () => {
-    const model = prompt("Enter car model:");
-    const distributor = prompt("Enter distributor:");
-    const price = parseFloat(prompt("Enter price:"));
-    const currency = prompt("Currency (Dirham, Euro, Dollar, CanadianDollar):");
-    if (model && distributor && price) {
-      setCars((prev) => [
-        ...prev,
-        {
-          id: `ORD-${Math.floor(Math.random() * 10000)}`,
-          model,
-          distributor,
-          price,
-          currency,
-          status: "Ordered",
-        },
-      ]);
+  // add car handler (admin or marketing agent)
+  const handleOpenAdd = (agent = "Admin") => {
+    setCarForm(initialCarForm);
+    setEditingCar(null);
+    setShowAddCar(true);
+    pushLog(agent, "Opened Add Car modal");
+  };
+
+  const handleImageToDataUrl = (file) => {
+    return new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result);
+      reader.onerror = () => rej(new Error("Image read error"));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSubmitCar = async (e) => {
+    e.preventDefault();
+    // basic validation
+    if (!carForm.model || !carForm.fournisseur) return alert("Model and fournisseur required");
+
+    let imageData = null;
+    if (carForm.imageFile) {
+      try {
+        imageData = await handleImageToDataUrl(carForm.imageFile);
+      } catch (err) {
+        console.error(err);
+      }
     }
+
+    const newCar = {
+      id: editingCar ? editingCar.id : `C-${Math.floor(Math.random() * 10000)}`,
+      model: carForm.model,
+      fournisseur: carForm.fournisseur,
+      buyPrice: parseFloat(carForm.buyPrice) || 0,
+      sellPrice: parseFloat(carForm.sellPrice) || 0,
+      currency: carForm.currency || "DZD",
+      status: "Available",
+      transportFee: parseFloat(carForm.transportFee) || 0,
+      otherFees: parseFloat(carForm.otherFees) || 0,
+      quantity: parseInt(carForm.quantity) || 1,
+      colors: carForm.colors ? carForm.colors.split(",").map((s) => s.trim()) : [],
+      description: carForm.description,
+      image: imageData,
+      paidToFournisseur: 0,
+    };
+
+    if (editingCar) {
+      setCars((p) => p.map((c) => (c.id === editingCar.id ? newCar : c)));
+      pushLog("Admin", `Edited car ${newCar.model} (${newCar.id})`);
+    } else {
+      setCars((p) => [newCar, ...p]);
+      pushLog("Admin", `Added car ${newCar.model} (${newCar.id})`);
+    }
+
+    setShowAddCar(false);
   };
 
-  const removeCar = (id) => {
-    setCars((prev) => prev.filter((c) => c.id !== id));
+  const handleEdit = (car) => {
+    setEditingCar(car);
+    setCarForm({
+      model: car.model,
+      fournisseur: car.fournisseur,
+      buyPrice: car.buyPrice,
+      sellPrice: car.sellPrice,
+      currency: car.currency,
+      transportFee: car.transportFee,
+      otherFees: car.otherFees,
+      quantity: car.quantity,
+      colors: car.colors.join(", "),
+      description: car.description,
+      imageFile: null,
+    });
+    setShowAddCar(true);
+    pushLog("Admin", `Opened Edit modal for ${car.model} (${car.id})`);
   };
 
-  const generatePassword = (id) => {
-    const newPassword = Math.random().toString(36).slice(-8);
-    setCommercials((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, password: newPassword } : c))
-    );
+  const handleDelete = (id) => {
+    if (!confirm("Supprimer cette voiture ?")) return;
+    setCars((p) => p.filter((c) => c.id !== id));
+    pushLog("Admin", `Deleted car ${id}`);
   };
 
-  const updateDistributor = (id, field, value) => {
-    setDistributors((prev) =>
-      prev.map((d) =>
-        d.id === id ? { ...d, [field]: parseFloat(value) || 0 } : d
-      )
-    );
+  // Commercial requests handling
+  const handleApproveRequest = (r) => {
+    // transforms request into an order (add a car placeholder)
+    const newCar = {
+      id: `C-${Math.floor(Math.random() * 10000)}`,
+      model: r.model,
+      fournisseur: "(To be defined)",
+      buyPrice: 0,
+      sellPrice: 0,
+      currency: "DZD",
+      status: "Requested",
+      transportFee: 0,
+      otherFees: 0,
+      quantity: 1,
+      colors: [],
+      description: `Added from request ${r.id} by commercial ${r.commercialId}`,
+      image: null,
+      paidToFournisseur: 0,
+    };
+    setCars((p) => [newCar, ...p]);
+    setRequests((p) => p.map((rq) => (rq.id === r.id ? { ...rq, status: "Approved" } : rq)));
+    pushLog("Admin", `Approved request ${r.id} -> created car ${newCar.id}`);
   };
 
-  const updateCurrency = (cur, val) => {
-    setCurrencies((prev) => ({
-      ...prev,
-      [cur]: parseFloat(val) || prev[cur],
-    }));
+  const handleDeclineRequest = (r) => {
+    setRequests((p) => p.map((rq) => (rq.id === r.id ? { ...rq, status: "Declined" } : rq)));
+    pushLog("Admin", `Declined request ${r.id}`);
   };
 
-  const filteredCars = cars.filter(
-    (c) =>
-      c.model.toLowerCase().includes(search.toLowerCase()) ||
-      c.distributor.toLowerCase().includes(search.toLowerCase()) ||
-      c.id.toLowerCase().includes(search.toLowerCase())
-  );
-    const stats = [
-      { title: "Voitures Entrées", value: 42, icon: <Car />, color: "bg-blue-600" },
-      { title: "Voitures Vendues", value: 31, icon: <TrendingUp />, color: "bg-green-600" },
-      { title: "Dépenses Totales", value: "120,000 DZD", icon: <TrendingDown />, color: "bg-red-600" },
-      { title: "Profit Net", value: "340,000 DZD", icon: <DollarSign />, color: "bg-emerald-600" },
-    ];
-  
-    const carsEntered = [
-      { id: 1, model: "Toyota Corolla", price: "250,000 DZD", distributor: "Palmier Import", transport: "12,000 DZD" },
-      { id: 2, model: "BMW X3", price: "500,000 DZD", distributor: "AutoLine China", transport: "20,000 DZD" },
-    ];
-  
-    const carsSold = [
-      { id: 1, model: "Toyota Corolla", price: "320,000 DZD", commercial: "Yassine", profit: "58,000 DZD" },
-      { id: 2, model: "BMW X3", price: "600,000 DZD", commercial: "Amine", profit: "80,000 DZD" },
-    ];
-  
-    const commercials = [
-      { name: "Yassine", totalProfit: "58,000 DZD" },
-      { name: "Amine", totalProfit: "80,000 DZD" },
-      { name: "Nour", totalProfit: "45,000 DZD" },
-    ];
+  // Fournisseur payment update per car
+  const updatePaidToFournisseur = (carId, amount) => {
+    setCars((p) => p.map((c) => (c.id === carId ? { ...c, paidToFournisseur: parseFloat(amount) || 0 } : c)));
+    pushLog("Admin", `Updated paid for ${carId} to ${amount}`);
+  };
 
+  // commission set
+  const setCommissionForCommercial = (id, rate) => {
+    setCommercials((p) => p.map((c) => (c.id === id ? { ...c, commissionRate: parseFloat(rate) || 0 } : c)));
+    pushLog("Admin", `Set commission ${rate}% for commercial ${id}`);
+  };
+
+  // filtered lists
+  const filteredCars = cars.filter((c) => c.model.toLowerCase().includes(search.toLowerCase()) || c.id.toLowerCase().includes(search.toLowerCase()) || c.fournisseur.toLowerCase().includes(search.toLowerCase()));
+  const pendingRequests = requests.filter((r) => r.status === "Pending");
+
+  // derived finances
+  const totalExpenses = cars.reduce((s, c) => s + (c.buyPrice + (c.transportFee || 0) + (c.otherFees || 0)), 0) + Object.values(expenses).reduce((s, v) => s + v, 0);
+  const totalPaidToFournisseurs = fournisseurs.reduce((s, f) => s + (f.paid || 0), 0);
+  const totalStockValue = cars.reduce((s, c) => s + (c.buyPrice * (c.quantity || 1)), 0);
+
+  // small effect to keep fournisseurs remaining consistent (demo only)
+  useEffect(() => {
+    setFournisseurs((prev) => prev.map((f) => ({ ...f, remaining: Math.max(0, (f.remaining || 0)) })));
+  }, []);
+  const [currencies, setCurrencies] = useState({
+usd: 135.0,
+eur: 145.0,
+aed: 37.0,
+cad: 100.0,
+});
+
+  // render
   return (
     <div className="min-h-screen font-main bg-gradient-to-br from-neutral-950 via-black to-neutral-900 text-white flex">
       {/* Sidebar */}
-      <aside className="w-20 md:w-24 flex flex-col items-center py-6 space-y-6 border-r border-neutral-800 bg-neutral-950/70 backdrop-blur-md fixed left-0 top-0 h-full">
+      <aside className="w-20 md:w-28 flex flex-col items-center py-6 space-y-6 border-r border-neutral-800 bg-neutral-950/70 backdrop-blur-md fixed left-0 top-0 h-full">
         {[
           { id: "overview", icon: BarChart3, label: "Overview" },
           { id: "cars", icon: Car, label: "Cars" },
-          { id: "payments", icon: CreditCard, label: "Payments" },
+          { id: "fournisseurs", icon: CreditCard, label: "Fournisseurs" },
           { id: "commercials", icon: Users, label: "Commercials" },
+          { id: "requests", icon: FilePlus, label: "Requests" },
+          { id: "logs", icon: Clock, label: "Logs" },
+          { id: "currency", icon: DollarSign, label: "currency" },
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
-            onClick={() => setActiveTab(id)}
-            className={`p-3 rounded-xl transition-all ${
-              activeTab === id
-                ? "bg-emerald-500/20 text-emerald-400"
-                : "text-gray-500 hover:text-white hover:bg-white/5"
-            }`}
+            onClick={() => setTab(id)}
             title={label}
+            className={`p-3 rounded-xl transition-all cursor-pointer ${tab === id ? "bg-emerald-500/20 text-emerald-400" : "text-gray-500 hover:text-white hover:bg-white/5"}`}
           >
             <Icon className="w-6 h-6" />
           </button>
         ))}
+        <motion.svg 
+        initial={{ scale:1 }}
+        whileHover={{ scale:1.09 }}
+        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="red" className="size-[3vh] flex mt-auto cursor-pointer">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+        </motion.svg>
+
       </aside>
 
-      {/* Content */}
+      {/* Main content */}
       <main className="flex-1 ml-20 md:ml-28 p-8 space-y-8">
         <AnimatePresence mode="wait">
-          {activeTab === "overview" && (
-            <motion.div
-              key="overview"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.4 }}
-              className="space-y-8"
-            >
-              <h1 className="text-3xl font-main">Dashboard</h1>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard
-                  icon={DollarSign}
-                  label="Profit"
-                  value={`$${finances.profit.toLocaleString()}`}
-                  color="text-emerald-400"
-                />
-                <StatCard
-                  icon={Users}
-                  label="commercials"
-                  value={commercials2.length}
-                  color="text-amber-400"
-                />
-                <StatCard
-                  icon={Car}
-                  label="Cars"
-                  value={cars.length}
-                  color="text-teal-400"
-                />
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === "cars" && (
-            <motion.div
-              key="cars"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.4 }}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h1 className="text-3xl font-bold">Cars Overview</h1>
-                <div className="flex gap-4">
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search car..."
-                    className="px-3 py-2 rounded-xl bg-neutral-800 text-white text-sm focus:outline-none"
-                  />
-                  <button
-                    onClick={addCar}
-                    className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl hover:bg-emerald-500/30 transition"
-                  >
-                    <Plus className="w-4 h-4" /> Add Car
-                  </button>
+          {tab === "overview" && (
+            <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h1 className="text-4xl font-semibold">Dashboard</h1>
+                <div className="flex items-center gap-3">
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="bg-neutral-800 px-3 py-2 rounded-lg text-sm" />
+                  <button onClick={() => handleOpenAdd("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">Add Car</button>
                 </div>
               </div>
-              <Card>
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-left text-gray-400 text-sm border-b border-neutral-700">
-                      <th className="py-3 px-4">Order ID</th>
-                      <th className="py-3 px-4">Model</th>
-                      <th className="py-3 px-4">Distributor</th>
-                      <th className="py-3 px-4">Price</th>
-                      <th className="py-3 px-4">Currency</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCars.map((car) => (
-                      <tr
-                        key={car.id}
-                        className="border-b border-neutral-800/50 hover:bg-white/5 transition"
-                      >
-                        <td className="py-3 px-4 text-emerald-400 font-mono">
-                          {car.id}
-                        </td>
-                        <td className="py-3 px-4">{car.model}</td>
-                        <td className="py-3 px-4 text-gray-300">
-                          {car.distributor}
-                        </td>
-                        <td className="py-3 px-4 font-bold text-white">
-                          {car.price.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 text-gray-400">
-                          {car.currency}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => removeCar(car.id)}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            <Trash className="w-5 h-5 inline" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Card>
-            </motion.div>
-          )}
 
-          {activeTab === "payments" && (
-            <motion.div
-              key="payments"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.4 }}
-              className="space-y-6"
-            >
-              <div className="flex-1 flex flex-col p-6 space-y-6">
-                      {/* Header */}
-                      <div className="flex justify-between items-center">
-                        <h1 className="text-2xl font-semibold">Comptabilité Générale</h1>
-                        <button onClick={toggleMenu} className="md:hidden">
-                          <Menu />
-                        </button>
-                      </div>
-              
-                      {/* Stats Cards */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {stats.map((s, i) => (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            className={`p-5 rounded-2xl ${s.color} bg-opacity-20 border border-neutral-800 flex flex-col gap-2`}
-                          >
-                            <div className="flex justify-between items-center">
-                              <div className="text-lg font-semibold">{s.title}</div>
-                              <div className="text-2xl">{s.icon}</div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Stat label="Chiffre d'affaire" value={`${totalExpenses.toLocaleString()}`} icon={TrendingUp} />
+                <Stat label="Total Expenses" value={`${totalExpenses.toLocaleString()}`} icon={TrendingDown} />
+                <Stat label="Profit" value={`${totalExpenses.toLocaleString()}`} icon={CreditCard} />
+                <Stat label="Paid to Fournisseurs" value={`${totalPaidToFournisseurs.toLocaleString()}`} icon={Users} />
+                <Stat label="Pending Requests" value={pendingRequests.length} icon={FilePlus} />
+                <Stat label="Total Stock Value" value={`${totalStockValue.toLocaleString()}`} icon={Car} />
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <Card className="md:col-span-2">
+                  <h3 className="text-lg font-semibold mb-4">Recent Cars</h3>
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    {cars.slice(0, 6).map((c) => (
+                      <div key={c.id} className="flex items-center gap-4 p-3 bg-neutral-900/40 rounded-lg border border-neutral-800">
+                        <div className="w-20 h-12 bg-neutral-800 rounded overflow-hidden flex items-center justify-center">
+                          {c.image ? <img src={c.image} alt={c.model} className="w-full h-full object-cover" /> : <ImageIcon />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <div className="font-medium">{c.model}</div>
+                              <div className="text-sm text-neutral-400">{c.fournisseur}</div>
                             </div>
-                            <div className="text-2xl font-bold">{s.value}</div>
-                          </motion.div>
-                        ))}
-                      </div>
-              
-                      {/* Cars Entered */}
-                      <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
-                        <h2 className="text-xl font-semibold mb-4">Voitures Entrées</h2>
-                        <table className="w-full text-left border-collapse">
-                          <thead className="text-neutral-400 border-b border-neutral-800">
-                            <tr>
-                              <th className="p-2">Modèle</th>
-                              <th className="p-2">Prix</th>
-                              <th className="p-2">Distributeur</th>
-                              <th className="p-2">Transport</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {carsEntered.map((c) => (
-                              <tr key={c.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
-                                <td className="p-2">{c.model}</td>
-                                <td className="p-2">{c.price}</td>
-                                <td className="p-2">{c.distributor}</td>
-                                <td className="p-2">{c.transport}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-              
-                      {/* Cars Sold */}
-                      <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
-                        <h2 className="text-xl font-semibold mb-4">Voitures Vendues</h2>
-                        <table className="w-full text-left border-collapse">
-                          <thead className="text-neutral-400 border-b border-neutral-800">
-                            <tr>
-                              <th className="p-2">Modèle</th>
-                              <th className="p-2">Prix de Vente</th>
-                              <th className="p-2">Commercial</th>
-                              <th className="p-2">Profit</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {carsSold.map((c) => (
-                              <tr key={c.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
-                                <td className="p-2">{c.model}</td>
-                                <td className="p-2">{c.price}</td>
-                                <td className="p-2">{c.commercial}</td>
-                                <td className="p-2 text-emerald-400">{c.profit}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-              
-                      {/* Commercials Profit */}
-                      <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
-                        <h2 className="text-xl font-semibold mb-4">Profit par Commercial</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          {commercials.map((c, i) => (
-                            <motion.div
-                              key={i}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: i * 0.1 }}
-                              className="p-4 bg-neutral-800 rounded-xl border border-neutral-700"
-                            >
-                              <div className="text-lg font-semibold">{c.name}</div>
-                              <div className="text-emerald-400 font-bold mt-1">{c.totalProfit}</div>
-                            </motion.div>
-                          ))}
+                            <div className="text-right">
+                              <div className="text-sm text-neutral-400">Stock: {c.quantity}</div>
+                              <div className="text-sm text-emerald-400">{(c.sellPrice).toLocaleString()} {c.currency}</div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  
-              <h1 className="text-3xl font-bold mb-4">
-                Payments & Financials
-              </h1>
+                    ))}
+                  </div>
+                </Card>
 
-              {/* Distributors */}
+                <Card>
+                  <h3 className="text-lg font-semibold mb-3">Quick Actions</h3>
+                  <div className="flex flex-col gap-3">
+                    <button onClick={() => handleOpenAdd("Admin")} className="w-full p-3 rounded-lg text-left bg-emerald-500/10">Add Car</button>
+                    <button onClick={() => setTab("requests")} className="w-full p-3 rounded-lg text-left bg-yellow-500/10">View Requests ({pendingRequests.length})</button>
+                    <button onClick={() => setTab("commercials")} className="w-full p-3 rounded-lg text-left bg-blue-500/10">Manage Commercials</button>
+                  </div>
+                </Card>
+              </div>
+            </motion.div>
+          )}
+          {tab === "currency" && (
+            <motion.div key="currency" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <h2 className="text-2xl font-semibold mb-6">Taux de Change (DZD)</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+            { key: "usd", label: "Dollar (USD)" },
+            { key: "eur", label: "Euro (EUR)" },
+            { key: "aed", label: "Dirham (AED)" },
+            { key: "cad", label: "Dollar Canadien (CAD)" },
+            ].map((c) => (
+            <div
+            key={c.key}
+            className="bg-neutral-900 p-6 rounded-xl border border-neutral-800 flex flex-col gap-3"
+            >
+            <h3 className="text-lg font-semibold">{c.label}</h3>
+            <input
+            type="number"
+            step="0.01"
+            value={currencies[c.key]}
+            onChange={(e) => handleCurrencyChange(c.key, e.target.value)}
+            className="bg-neutral-800 p-2 rounded-lg outline-none text-center text-white"
+            />
+            <span className="text-neutral-400 text-sm">1 {c.label.split(" ")[0]} = {currencies[c.key]} DZD</span>
+            </div>
+            ))}
+            </div>
+            </motion.div>
+            )}
+          {tab === "cars" && (
+            <motion.div key="cars" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Cars Management</h2>
+                <div className="flex items-center gap-3">
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search car..." className="bg-neutral-800 px-3 py-2 rounded-lg text-sm" />
+                  <button onClick={() => handleOpenAdd("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">Add Car</button>
+                </div>
+              </div>
+
               <Card>
-                <h3 className="text-lg font-bold mb-4">
-                  Distributor Balances
-                </h3>
-                <table className="w-full">
+                <table className="w-full table-auto">
                   <thead>
-                    <tr className="text-left text-gray-400 text-sm border-b border-neutral-700">
-                      <th className="py-3 px-4">Name</th>
-                      <th className="py-3 px-4">Owes ($)</th>
-                      <th className="py-3 px-4">Paid ($)</th>
+                    <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                      <th className="py-3 px-3">ID</th>
+                      <th className="py-3 px-3">Model</th>
+                      <th className="py-3 px-3">Fournisseur</th>
+                      <th className="py-3 px-3">Buy Price</th>
+                      <th className="py-3 px-3">Transport</th>
+                      <th className="py-3 px-3">Other Fees</th>
+                      <th className="py-3 px-3">Qty</th>
+                      <th className="py-3 px-3">Paid</th>
+                      <th className="py-3 px-3">Status</th>
+                      <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {distributors.map((d) => (
-                      <tr
-                        key={d.id}
-                        className="border-b border-neutral-800/50 hover:bg-white/5 transition"
-                      >
-                        <td className="py-3 px-4 font-medium">{d.name}</td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="number"
-                            value={d.owes}
-                            onChange={(e) =>
-                              updateDistributor(d.id, "owes", e.target.value)
-                            }
-                            className="w-24 bg-neutral-800 rounded p-1 text-center"
-                          />
+                    {filteredCars.map((c) => (
+                      <tr key={c.id} className="border-b border-neutral-800/40 hover:bg-white/5 transition">
+                        <td className="py-3 px-3 font-mono text-emerald-400">{c.id}</td>
+                        <td className="py-3 px-3">{c.model}</td>
+                        <td className="py-3 px-3">{c.fournisseur}</td>
+                        <td className="py-3 px-3">{(c.buyPrice).toLocaleString()} {c.currency}</td>
+                        <td className="py-3 px-3">{(c.transportFee || 0).toLocaleString()}</td>
+                        <td className="py-3 px-3">{(c.otherFees || 0).toLocaleString()}</td>
+                        <td className="py-3 px-3">{c.quantity}</td>
+                        <td className="py-3 px-3">
+                          <input type="number" value={c.paidToFournisseur || 0} onChange={(e) => updatePaidToFournisseur(c.id, e.target.value)} className="w-28 bg-neutral-800 rounded p-1 text-center" />
                         </td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="number"
-                            value={d.paid}
-                            onChange={(e) =>
-                              updateDistributor(d.id, "paid", e.target.value)
-                            }
-                            className="w-24 bg-neutral-800 rounded p-1 text-center"
-                          />
+                        <td className="py-3 px-3 text-emerald-400">{c.status}</td>
+                        <td className="py-3 px-3 text-right">
+                          <button onClick={() => handleEdit(c)} className="mr-2 text-blue-400 hover:text-blue-300"><Edit2 /></button>
+                          <button onClick={() => handleDelete(c.id)} className="text-red-400 hover:text-red-300"><Trash2 /></button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </Card>
+            </motion.div>
+          )}
 
-              {/* Currency rates */}
+          {tab === "fournisseurs" && (
+            <motion.div key="fournisseurs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Fournisseurs & Finance</h2>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                  <h3 className="text-lg font-semibold mb-4">Fournisseurs</h3>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-2 px-2">Name</th>
+                        <th className="py-2 px-2">Paid</th>
+                        <th className="py-2 px-2">Remaining</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fournisseurs.map((f) => (
+                        <tr key={f.id} className="border-b border-neutral-800/40 hover:bg-white/5">
+                          <td className="py-2 px-2">{f.name}</td>
+                          <td className="py-2 px-2"><input className="bg-neutral-800 rounded p-1 w-28" type="number" value={f.paid} onChange={(e) => setFournisseurs((p) => p.map((x) => x.id === f.id ? { ...x, paid: parseFloat(e.target.value) || 0 } : x))} /></td>
+                          <td className="py-2 px-2">{(f.remaining || 0).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Card>
+
+                <Card>
+                  <h3 className="text-lg font-semibold mb-4">Expenses</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {Object.entries(expenses).map(([k, v]) => (
+                      <div key={k} className="flex items-center justify-between">
+                        <div className="capitalize">{k}</div>
+                        <input className="bg-neutral-800 rounded p-1 w-32" type="number" value={v} onChange={(e) => setExpenses((p) => ({ ...p, [k]: parseFloat(e.target.value) || 0 }))} />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                <Card className="md:col-span-2">
+                  <h3 className="text-lg font-semibold mb-4">Supplier Payment Details (per car)</h3>
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    {cars.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between p-3 bg-neutral-900/40 rounded-lg border border-neutral-800">
+                        <div>
+                          <div className="font-medium">{c.model} — {c.id}</div>
+                          <div className="text-sm text-neutral-400">Fournisseur: {c.fournisseur}</div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm">Paid: {c.paidToFournisseur || 0}</div>
+                          <button className="px-3 py-1 rounded bg-emerald-500/20">Sync</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            </motion.div>
+          )}
+
+          {tab === "commercials" && (
+            <motion.div key="commercials" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Commercials Management</h2>
+              </div>
+
               <Card>
-                <h3 className="text-lg font-bold mb-4">Currency Rates</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.entries(currencies).map(([cur, val]) => (
-                    <div key={cur}>
-                      <p className="text-gray-400 text-sm mb-1">{cur}</p>
-                      <input
-                        type="number"
-                        value={val}
-                        onChange={(e) =>
-                          updateCurrency(cur, e.target.value)
-                        }
-                        className="w-full bg-neutral-800 rounded p-2 text-center"
-                      />
-                    </div>
-                  ))}
-                </div>
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                      <th className="py-3 px-3">Name</th>
+                      <th className="py-3 px-3">Email</th>
+                      <th className="py-3 px-3">Phone</th>
+                      <th className="py-3 px-3">Commission %</th>
+                      <th className="py-3 px-3">Cars Sold</th>
+                      <th className="py-3 px-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {commercials.map((cm) => (
+                      <tr key={cm.id} className="border-b border-neutral-800/40 hover:bg-white/5">
+                        <td className="py-3 px-3">{cm.name}</td>
+                        <td className="py-3 px-3">{cm.email}</td>
+                        <td className="py-3 px-3">{cm.phone}</td>
+                        <td className="py-3 px-3">
+                          <input className="w-20 bg-neutral-800 rounded p-1" type="number" value={cm.commissionRate} onChange={(e) => setCommissionForCommercial(cm.id, e.target.value)} />
+                        </td>
+                        <td className="py-3 px-3">{cm.sold}</td>
+                        <td className="py-3 px-3 text-right">
+                          <button onClick={() => { const newPass = Math.random().toString(36).slice(-8); setCommercials((p) => p.map(x => x.id === cm.id ? { ...x, password: newPass } : x)); pushLog('Admin', `Generated password for commercial ${cm.name}`); }} className="text-emerald-400 mr-2">Generate</button>
+                          <button onClick={() => alert('Open details') } className="text-blue-400">Details</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </Card>
+            </motion.div>
+          )}
 
-              {/* Expenses */}
+          {tab === "requests" && (
+            <motion.div key="requests" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Requests from Commercials</h2>
+              </div>
+
               <Card>
-                <h3 className="text-lg font-bold mb-4">Expenses</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  {Object.entries(expenses).map(([key, val]) => (
-                    <div key={key}>
-                      <p className="text-gray-400 text-sm capitalize mb-1">
-                        {key}
-                      </p>
-                      <input
-                        type="number"
-                        value={val}
-                        onChange={(e) =>
-                          setExpenses({
-                            ...expenses,
-                            [key]: parseFloat(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full bg-neutral-800 rounded p-2 text-center"
-                      />
+                <div className="space-y-4">
+                  {requests.map((r) => (
+                    <div key={r.id} className="p-4 bg-neutral-900/40 rounded-lg border border-neutral-800 flex justify-between items-start">
+                      <div>
+                        <div className="font-medium">{r.model}</div>
+                        <div className="text-sm text-neutral-400">From commercial ID: {r.commercialId} • {r.date}</div>
+                        <div className="mt-2 text-sm">{r.message}</div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <button onClick={() => handleApproveRequest(r)} className="px-3 py-1 rounded bg-emerald-500/20">Approve</button>
+                          <button onClick={() => handleDeclineRequest(r)} className="px-3 py-1 rounded bg-red-500/20">Decline</button>
+                        </div>
+                        <div className="text-sm text-neutral-400">Status: {r.status}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -530,65 +596,64 @@ const Admin = () => {
             </motion.div>
           )}
 
-          {activeTab === "commercials" && (
-            <motion.div
-              key="commercials"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.4 }}
-            >
+          {tab === "logs" && (
+            <motion.div key="logs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
-                <h1 className="text-3xl font-bold">Commercial Management</h1>
+                <h2 className="text-3xl font-semibold">Operations Log</h2>
+                <div className="text-sm text-neutral-400">Total operations: {logs.length}</div>
               </div>
+
               <Card>
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-left text-gray-400 text-sm border-b border-neutral-700">
-                      <th className="py-3 px-4">Name</th>
-                      <th className="py-3 px-4">Email</th>
-                      <th className="py-3 px-4">Phone</th>
-                      <th className="py-3 px-4">Cars Sold</th>
-                      <th className="py-3 px-4">Earnings ($)</th>
-                      <th className="py-3 px-4">Password</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {commercials2.map((c) => (
-                      <tr
-                        key={c.id}
-                        className="border-b border-neutral-800/50 hover:bg-white/5 transition"
-                      >
-                        <td className="py-3 px-4 font-medium">{c.name}</td>
-                        <td className="py-3 px-4 text-gray-300">{c.email}</td>
-                        <td className="py-3 px-4 text-gray-400">{c.phone}</td>
-                        <td className="py-3 px-4 text-center">{c.sold}</td>
-                        <td className="py-3 px-4 text-center text-emerald-400">
-                          {c.earnings}
-                        </td>
-                        <td className="py-3 px-4 text-gray-500">
-                          {c.password}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => generatePassword(c.id)}
-                            className="text-emerald-400 hover:text-emerald-300"
-                          >
-                            <Lock className="w-5 h-5 inline" /> Generate
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {logs.map((l) => (
+                    <div key={l.id} className="flex items-start gap-4 p-3 bg-neutral-900/30 rounded">
+                      <div className="text-neutral-400 text-sm w-44">{new Date(l.date).toLocaleString()}</div>
+                      <div>
+                        <div className="font-medium">{l.actor}</div>
+                        <div className="text-sm text-neutral-400">{l.action}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </Card>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Add / Edit Car Modal */}
+        <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
+          <form onSubmit={handleSubmitCar} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Model" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.fournisseur} onChange={(e) => setCarForm({ ...carForm, fournisseur: e.target.value })} placeholder="Fournisseur" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.buyPrice} onChange={(e) => setCarForm({ ...carForm, buyPrice: e.target.value })} placeholder="Buy Price" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.sellPrice} onChange={(e) => setCarForm({ ...carForm, sellPrice: e.target.value })} placeholder="Sell Price" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.transportFee} onChange={(e) => setCarForm({ ...carForm, transportFee: e.target.value })} placeholder="Transport Fee" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.otherFees} onChange={(e) => setCarForm({ ...carForm, otherFees: e.target.value })} placeholder="Other Fees" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="Quantity" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.colors} onChange={(e) => setCarForm({ ...carForm, colors: e.target.value })} placeholder="Colors (comma separated)" className="bg-neutral-800 p-2 rounded" />
+            </div>
+
+            <textarea value={carForm.description} onChange={(e) => setCarForm({ ...carForm, description: e.target.value })} placeholder="Description" className="bg-neutral-800 p-2 rounded h-28" />
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer bg-neutral-800 px-3 py-2 rounded">
+                <ImageIcon /> Upload Image
+                <input type="file" accept="image/*" onChange={(e) => setCarForm({ ...carForm, imageFile: e.target.files[0] })} className="hidden" />
+              </label>
+
+              <div className="flex-1 text-sm text-neutral-400">
+                Total cost will be calculated automatically after save (buy + transport + other fees)
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowAddCar(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
+              <button type="submit" className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400">Save Car</button>
+            </div>
+          </form>
+        </Modal>
       </main>
     </div>
   );
-};
-
-export default Admin;
+}
