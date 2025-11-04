@@ -65,11 +65,31 @@ const Modal = ({ open, onClose, title, children }) => (
 );
 
 export default function AdminSuperPanel() {
-  // active tab
+
+  const API_BASE='https://showroomd38d7382d23h8dio3d46wqdxasjdl.onrender.com'
+
   const [tab, setTab] = useState("overview");
   const [search, setSearch] = useState("");
   const [earnings, setEarnings] = useState('');
+
+  useEffect(() => {
+  const fetchEarnings = async () => {
+    const response = await fetch(`${API_BASE}/cash_register`);
+    const data = await response.json();
+    setEarnings(data);
+  };
+  fetchEarnings();
+}, []);
+
   const [expenses, setExpenses] = useState([]);
+  useEffect(()=>{
+    const fetchExpenses = async () => {
+      const response = await fetch(`${API_BASE}/expenses`);
+      const data = await response.json();
+      setExpenses(data);
+    }
+    fetchExpenses();
+  })
   const [profit , setProfit] = useState('');
   const [requests , setRequests] = useState([]);
   const [carsvalue , setCarsValue] = useState('');
@@ -287,9 +307,9 @@ export default function AdminSuperPanel() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Stat label="Chiffre d'affaire" value={`${totalExpenses.toLocaleString()}`} icon={TrendingUp} />
-                <Stat label="Total Expenses" value={`${totalExpenses.toLocaleString()}`} icon={TrendingDown} />
-                <Stat label="Profit" value={`${totalExpenses.toLocaleString()}`} icon={CreditCard} />
+                <Stat label="Caisse" value={`${totalExpenses.toLocaleString()}`} icon={CreditCard} />
+                <Stat label="Chiffre d'affaire" value={earnings.balance} icon={TrendingUp} />
+                <Stat label="Total Expenses" value={expenses.month} icon={TrendingDown} />
                 <Stat label="Paid to Fournisseurs" value={`${totalPaidToFournisseurs.toLocaleString()}`} icon={Users} />
                 <Stat label="Pending Requests" value={pendingRequests.length} icon={FilePlus} />
                 <Stat label="Total Stock Value" value={`${totalStockValue.toLocaleString()}`} icon={Car} />
