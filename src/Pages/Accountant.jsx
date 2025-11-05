@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { motion , AnimatePresence } from "framer-motion";
 import {
   Car,
@@ -6,37 +7,123 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+const API_BASE_URL = "https://showroomd38d7382d23h8dio3d46wqdxasjdl.onrender.com"; // Replace with your actual API URL
+
 const Accountant = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activetab , setActivetab] = useState('Jour');
   const [selectedCommercial, setSelectedCommercial] = useState(null);
-  const [commercial , setCommercial] = useState([
-    {
-    nom:'Fouad Benzarga',
-    localisation : 'Alger',
-    day_transactions :"4",
-    activities: [
-    { type: "Vente", car: "Toyota Corolla", client: "Ahmed", amount: "320,000 DZD", date: "2025-11-02", status: "Complété" },
-    { type: "Contact", car: "BMW X5", client: "Karim", date: "2025-11-02", status: "En cours" },
-    { type: "Test Drive", car: "Mercedes C200", client: "Sofia", date: "2025-11-01", status: "Complété" }
-  ]
-},
-    {
-    nom:'Mouaad Benaissa',
-    localisation : 'Oran',
-    day_transactions :"10",
-    activities: [
-    { type: "Vente", car: "Toyota Corolla", client: "Ahmed", amount: "320,000 DZD", date: "2025-11-02", status: "Complété" },
-    { type: "Contact", car: "BMW X5", client: "Karim", date: "2025-11-02", status: "En cours" },
-    { type: "Test Drive", car: "Mercedes C200", client: "Sofia", date: "2025-11-01", status: "Complété" }
-  ]
-}
+  const [commercial , setCommercial] = useState([]);
+  const [Clients , setClients] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [cars, setCars] = useState([]);
+  const [expenses, setExpenses] = useState(null);
+  const [earnings, setEarnings] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-]);
-  const [Clients , setClients] = useState([
-    { name: "Ahmed", purchase: "Toyota Corolla", amount: "320,000 DZD" },
-    { name: "Ali", purchase: "BMW X3", amount: "600,000 DZD" },
-  ])
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        fetchCommercials(),
+        fetchClients(),
+        fetchOrders(),
+        fetchCars(),
+        fetchExpenses(),
+        fetchEarnings()
+      ]);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCommercials = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/commercials/`);
+      const data = await response.json();
+      
+      // Transform data to match component structure
+      const transformedCommercials = data.map(c => ({
+        id: c.id,
+        nom: `${c.name} ${c.surname}`,
+        localisation: c.wilaya,
+        day_transactions: "0", // Will be calculated from orders
+        phone_number: c.phone_number,
+        activities: [] // Will be populated from orders
+      }));
+      
+      setCommercial(transformedCommercials);
+    } catch (error) {
+      console.error("Error fetching commercials:", error);
+    }
+  };
+
+  const fetchClients = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/clients/`);
+      const data = await response.json();
+      setClients(data.map(c => ({
+        id: c.id,
+        name: `${c.name} ${c.surname}`,
+        phone: c.phone_number,
+        wilaya: c.wilaya
+      })));
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders/`);
+      const data = await response.json();
+      setOrders(data);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    }
+  };
+
+  const fetchCars = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cars/all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await response.json();
+      setCars(data);
+    } catch (error) {
+      console.error("Error fetching cars:", error);
+    }
+  };
+
+  const fetchExpenses = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/expenses/monthly`);
+      const data = await response.json();
+      setExpenses(data);
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+    }
+  };
+
+  const fetchEarnings = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/earnings/monthly`);
+      const data = await response.json();
+      setEarnings(data);
+    } catch (error) {
+      console.error("Error fetching earnings:", error);
+    }
+  };
+
   const toggleMenu = () => setMenuOpen(!menuOpen);
   const toggletab = (tab) => 
     {setActivetab(tab)
@@ -44,22 +131,97 @@ const Accountant = () => {
     }
   ;
 
+  // Calculate statistics from real data
+  const getTodayOrders = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return orders.filter(order => 
+      order.purchase_date && order.purchase_date.startsWith(today)
+    );
+  };
+
+  const todayOrders = getTodayOrders();
+  const totalCarsEntered = cars.length;
+  const totalCarsSold = orders.filter(o => o.status === "completed").length;
+  const totalRevenue = orders
+    .filter(o => o.status === "completed")
+    .reduce((sum, order) => sum + (order.payment_amount || 0), 0);
 
   const stats = [
-    { title: "Voitures Entrées", value: 42, icon: <Car />, color: "bg-blue-600" },
-    { title: "Voitures Vendues", value: 31, icon: <TrendingUp />, color: "bg-green-600" },
-    { title: "Chiffre Affaire", value: "340,000 DZD", icon: <DollarSign />, color: "bg-emerald-600" },
+    { title: "Voitures Entrées", value: totalCarsEntered, icon: <Car />, color: "bg-blue-600" },
+    { title: "Voitures Vendues", value: totalCarsSold, icon: <TrendingUp />, color: "bg-green-600" },
+    { title: "Chiffre Affaire", value: `${totalRevenue.toLocaleString()} DZD`, icon: <DollarSign />, color: "bg-emerald-600" },
   ];
 
-  const carsEntered = [
-    { id: 1, model: "Toyota Corolla", distributor: "Palmier Import"},
-    { id: 2, model: "BMW X3", distributor: "AutoLine China" },
-  ];
+  // Cars entered (all cars in inventory)
+  const carsEntered = cars.map(car => ({
+    id: car.id,
+    model: car.model,
+    distributor: car.country || "N/A",
+    color: car.color,
+    year: car.year
+  }));
 
-  const carsSold = [
-    { id: 1, model: "Toyota Corolla", price: "320,000 DZD", commercial: "Yassine", profit: "58,000 DZD" },
-    { id: 2, model: "BMW X3", price: "600,000 DZD", commercial: "Amine", profit: "80,000 DZD" },
-  ];
+  // Cars sold (completed orders)
+  const carsSold = orders
+    .filter(o => o.status === "completed")
+    .map(order => {
+      const car = cars.find(c => c.id === order.car_id);
+      return {
+        id: order.order_id,
+        model: order.car_model,
+        price: `${order.price_dzd?.toLocaleString()} DZD`,
+        commercial: order.client_name || "N/A",
+        profit: car ? `${(car.commercial_comission || 0).toLocaleString()} DZD` : "N/A"
+      };
+    });
+
+  // Calculate daily transactions per commercial
+  const commercialWithStats = commercial.map(c => {
+    const commercialOrders = todayOrders.filter(o => {
+      const car = cars.find(car => car.id === o.car_id);
+      return car && car.commercial_id === c.id;
+    });
+    
+    const activities = orders
+      .filter(o => {
+        const car = cars.find(car => car.id === o.car_id);
+        return car && car.commercial_id === c.id;
+      })
+      .map(o => ({
+        type: o.status === "completed" ? "Vente" : "En cours",
+        car: o.car_model,
+        client: `${o.client_name} ${o.client_surname}`,
+        amount: `${o.price_dzd?.toLocaleString()} DZD`,
+        date: o.purchase_date ? new Date(o.purchase_date).toLocaleDateString() : "N/A",
+        status: o.delivery_status === "showroom" ? "Complété" : "En cours"
+      }));
+
+    return {
+      ...c,
+      day_transactions: commercialOrders.length.toString(),
+      activities
+    };
+  });
+
+  // Get client purchases
+  const clientsWithPurchases = Clients.map(client => {
+    const clientOrders = orders.filter(o => o.client_id === client.id);
+    const lastOrder = clientOrders[clientOrders.length - 1];
+    
+    return {
+      ...client,
+      purchase: lastOrder?.car_model || "Aucun achat",
+      amount: lastOrder ? `${lastOrder.price_dzd?.toLocaleString()} DZD` : "0 DZD"
+    };
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen w-screen bg-neutral-950 text-white flex items-center justify-center">
+        <div className="text-2xl">Chargement...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-screen font-main bg-neutral-950 text-white flex overflow-hidden">
@@ -187,34 +349,41 @@ const Accountant = () => {
         {/* Cars Entered */}
         <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
           <h2 className="text-xl font-semibold mb-4">Voitures Entrées</h2>
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="text-neutral-400 border-b border-neutral-800">
               <tr>
                 <th className="p-2">Modèle</th>
-                <th className="p-2">Distributeur</th>
+                <th className="p-2">Pays</th>
+                <th className="p-2">Couleur</th>
+                <th className="p-2">Année</th>
               </tr>
             </thead>
             <tbody>
-              {carsEntered.map((c) => (
+              {carsEntered.slice(0, 10).map((c) => (
                 <tr key={c.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
                   <td className="p-2">{c.model}</td>
                   <td className="p-2">{c.distributor}</td>
+                  <td className="p-2">{c.color}</td>
+                  <td className="p-2">{c.year}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Cars Sold */}
         <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
           <h2 className="text-xl font-semibold mb-4">Voitures Vendues</h2>
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="text-neutral-400 border-b border-neutral-800">
               <tr>
                 <th className="p-2">Modèle</th>
                 <th className="p-2">Prix de Vente</th>
-                <th className="p-2">Commercial</th>
-                <th className="p-2">Profit</th>
+                <th className="p-2">Client</th>
+                <th className="p-2">Commission</th>
               </tr>
             </thead>
             <tbody>
@@ -228,6 +397,7 @@ const Accountant = () => {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
       )}
@@ -240,7 +410,7 @@ const Accountant = () => {
           {/* Context */}
           <div className="flex gap-6 min-h-screen w-screen justify-center items-center">
             <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[5vw]">
-             {commercial.map((commercial , index) => (
+             {commercialWithStats.map((commercial , index) => (
               <motion.div 
               key={index}
               initial={{opacity: 0, y: 10 ,scale:1 ,backgroundColor: '#171717'}}
@@ -256,9 +426,9 @@ const Accountant = () => {
                 <h1 className="text-neutral-500 text-[3vh]">Vente d'Aujourd'hui: <span className="text-white">{commercial.day_transactions}</span></h1>
                 </div>
                 <div className="w-full ">
-                  <h1 className="text-neutral-500 text-[3vh] mt-5 mb-2">Clients:</h1>
+                  <h1 className="text-neutral-500 text-[3vh] mt-5 mb-2">Clients Récents:</h1>
                   <div className="max-h-[15vh] overflow-y-scroll">
-                  {Clients.map((client , idx) => (
+                  {clientsWithPurchases.slice(0, 5).map((client , idx) => (
                     <div key={idx} className="flex justify-between items-center mb-2 border-b border-b-neutral-600 hover:bg-neutral-800/30 p-2">
                       <h1 className="text-white font-thin text-[2.5vh]">{client.name}</h1>
                       <h1 className="text-neutral-400 text-[2vh]">{client.purchase} - {client.amount}</h1>
@@ -292,31 +462,35 @@ const Accountant = () => {
                       </svg>
                     </div>
                     <div className="space-y-4">
-                      {selectedCommercial.activities && selectedCommercial.activities.map((activity, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          className="p-4 bg-neutral-800 rounded-lg border border-neutral-700"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <span className={`px-3 py-1 rounded-full text-sm ${
-                                activity.status === 'Complété' ? 'bg-green-500/20 text-green-300' : 
-                                'bg-yellow-500/20 text-yellow-300'
-                              }`}>
-                                {activity.status}
-                              </span>
-                              <h3 className="text-xl font-medium mt-2">{activity.type}</h3>
-                              <p className="text-neutral-400">Client: {activity.client}</p>
-                              {activity.car && <p className="text-neutral-400">Voiture: {activity.car}</p>}
-                              {activity.amount && <p className="text-emerald-400">{activity.amount}</p>}
+                      {selectedCommercial.activities && selectedCommercial.activities.length > 0 ? (
+                        selectedCommercial.activities.map((activity, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className="p-4 bg-neutral-800 rounded-lg border border-neutral-700"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className={`px-3 py-1 rounded-full text-sm ${
+                                  activity.status === 'Complété' ? 'bg-green-500/20 text-green-300' : 
+                                  'bg-yellow-500/20 text-yellow-300'
+                                }`}>
+                                  {activity.status}
+                                </span>
+                                <h3 className="text-xl font-medium mt-2">{activity.type}</h3>
+                                <p className="text-neutral-400">Client: {activity.client}</p>
+                                {activity.car && <p className="text-neutral-400">Voiture: {activity.car}</p>}
+                                {activity.amount && <p className="text-emerald-400">{activity.amount}</p>}
+                              </div>
+                              <span className="text-neutral-500 text-sm">{activity.date}</span>
                             </div>
-                            <span className="text-neutral-500 text-sm">{activity.date}</span>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        ))
+                      ) : (
+                        <p className="text-neutral-400 text-center py-8">Aucune activité enregistrée</p>
+                      )}
                     </div>
                   </motion.div>
                 </motion.div>
