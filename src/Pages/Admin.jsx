@@ -208,7 +208,7 @@ const Modal = ({ open, onClose, title, children }) => (
 );
 
 export default function AdminSuperPanel() {
-  const API_BASE = 'https://showroomd38d7382d23h8dio3d46wqdxasjdl.onrender.com';
+  const API_BASE = 'https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com';
   const [tab, setTab] = useState("overview");
   const [search, setSearch] = useState("");
   const [monthlyearnings, setMonthlyEarnings] = useState(0);
@@ -812,7 +812,11 @@ useEffect(() => {
     (c.country && c.country.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const totalStockValue = cars.reduce((s, c) => s + (c.price || 0), 0);
+  const totalStockValue = cars.reduce((total, car) => {
+    const currency = currencyList.find(c => c.id === car.currency_id);
+    const exchangeRate = currency?.exchange_rate_to_dzd || 1;
+    return total + ((car.price || 0) * exchangeRate);
+  }, 0);
 
   if (loading) {
     return (

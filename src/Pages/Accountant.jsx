@@ -7,7 +7,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-const API_BASE_URL = "https://showroomd38d7382d23h8dio3d46wqdxasjdl.onrender.com"; // Replace with your actual API URL
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com"; // Replace with your actual API URL
 
 const Accountant = () => {
   const [menuOpen, setMenuOpen] = useState(false);
