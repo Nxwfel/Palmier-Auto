@@ -238,40 +238,6 @@ const UserAccount = () => {
     }
   };
 
-  // Login screen
-  if (!token) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-neutral-950 to-black p-4">
-        <Card className="w-full max-w-md">
-          <h2 className="text-2xl font-bold text-center mb-6">Connexion Client</h2>
-          {loginError && (
-            <div className="bg-red-500/20 text-red-200 p-3 rounded-lg text-sm mb-4">
-              {loginError}
-            </div>
-          )}
-          <input
-            value={loginForm.phone}
-            onChange={(e) => setLoginForm({ ...loginForm, phone: e.target.value })}
-            placeholder="Numéro de téléphone"
-            className="w-full p-3 bg-neutral-800 rounded-lg outline-none mb-3 text-white placeholder:text-neutral-500"
-          />
-          <input
-            type="password"
-            value={loginForm.password}
-            onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-            placeholder="Mot de passe"
-            className="w-full p-3 bg-neutral-800 rounded-lg outline-none mb-4 text-white placeholder:text-neutral-500"
-          />
-          <button
-            onClick={handleLogin}
-            className="w-full bg-emerald-600 py-3 rounded-lg font-medium hover:bg-emerald-700 transition"
-          >
-            Se connecter
-          </button>
-        </Card>
-      </div>
-    );
-  }
 
   // Main dashboard
   return (

@@ -1,4 +1,5 @@
 import React , {useEffect} from 'react'
+import {motion} from 'framer-motion'
 import Lenis from 'lenis'
 import LandingPage from './Pages/LandingPage.jsx'
 import About from './Pages/About.jsx'
@@ -17,12 +18,17 @@ const App = () => {
 
   }, [])
   return (
-    <div className='min-h-screen w-screen overflow-hidden'>
+    <motion.div
+    initial={{opacity:0}}
+    animate={{opacity:1}}
+    exit={{opacity:0}}
+    transition={{duration:1}}
+    className='min-h-screen w-screen overflow-hidden'>
       <LandingPage />
       <InventoryFlex />
       <About />
       <Contact />
-    </div>
+    </motion.div>
   )
 }
 

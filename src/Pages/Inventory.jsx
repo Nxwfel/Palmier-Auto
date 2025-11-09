@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 
+// ✅ FIXED: Removed trailing spaces
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 const Inventory = () => {
@@ -8,6 +9,9 @@ const Inventory = () => {
   const [currencies, setCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Get auth token
+  const authToken = localStorage.getItem("authToken");
 
   // Build fast currency lookup
   const currencyMap = useMemo(() => {
@@ -20,58 +24,81 @@ const Inventory = () => {
 
   // Fetch data on mount
   useEffect(() => {
+    if (!authToken) {
+      setError("Non autorisé. Veuillez vous reconnecter.");
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
         setLoading(true);
         setError("");
 
-        // Fetch currencies first (needed for price conversion)
+        // ✅ Fetch currencies WITH auth header
         const currencyRes = await fetch(`${API_BASE_URL}/currencies/`, {
           method: "GET",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`, // 🔑 Required by your API
+          },
         });
-        if (!currencyRes.ok) throw new Error("Failed to load currencies");
-        const currencyData = await currencyRes.json();
-        setCurrencies(currencyData);
 
-        // Fetch cars
+        if (!currencyRes.ok) {
+          const errData = await currencyRes.json().catch(() => ({}));
+          throw new Error(errData.detail || "Échec du chargement des devises");
+        }
+        const currencyData = await currencyRes.json();
+        // Your API likely returns { "currencies": [...] } or just array — handle both
+        setCurrencies(Array.isArray(currencyData) ? currencyData : currencyData.currencies || []);
+
+        // ✅ Fetch cars WITH auth + correct body
         const carRes = await fetch(`${API_BASE_URL}/cars/all`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`, // 🔑 Required
+          },
+          body: JSON.stringify({}), // Matches `getCars` schema (all optional)
         });
-        if (!carRes.ok) throw new Error("Failed to load cars");
+
+        if (!carRes.ok) {
+          const errData = await carRes.json().catch(() => ({}));
+          throw new Error(errData.detail || "Échec du chargement des véhicules");
+        }
         const carData = await carRes.json();
-        setCars(Array.isArray(carData) ? carData : []);
+        // Handle response structure: your API may return { "cars": [...] }
+        const carList = Array.isArray(carData) ? carData : carData.cars || [];
+        setCars(carList);
       } catch (err) {
         console.error("Inventory fetch error:", err);
-        setError(err.message || "Erreur de chargement");
+        setError(err.message || "Erreur lors du chargement des données");
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [authToken]);
 
   // Format price in DZD (in millions)
   const formatPriceInMillions = (priceInDZD) => {
-    if (priceInDZD === null || priceInDZD === undefined) return "Prix non disponible";
+    if (priceInDZD == null || priceInDZD === 0) return "Prix non disponible";
     const millions = priceInDZD / 1_000_000;
-    return `${millions.toFixed(1)} Millions`;
+    return `${millions.toFixed(1)} Millions DZD`;
   };
 
-  // Get first image or fallback
+  // Get car image safely
   const getCarImage = (car) => {
-    // If your API returns images as array of URLs
     if (Array.isArray(car.images) && car.images.length > 0) {
-      return car.images[0];
+      // If images are URLs
+      if (typeof car.images[0] === "string") return car.images[0];
+      // If images are objects with url field (adjust if needed)
+      if (car.images[0]?.url) return car.images[0].url;
     }
-    // Fallback if no image
-    return "/placeholder-car.jpg"; // or a default image
+    return "/placeholder-car.jpg"; // Make sure this exists in public/
   };
 
-  // Compute total results
   const totalres = cars.length;
 
   return (
@@ -133,7 +160,6 @@ const Inventory = () => {
           <p className="text-neutral-600 text-xl font-main">Chargement des véhicules...</p>
         </div>
       ) : (
-        /* Cars Grid */
         <motion.div
           className="grid grid-cols-4 max-lg:grid-cols-3 max-md:grid-cols-2 max-sm:grid-cols-1 gap-[3vw] mt-[3vh]"
           initial={{ opacity: 0 }}
@@ -145,15 +171,14 @@ const Inventory = () => {
               Aucun véhicule disponible pour le moment.
             </div>
           ) : (
-            cars.map((car, index) => {
-              // Get currency and compute DZD price
+            cars.map((car) => {
               const currency = currencyMap.get(car.currency_id);
               const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : null;
               const formattedPrice = formatPriceInMillions(priceInDZD);
 
               return (
                 <motion.div
-                  key={car.id || index}
+                  key={car.id || car.model + car.year}
                   initial={{ scale: 1 }}
                   whileHover={{ scale: 1.05, y: -5 }}
                   whileTap={{ scale: 1 }}
@@ -162,10 +187,10 @@ const Inventory = () => {
                   <div className="h-[60%] bg-neutral-300 relative">
                     <img
                       src={getCarImage(car)}
-                      alt={car.model}
+                      alt={`${car.model} ${car.year}`}
                       className="h-full w-full object-cover"
                       onError={(e) => {
-                        e.target.src = "/placeholder-car.jpg"; // fallback on error
+                        e.target.src = "/placeholder-car.jpg";
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion , AnimatePresence } from "framer-motion";
 import {
@@ -20,6 +19,7 @@ const Accountant = () => {
   const [expenses, setExpenses] = useState(null);
   const [earnings, setEarnings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false);
 
   // Fetch all data on component mount
   useEffect(() => {
@@ -28,6 +28,13 @@ const Accountant = () => {
 
   const fetchAllData = async () => {
     try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setAuthError(true);
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       await Promise.all([
         fetchCommercials(),
@@ -46,7 +53,17 @@ const Accountant = () => {
 
   const fetchCommercials = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/commercials/`);
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/commercials/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       // Transform data to match component structure
@@ -62,12 +79,23 @@ const Accountant = () => {
       setCommercial(transformedCommercials);
     } catch (error) {
       console.error("Error fetching commercials:", error);
+      setCommercial([]);
     }
   };
 
   const fetchClients = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/clients/`);
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/clients/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       setClients(data.map(c => ({
         id: c.id,
@@ -77,50 +105,94 @@ const Accountant = () => {
       })));
     } catch (error) {
       console.error("Error fetching clients:", error);
+      setClients([]);
     }
   };
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/`);
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/orders/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       setOrders(data);
     } catch (error) {
       console.error("Error fetching orders:", error);
+      setOrders([]);
     }
   };
 
   const fetchCars = async () => {
     try {
+      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_BASE_URL}/cars/all`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({})
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       setCars(data);
     } catch (error) {
       console.error("Error fetching cars:", error);
+      setCars([]);
     }
   };
 
   const fetchExpenses = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/expenses/monthly`);
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/expenses/monthly`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       setExpenses(data);
     } catch (error) {
       console.error("Error fetching expenses:", error);
+      setExpenses(null);
     }
   };
 
   const fetchEarnings = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/earnings/monthly`);
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_BASE_URL}/earnings/monthly`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       setEarnings(data);
     } catch (error) {
       console.error("Error fetching earnings:", error);
+      setEarnings(null);
     }
   };
 
@@ -219,6 +291,23 @@ const Accountant = () => {
     return (
       <div className="min-h-screen w-screen bg-neutral-950 text-white flex items-center justify-center">
         <div className="text-2xl">Chargement...</div>
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen w-screen bg-neutral-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-3xl mb-4">Erreur d'authentification</h1>
+          <p className="text-neutral-400 mb-6">Veuillez vous connecter pour accéder à cette page</p>
+          <button 
+            onClick={() => window.location.href = '/login'} 
+            className="px-6 py-3 bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+          >
+            Se connecter
+          </button>
+        </div>
       </div>
     );
   }
