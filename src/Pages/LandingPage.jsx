@@ -92,7 +92,7 @@ const LandingPage = () => {
               Fermer
             </button>
             <div className="flex flex-col gap-5 mt-8">
-              {['A Propos', 'Services', 'Contact', 'Commandez', 'Suivre'].map((item, i) => (
+              {['A Propos', 'Services', 'Contact', 'Commandez'].map((item, i) => (
                 <button
                   key={i}
                   className="text-left py-3  tracking-wide border-b border-white/10"
@@ -139,7 +139,7 @@ const LandingPage = () => {
             <p className="text-lg md:text-xl text-white/80 max-w-md">
               {slides[current].desc}
             </p>
-            <Link to="/auth">
+            <Link to="/inventory">
               <button className="mt-6 px-8 py-3 border border-white/30 hover:bg-white/5 transition-all  tracking-wider">
                 DÉCOUVRIR LA COLLECTION
               </button>

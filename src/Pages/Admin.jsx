@@ -13,9 +13,10 @@ import {
   Clock,
   X,
   ImageIcon,
-  Lock,
   DollarSign,
+  LogOut,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // Reusable UI
 const Card = ({ children, className = "" }) => (
@@ -24,21 +25,26 @@ const Card = ({ children, className = "" }) => (
   </div>
 );
 
-const CommercialCarsModal = ({ open, onClose, commercial, cars, suppliers, currencyList }) => {
+// ✅ FIXED: Added supplierItems to props
+const CommercialCarsModal = ({ 
+  open, 
+  onClose, 
+  commercial, 
+  cars, 
+  suppliers, 
+  currencyList,
+  supplierItems  // ✅ Now passed in
+}) => {
   if (!commercial) return null;
-
   const soldCars = cars.filter(car => car.commercial_id === commercial.id);
-
   const getSupplierName = (supplierId) => {
     const supplier = suppliers.find(s => s.id === supplierId);
     return supplier ? `${supplier.name} ${supplier.surname}` : 'Unknown';
   };
-
   const getCurrencyName = (currencyId) => {
     const currency = currencyList.find(c => c.id === currencyId);
     return currency ? currency.name : 'Unknown';
   };
-
   const convertToDZD = (price, currencyId) => {
     const currency = currencyList.find(c => c.id === currencyId);
     if (!currency) return price;
@@ -77,13 +83,13 @@ const CommercialCarsModal = ({ open, onClose, commercial, cars, suppliers, curre
             ) : (
               <div className="space-y-4">
                 {soldCars.map((car) => {
-                 const supplierItem = supplierItems.find(item => item.car_id === car.id);
+                  // ✅ FIXED: supplierItems is now available (passed as prop)
+                  const supplierItem = supplierItems.find(item => item.car_id === car.id);
                   const supplierId = supplierItem?.supplier_id || car.supplier_id;
                   const paidAmount = supplierItem?.payment_amount || 0;
                   const currency = currencyList.find(c => c.id === car.currency_id);
                   const totalCostDZD = (car.price || 0) * (currency?.exchange_rate_to_dzd || 1);
                   const remainingAmount = totalCostDZD - paidAmount;
-
                   return (
                     <div key={car.id} className="bg-neutral-800/30 rounded-xl p-4 border border-neutral-700">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -207,8 +213,32 @@ const Modal = ({ open, onClose, title, children }) => (
   </AnimatePresence>
 );
 
+// ✅ Centralized Auth-Aware Fetch
+const apiFetch = async (url, options = {}) => {
+  const token = localStorage.getItem("authToken");
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token && { "Authorization": `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(url, { ...options, headers });
+
+  // Handle 401 globally
+  if (response.status === 401) {
+    localStorage.removeItem("authToken");
+    window.location.href = "/admin-login";
+    throw new Error("Unauthorized");
+  }
+
+  return response;
+};
+
 export default function AdminSuperPanel() {
   const API_BASE = 'https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com';
+  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const navigate = useNavigate();
   const [tab, setTab] = useState("overview");
   const [search, setSearch] = useState("");
   const [monthlyearnings, setMonthlyEarnings] = useState(0);
@@ -229,13 +259,11 @@ export default function AdminSuperPanel() {
   const [showCommercialCars, setShowCommercialCars] = useState(false);
   const [selectedCommercial, setSelectedCommercial] = useState(null);
 
-  // --- API FETCH HOOKS (same as before) ---
-
-  // Fetch Monthly Earnings
+  // --- Auth-aware fetchers ---
   useEffect(() => {
     const fetchEarnings = async () => {
       try {
-        const response = await fetch(`${API_BASE}/earnings/monthly`);
+        const response = await apiFetch(`${API_BASE}/earnings/monthly`);
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
         const total = Array.isArray(data) ? data.reduce((sum, e) => sum + (e.amount || 0), 0) : 0;
@@ -248,11 +276,10 @@ export default function AdminSuperPanel() {
     fetchEarnings();
   }, []);
 
-  // Fetch Yearly Earnings
   useEffect(() => {
     const fetchEarnings = async () => {
       try {
-        const response = await fetch(`${API_BASE}/earnings/yearly`);
+        const response = await apiFetch(`${API_BASE}/earnings/yearly`);
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
         setYearlyEarnings(data.total_amount ? data.total_amount.toFixed(2) : 0);
@@ -264,21 +291,18 @@ export default function AdminSuperPanel() {
     fetchEarnings();
   }, []);
 
-  // Fetch Monthly Expenses
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
-        const response = await fetch(`${API_BASE}/expenses/monthly`);
+        const response = await apiFetch(`${API_BASE}/expenses/monthly`);
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
-        if (data) {
-          setExpenses({
-            total_amount: data.total_amount || 0,
-            purchases: data.purchases || 0,
-            transport: data.transport || 0,
-            other: data.other || 0
-          });
-        }
+        setExpenses({
+          total_amount: data.total_amount || 0,
+          purchases: data.purchases || 0,
+          transport: data.transport || 0,
+          other: data.other || 0
+        });
       } catch (err) {
         console.error("Error fetching expenses:", err);
       }
@@ -286,11 +310,10 @@ export default function AdminSuperPanel() {
     fetchExpenses();
   }, []);
 
-  // Fetch Yearly Expenses
   useEffect(() => {
     const fetchYearlyExpenses = async () => {
       try {
-        const response = await fetch(`${API_BASE}/expenses/yearly`);
+        const response = await apiFetch(`${API_BASE}/expenses/yearly`);
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
         setYearlyExpenses({
@@ -306,11 +329,10 @@ export default function AdminSuperPanel() {
     fetchYearlyExpenses();
   }, []);
 
-  // Fetch Cash Register
   useEffect(() => {
     const fetchCaisse = async () => {
       try {
-        const response = await fetch(`${API_BASE}/cash_register/`);
+        const response = await apiFetch(`${API_BASE}/cash_register/`);
         if (!response.ok) throw new Error('Failed to fetch cash register');
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -327,7 +349,6 @@ export default function AdminSuperPanel() {
     fetchCaisse();
   }, []);
 
-  // Fetch Cars
   useEffect(() => {
     const fetchCars = async () => {
       try {
@@ -347,7 +368,6 @@ export default function AdminSuperPanel() {
     fetchCars();
   }, []);
 
-  // Fetch Fournisseurs
   const [showAddFournisseur, setShowAddFournisseur] = useState(false);
   const [loadingFournisseurs, setLoadingFournisseurs] = useState(false);
   const [fournisseurForm, setFournisseurForm] = useState({
@@ -357,7 +377,7 @@ export default function AdminSuperPanel() {
   const fetchFournisseurs = async () => {
     try {
       setLoadingFournisseurs(true);
-      const res = await fetch(`${API_BASE}/suppliers/`);
+      const res = await apiFetch(`${API_BASE}/suppliers/`);
       const data = await res.json();
       setFournisseurs(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -385,11 +405,13 @@ export default function AdminSuperPanel() {
         address: fournisseurForm.address,
       };
       if (isUpdate) requestBody.supplier_id = fournisseurForm.id;
-      const res = await fetch(url, {
+
+      const res = await apiFetch(url, {
         method: isUpdate ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
+
       if (res.ok) {
         await fetchFournisseurs();
         setShowAddFournisseur(false);
@@ -412,18 +434,17 @@ export default function AdminSuperPanel() {
     if (!window.confirm("Supprimer ce fournisseur ?")) return;
     try {
       const url = `${API_BASE}/suppliers/?supplier_id=${id}`;
-      await fetch(url, { method: "DELETE" });
+      await apiFetch(url, { method: "DELETE" });
       await fetchFournisseurs();
     } catch (err) {
       console.error("Erreur de suppression fournisseur:", err);
     }
   };
 
-  // Fetch Supplier Items
   useEffect(() => {
     const fetchSupplierItems = async () => {
       try {
-        const response = await fetch(`${API_BASE}/suppliers_items/`);
+        const response = await apiFetch(`${API_BASE}/suppliers_items/`);
         if (!response.ok) throw new Error('Failed to fetch supplier items');
         const data = await response.json();
         setSupplierItems(Array.isArray(data) ? data : []);
@@ -435,11 +456,10 @@ export default function AdminSuperPanel() {
     fetchSupplierItems();
   }, []);
 
-  // Fetch Commercials
   useEffect(() => {
     const fetchCommercials = async () => {
       try {
-        const response = await fetch(`${API_BASE}/commercials/`);
+        const response = await apiFetch(`${API_BASE}/commercials/`);
         if (!response.ok) throw new Error('Failed to fetch commercials');
         const data = await response.json();
         setCommercials(Array.isArray(data) ? data : []);
@@ -451,11 +471,10 @@ export default function AdminSuperPanel() {
     fetchCommercials();
   }, []);
 
-  // Fetch Orders
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch(`${API_BASE}/orders/`);
+        const response = await apiFetch(`${API_BASE}/orders/`);
         if (!response.ok) throw new Error('Failed to fetch orders');
         const data = await response.json();
         setOrders(Array.isArray(data) ? data : []);
@@ -467,11 +486,10 @@ export default function AdminSuperPanel() {
     fetchOrders();
   }, []);
 
-  // Fetch Clients
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const response = await fetch(`${API_BASE}/clients/`);
+        const response = await apiFetch(`${API_BASE}/clients/`);
         if (!response.ok) throw new Error('Failed to fetch clients');
         const data = await response.json();
         setClients(Array.isArray(data) ? data : []);
@@ -483,126 +501,107 @@ export default function AdminSuperPanel() {
     fetchClients();
   }, []);
 
-  // Fetch Currencies
- // Replace your current currency useEffect with this:
-useEffect(() => {
-  const fetchCurrencies = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/currencies/`);
-      if (!response.ok) throw new Error('Failed to fetch currencies');
-      const data = await response.json();
-      setCurrencyList(Array.isArray(data) ? data : []);
-      const currencyMap = {};
-      if (Array.isArray(data)) {
-        data.forEach(curr => {
-          currencyMap[curr.code] = curr.exchange_rate_to_dzd;
-        });
-      }
-      setCurrencies(currencyMap);
-
-      // 👇 Initialize default currencies if none exist
-      const defaultCurrencies = [
-        { code: "DZD", name: "Algerian Dinar", rate: 1 },
-        { code: "EUR", name: "Euro", rate: 145 },
-        { code: "USD", name: "US Dollar", rate: 135 },
-        { code: "CAD", name: "Canadian Dollar", rate: 98 },
-        { code: "AED", name: "UAE Dirham", rate: 36.8 },
-      ];
-
-      const missing = defaultCurrencies.filter(dc => !data.some(c => c.code === dc.code));
-      for (const curr of missing) {
-        try {
-          await fetch(`${API_BASE}/currencies/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              code: curr.code.toLowerCase(),
-              name: curr.name,
-              exchange_rate_to_dzd: curr.rate
-            })
+  useEffect(() => {
+    const fetchCurrencies = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/currencies/`);
+        if (!response.ok) throw new Error('Failed to fetch currencies');
+        const data = await response.json();
+        setCurrencyList(Array.isArray(data) ? data : []);
+        const currencyMap = {};
+        if (Array.isArray(data)) {
+          data.forEach(curr => {
+            currencyMap[curr.code] = curr.exchange_rate_to_dzd;
           });
-        } catch (err) {
-          console.warn(`Failed to create currency ${curr.code}:`, err);
         }
+        setCurrencies(currencyMap);
+
+        const defaultCurrencies = [
+          { code: "DZD", name: "Algerian Dinar", rate: 1 },
+          { code: "EUR", name: "Euro", rate: 145 },
+          { code: "USD", name: "US Dollar", rate: 135 },
+          { code: "CAD", name: "Canadian Dollar", rate: 98 },
+          { code: "AED", name: "UAE Dirham", rate: 36.8 },
+        ];
+        const missing = defaultCurrencies.filter(dc => !data.some(c => c.code === dc.code));
+        for (const curr of missing) {
+          try {
+            await apiFetch(`${API_BASE}/currencies/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                code: curr.code.toLowerCase(),
+                name: curr.name,
+                exchange_rate_to_dzd: curr.rate
+              })
+            });
+          } catch (err) {
+            console.warn(`Failed to create currency ${curr.code}:`, err);
+          }
+        }
+        const finalResponse = await fetch(`${API_BASE}/currencies/`);
+        const finalData = await finalResponse.json();
+        setCurrencyList(Array.isArray(finalData) ? finalData : []);
+      } catch (err) {
+        console.error("Error fetching/initializing currencies:", err);
+        setCurrencyList([]);
+      } finally {
+        setLoading(false);
       }
+    };
+    fetchCurrencies();
+  }, []);
 
-      // Re-fetch to include defaults
-      const finalResponse = await fetch(`${API_BASE}/currencies/`);
-      const finalData = await finalResponse.json();
-      setCurrencyList(Array.isArray(finalData) ? finalData : []);
+  const handleCurrencyChange = async (code, value) => {
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue)) return;
+    setCurrencies(prev => ({ ...prev, [code]: numericValue }));
+    try {
+      const existing = currencyList.find(c => c.code.toLowerCase() === code.toLowerCase());
+      if (existing) {
+        const response = await apiFetch(`${API_BASE}/currencies/`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: existing.id,
+            exchange_rate_to_dzd: numericValue
+          })
+        });
+        if (!response.ok) throw new Error('Update failed');
+      } else {
+        const response = await apiFetch(`${API_BASE}/currencies/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: code.toLowerCase(),
+            name: {
+              dzd: 'Algerian Dinar',
+              eur: 'Euro',
+              usd: 'US Dollar',
+              cad: 'Canadian Dollar',
+              aed: 'UAE Dirham'
+            }[code] || code.toUpperCase(),
+            exchange_rate_to_dzd: numericValue
+          })
+        });
+        if (!response.ok) throw new Error('Creation failed');
+        const fresh = await fetch(`${API_BASE}/currencies/`).then(r => r.json());
+        setCurrencyList(Array.isArray(fresh) ? fresh : []);
+        const map = {};
+        fresh.forEach(c => { map[c.code] = c.exchange_rate_to_dzd; });
+        setCurrencies(map);
+      }
+      pushLog("Admin", `Updated ${code.toUpperCase()} exchange rate to ${numericValue} DZD`);
     } catch (err) {
-      console.error("Error fetching/initializing currencies:", err);
-      setCurrencyList([]);
-    } finally {
-      setLoading(false);
+      console.error("Error updating currency:", err);
+      alert(`Failed to save ${code.toUpperCase()} rate`);
+      setCurrencies(prev => {
+        const copy = { ...prev };
+        delete copy[code];
+        return copy;
+      });
     }
   };
-  fetchCurrencies();
-}, []);
-
-  // Update currency
- const handleCurrencyChange = async (code, value) => {
-  const numericValue = parseFloat(value);
-  if (isNaN(numericValue)) return;
-
-  // Optimistically update UI
-  setCurrencies(prev => ({ ...prev, [code]: numericValue }));
-
-  try {
-    // Find existing currency by code (case-insensitive)
-    const existing = currencyList.find(c => c.code.toLowerCase() === code.toLowerCase());
-    
-    if (existing) {
-      // Update existing
-      const response = await fetch(`${API_BASE}/currencies/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: existing.id,
-          exchange_rate_to_dzd: numericValue
-        })
-      });
-      if (!response.ok) throw new Error('Update failed');
-    } else {
-      // Create new currency
-      const response = await fetch(`${API_BASE}/currencies/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: code.toLowerCase(),
-          name: {
-            dzd: 'Algerian Dinar',
-            eur: 'Euro',
-            usd: 'US Dollar',
-            cad: 'Canadian Dollar',
-            aed: 'UAE Dirham'
-          }[code] || code.toUpperCase(),
-          exchange_rate_to_dzd: numericValue
-        })
-      });
-      if (!response.ok) throw new Error('Creation failed');
-      // Re-fetch to update currencyList & currencies
-      const fresh = await fetch(`${API_BASE}/currencies/`).then(r => r.json());
-      setCurrencyList(Array.isArray(fresh) ? fresh : []);
-      const map = {};
-      fresh.forEach(c => { map[c.code] = c.exchange_rate_to_dzd; });
-      setCurrencies(map);
-    }
-
-    pushLog("Admin", `Updated ${code.toUpperCase()} exchange rate to ${numericValue} DZD`);
-  } catch (err) {
-    console.error("Error updating currency:", err);
-    alert(`Failed to save ${code.toUpperCase()} rate`);
-    // Revert optimistic update
-    setCurrencies(prev => {
-      const copy = { ...prev };
-      delete copy[code];
-      return copy;
-    });
-  };
-  };
-
-  // --- Car CRUD (unchanged, omitted for brevity but kept in full code) ---
 
   const [showAddCar, setShowAddCar] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
@@ -659,21 +658,34 @@ useEffect(() => {
           formData.append('images', file);
         });
       }
+
       const url = `${API_BASE}/cars/`;
       const method = editingCar ? 'PUT' : 'POST';
       if (editingCar) {
         formData.append('car_id', editingCar.id);
       }
-      const response = await fetch(url, { method, body: formData });
+
+      // ✅ Auth header for FormData
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(url, {
+        method,
+        headers: token ? { "Authorization": `Bearer ${token}` } : {},
+        body: formData
+      });
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
+
       pushLog("Admin", `${editingCar ? 'Updated' : 'Added'} car ${carForm.model}`);
       setShowAddCar(false);
       setCarForm(initialCarForm);
+
       const carsResponse = await fetch(`${API_BASE}/cars/all`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
       });
       const carsData = await carsResponse.json();
       setCars(Array.isArray(carsData) ? carsData : []);
@@ -709,7 +721,11 @@ useEffect(() => {
   const handleDelete = async (id) => {
     if (!confirm("Supprimer cette voiture ?")) return;
     try {
-      const response = await fetch(`${API_BASE}/cars/?car_id=${id}`, { method: 'DELETE' });
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${API_BASE}/cars/?car_id=${id}`, {
+        method: 'DELETE',
+        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+      });
       if (!response.ok) throw new Error('Failed to delete car');
       setCars((p) => p.filter((c) => c.id !== id));
       pushLog("Admin", `Deleted car ${id}`);
@@ -732,53 +748,70 @@ useEffect(() => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setCommercialLoading(true);
-    setMessage("");
-    try {
-      const isUpdate = !!CommercialForm.commercial_id;
-      const url = `${API_BASE}/commercials/`;
-      const requestBody = {
-        name: CommercialForm.name,
-        surname: CommercialForm.surname,
-        phone_number: CommercialForm.phone_number,
-        wilaya: CommercialForm.wilaya,
-        address: CommercialForm.address,
-      };
-      if (!isUpdate) requestBody.password = CommercialForm.password;
-      if (isUpdate) requestBody.commercial_id = CommercialForm.commercial_id;
-      const response = await fetch(url, {
-        method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-      if (response.ok) {
-        setMessage("Commercial saved successfully ✅");
-        setCommercialForm({ name: "", surname: "", phone_number: "", password: "", wilaya: "", address: "" });
-        setShowAddCommercial(false);
-        const freshCommercials = await fetch(`${API_BASE}/commercials/`).then(r => r.json());
-        setCommercials(Array.isArray(freshCommercials) ? freshCommercials : []);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        setMessage(`❌ Error: ${errorData.detail || "Failed to save commercial"}`);
-      }
-    } catch (error) {
-      setMessage("⚠️ Network error: " + error.message);
-    } finally {
-      setCommercialLoading(false);
+  e.preventDefault();
+  setCommercialLoading(true);
+  setMessage("");
+  setGeneratedPassword(""); // Reset
+  try {
+    const isUpdate = !!CommercialForm.commercial_id;
+    const url = `${API_BASE}/commercials/`;
+    const requestBody = {
+      name: CommercialForm.name,
+      surname: CommercialForm.surname,
+      phone_number: CommercialForm.phone_number,
+      wilaya: CommercialForm.wilaya,
+      address: CommercialForm.address,
+    };
+    // Only include password on creation (not update), but backend generates it anyway
+    if (!isUpdate) {
+      // We don’t send password — backend generates it
+      // requestBody.password = CommercialForm.password; // ❌ Remove if backend auto-generates
+    } else {
+      requestBody.commercial_id = CommercialForm.commercial_id;
     }
-  };
+
+    const response = await fetch(url, {
+      method: isUpdate ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    const responseData = await response.json(); // ✅ Parse response
+
+    if (response.ok) {
+      setMessage("Commercial saved successfully ✅");
+
+      // ✅ Check if password was generated and returned
+      if (!isUpdate && responseData.password) {
+        setGeneratedPassword(responseData.password);
+        setShowPasswordModal(true); // Show password modal
+      }
+
+      // Reset form & refresh list
+      setCommercialForm({ name: "", surname: "", phone_number: "", password: "", wilaya: "", address: "" });
+      setShowAddCommercial(false);
+      const freshCommercials = await fetch(`${API_BASE}/commercials/`).then(r => r.json());
+      setCommercials(Array.isArray(freshCommercials) ? freshCommercials : []);
+    } else {
+      setMessage(`❌ Error: ${responseData.detail || "Failed to save commercial"}`);
+    }
+  } catch (error) {
+    setMessage("⚠️ Network error: " + error.message);
+  } finally {
+    setCommercialLoading(false);
+  }
+};
 
   const updateSupplierItemPayment = async (itemId, amount) => {
     try {
-      const response = await fetch(`${API_BASE}/suppliers_items/`, {
+      const response = await apiFetch(`${API_BASE}/suppliers_items/`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ supplier_item_id: itemId, payment_amount: parseFloat(amount) || 0 })
       });
       if (response.ok) {
         pushLog("Admin", `Updated payment for supplier item ${itemId}`);
-        const itemsResponse = await fetch(`${API_BASE}/suppliers_items/`);
+        const itemsResponse = await apiFetch(`${API_BASE}/suppliers_items/`);
         const itemsData = await itemsResponse.json();
         setSupplierItems(Array.isArray(itemsData) ? itemsData : []);
       }
@@ -787,7 +820,6 @@ useEffect(() => {
     }
   };
 
-  // Prepare enriched cars with supplier finance data for modal
   const getEnrichedCars = () => {
     return cars.map(car => {
       const item = supplierItems.find(si => si.car_id === car.id);
@@ -795,7 +827,6 @@ useEffect(() => {
       const totalCostDZD = (car.price || 0) * (currency?.exchange_rate_to_dzd || 1);
       const paidAmount = item?.payment_amount || 0;
       const remainingAmount = totalCostDZD - paidAmount;
-
       return {
         ...car,
         paidAmount,
@@ -817,6 +848,12 @@ useEffect(() => {
     const exchangeRate = currency?.exchange_rate_to_dzd || 1;
     return total + ((car.price || 0) * exchangeRate);
   }, 0);
+
+  const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("user");
+    navigate("/admin-login");
+  };
 
   if (loading) {
     return (
@@ -847,18 +884,16 @@ useEffect(() => {
             <Icon className="w-6 h-6" />
           </button>
         ))}
-        <motion.svg
+        {/* ✅ Logout Button */}
+        <motion.button
           initial={{ scale: 1 }}
           whileHover={{ scale: 1.09 }}
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.5}
-          stroke="red"
-          className="size-[3vh] flex mt-auto cursor-pointer"
+          onClick={handleLogout}
+          title="Logout"
+          className="p-3 rounded-xl text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-        </motion.svg>
+          <LogOut className="w-6 h-6" />
+        </motion.button>
       </aside>
 
       {/* Main Content */}
@@ -918,47 +953,47 @@ useEffect(() => {
             </motion.div>
           )}
 
+          {/* Currency Tab */}
           {tab === "currency" && (
-  <motion.div key="currency" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-    <h2 className="text-2xl font-semibold mb-6">Taux de Change (DZD)</h2>
-    <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6">
-      {[
-        { code: 'dzd', name: 'Algerian Dinar', symbol: 'DZD' },
-        { code: 'eur', name: 'Euro', symbol: 'EUR' },
-        { code: 'usd', name: 'US Dollar', symbol: 'USD' },
-        { code: 'cad', name: 'Canadian Dollar', symbol: 'CAD' },
-        { code: 'aed', name: 'UAE Dirham', symbol: 'AED' },
-      ].map((curr) => {
-        const existing = currencyList.find(c => c.code.toLowerCase() === curr.code);
-        const currentRate = currencies[curr.code] !== undefined 
-          ? currencies[curr.code] 
-          : (curr.code === 'dzd' ? 1 : 0);
-
-        return (
-          <div key={curr.code} className="bg-neutral-900 p-6 rounded-xl border border-neutral-800 flex flex-col gap-3">
-            <h3 className="text-lg font-semibold">{curr.name} ({curr.symbol})</h3>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={currentRate}
-              onChange={(e) => handleCurrencyChange(curr.code, e.target.value)}
-              className="bg-neutral-800 p-2 rounded-lg outline-none text-center text-white"
-            />
-            <span className="text-neutral-400 text-sm">
-              1 {curr.symbol} = {currentRate} DZD
-            </span>
-            {existing && (
-              <span className="text-neutral-500 text-xs">
-                Last updated: {new Date(existing.updated_at).toLocaleDateString()}
-              </span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  </motion.div>
-)}
+            <motion.div key="currency" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <h2 className="text-2xl font-semibold mb-6">Taux de Change (DZD)</h2>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                {[
+                  { code: 'dzd', name: 'Algerian Dinar', symbol: 'DZD' },
+                  { code: 'eur', name: 'Euro', symbol: 'EUR' },
+                  { code: 'usd', name: 'US Dollar', symbol: 'USD' },
+                  { code: 'cad', name: 'Canadian Dollar', symbol: 'CAD' },
+                  { code: 'aed', name: 'UAE Dirham', symbol: 'AED' },
+                ].map((curr) => {
+                  const existing = currencyList.find(c => c.code.toLowerCase() === curr.code);
+                  const currentRate = currencies[curr.code] !== undefined
+                    ? currencies[curr.code]
+                    : (curr.code === 'dzd' ? 1 : 0);
+                  return (
+                    <div key={curr.code} className="bg-neutral-900 p-6 rounded-xl border border-neutral-800 flex flex-col gap-3">
+                      <h3 className="text-lg font-semibold">{curr.name} ({curr.symbol})</h3>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={currentRate}
+                        onChange={(e) => handleCurrencyChange(curr.code, e.target.value)}
+                        className="bg-neutral-800 p-2 rounded-lg outline-none text-center text-white"
+                      />
+                      <span className="text-neutral-400 text-sm">
+                        1 {curr.symbol} = {currentRate} DZD
+                      </span>
+                      {existing && (
+                        <span className="text-neutral-500 text-xs">
+                          Last updated: {new Date(existing.updated_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
 
           {/* Cars Tab */}
           {tab === "cars" && (
@@ -1081,15 +1116,12 @@ useEffect(() => {
                     )}
                   </div>
                 </Card>
-
-                {/* Updated Supplier Finance Details */}
                 <Card>
                   <h3 className="text-lg font-semibold mb-4">Supplier Finance Details</h3>
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {fournisseurs.map((supplier) => {
                       const itemsForSupplier = supplierItems.filter(item => item.supplier_id === supplier.id);
                       if (itemsForSupplier.length === 0) return null;
-
                       return (
                         <div key={supplier.id} className="border border-neutral-800 rounded-lg p-3 bg-neutral-900/30">
                           <h4 className="font-medium text-purple-400 mb-2">
@@ -1102,7 +1134,6 @@ useEffect(() => {
                               const totalCostDZD = (item.price || 0) * (currency?.exchange_rate_to_dzd || 1);
                               const paidDZD = item.payment_amount || 0;
                               const remainingDZD = totalCostDZD - paidDZD;
-
                               return (
                                 <div key={item.supplier_item_id} className="bg-neutral-800/40 p-3 rounded">
                                   <div className="flex justify-between">
@@ -1138,103 +1169,98 @@ useEffect(() => {
                     })}
                   </div>
                 </Card>
-
                 <Card className="md:col-span-2">
-  <h3 className="text-lg font-semibold mb-4">Monthly Expenses (Editable)</h3>
-  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-    <div className="p-4 bg-neutral-900/40 rounded-lg">
-      <div className="text-sm text-neutral-400">Purchases</div>
-      <input
-        type="number"
-        step="0.01"
-        value={expenses.purchases}
-        onChange={(e) => setExpenses(prev => ({ ...prev, purchases: parseFloat(e.target.value) || 0 }))}
-        className="w-full bg-transparent border-b border-neutral-600 focus:outline-none text-xl font-bold text-emerald-400"
-      />
-    </div>
-    <div className="p-4 bg-neutral-900/40 rounded-lg">
-      <div className="text-sm text-neutral-400">Transport</div>
-      <input
-        type="number"
-        step="0.01"
-        value={expenses.transport}
-        onChange={(e) => setExpenses(prev => ({ ...prev, transport: parseFloat(e.target.value) || 0 }))}
-        className="w-full bg-transparent border-b border-neutral-600 focus:outline-none text-xl font-bold text-blue-400"
-      />
-    </div>
-    <div className="p-4 bg-neutral-900/40 rounded-lg">
-      <div className="text-sm text-neutral-400">Other</div>
-      <input
-        type="number"
-        step="0.01"
-        value={expenses.other}
-        onChange={(e) => setExpenses(prev => ({ ...prev, other: parseFloat(e.target.value) || 0 }))}
-        className="w-full bg-transparent border-b border-neutral-600 focus:outline-none text-xl font-bold text-purple-400"
-      />
-    </div>
-    <div className="p-4 bg-neutral-900/40 rounded-lg">
-      <div className="text-sm text-neutral-400">Total</div>
-      <div className="text-xl font-bold text-red-400">
-        {(expenses.purchases + expenses.transport + expenses.other).toLocaleString()} DZD
-      </div>
-    </div>
-    <div className="p-4 bg-neutral-900/40 rounded-lg flex flex-col justify-end">
-      <button
-        onClick={async () => {
-          const now = new Date();
-          try {
-            const res = await fetch(`${API_BASE}/expenses/`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                year: now.getFullYear(),
-                month: now.getMonth() + 1, // API expects 1-based
-                purchases: expenses.purchases,
-                transport: expenses.transport,
-                other: expenses.other
-              })
-            });
-            if (res.ok) {
-              alert('Monthly expenses updated successfully!');
-              // Optionally refresh
-            } else {
-              alert('Failed to update expenses');
-            }
-          } catch (err) {
-            console.error('Update error:', err);
-            alert('Network error');
-          }
-        }}
-        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded text-white"
-      >
-        Save Monthly
-      </button>
-    </div>
-  </div>
-
-  {/* Optional: Yearly Edit (less common, but possible) */}
-  <div className="mt-6 pt-4 border-t border-neutral-800">
-    <h4 className="text-md font-medium mb-3">Yearly Summary (Read-only)</h4>
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div className="p-3 bg-neutral-900/30 rounded">
-        <div className="text-sm text-neutral-400">Purchases</div>
-        <div className="text-lg font-bold text-emerald-400">{yearlyExpenses.total_purchases.toLocaleString()} DZD</div>
-      </div>
-      <div className="p-3 bg-neutral-900/30 rounded">
-        <div className="text-sm text-neutral-400">Transport</div>
-        <div className="text-lg font-bold text-blue-400">{yearlyExpenses.total_transport.toLocaleString()} DZD</div>
-      </div>
-      <div className="p-3 bg-neutral-900/30 rounded">
-        <div className="text-sm text-neutral-400">Other</div>
-        <div className="text-lg font-bold text-purple-400">{yearlyExpenses.total_other.toLocaleString()} DZD</div>
-      </div>
-      <div className="p-3 bg-neutral-900/30 rounded">
-        <div className="text-sm text-neutral-400">Total</div>
-        <div className="text-lg font-bold text-red-400">{yearlyExpenses.total_expenses.toLocaleString()} DZD</div>
-      </div>
-    </div>
-  </div>
-
+                  <h3 className="text-lg font-semibold mb-4">Monthly Expenses (Editable)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="p-4 bg-neutral-900/40 rounded-lg">
+                      <div className="text-sm text-neutral-400">Purchases</div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={expenses.purchases}
+                        onChange={(e) => setExpenses(prev => ({ ...prev, purchases: parseFloat(e.target.value) || 0 }))}
+                        className="w-full bg-transparent border-b border-neutral-600 focus:outline-none text-xl font-bold text-emerald-400"
+                      />
+                    </div>
+                    <div className="p-4 bg-neutral-900/40 rounded-lg">
+                      <div className="text-sm text-neutral-400">Transport</div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={expenses.transport}
+                        onChange={(e) => setExpenses(prev => ({ ...prev, transport: parseFloat(e.target.value) || 0 }))}
+                        className="w-full bg-transparent border-b border-neutral-600 focus:outline-none text-xl font-bold text-blue-400"
+                      />
+                    </div>
+                    <div className="p-4 bg-neutral-900/40 rounded-lg">
+                      <div className="text-sm text-neutral-400">Other</div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={expenses.other}
+                        onChange={(e) => setExpenses(prev => ({ ...prev, other: parseFloat(e.target.value) || 0 }))}
+                        className="w-full bg-transparent border-b border-neutral-600 focus:outline-none text-xl font-bold text-purple-400"
+                      />
+                    </div>
+                    <div className="p-4 bg-neutral-900/40 rounded-lg">
+                      <div className="text-sm text-neutral-400">Total</div>
+                      <div className="text-xl font-bold text-red-400">
+                        {(expenses.purchases + expenses.transport + expenses.other).toLocaleString()} DZD
+                      </div>
+                    </div>
+                    <div className="p-4 bg-neutral-900/40 rounded-lg flex flex-col justify-end">
+                      <button
+                        onClick={async () => {
+                          const now = new Date();
+                          try {
+                            const res = await apiFetch(`${API_BASE}/expenses/`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                year: now.getFullYear(),
+                                month: now.getMonth() + 1,
+                                purchases: expenses.purchases,
+                                transport: expenses.transport,
+                                other: expenses.other
+                              })
+                            });
+                            if (res.ok) {
+                              alert('Monthly expenses updated successfully!');
+                            } else {
+                              alert('Failed to update expenses');
+                            }
+                          } catch (err) {
+                            console.error('Update error:', err);
+                            alert('Network error');
+                          }
+                        }}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded text-white"
+                      >
+                        Save Monthly
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-neutral-800">
+                    <h4 className="text-md font-medium mb-3">Yearly Summary (Read-only)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="p-3 bg-neutral-900/30 rounded">
+                        <div className="text-sm text-neutral-400">Purchases</div>
+                        <div className="text-lg font-bold text-emerald-400">{yearlyExpenses.total_purchases.toLocaleString()} DZD</div>
+                      </div>
+                      <div className="p-3 bg-neutral-900/30 rounded">
+                        <div className="text-sm text-neutral-400">Transport</div>
+                        <div className="text-lg font-bold text-blue-400">{yearlyExpenses.total_transport.toLocaleString()} DZD</div>
+                      </div>
+                      <div className="p-3 bg-neutral-900/30 rounded">
+                        <div className="text-sm text-neutral-400">Other</div>
+                        <div className="text-lg font-bold text-purple-400">{yearlyExpenses.total_other.toLocaleString()} DZD</div>
+                      </div>
+                      <div className="p-3 bg-neutral-900/30 rounded">
+                        <div className="text-sm text-neutral-400">Total</div>
+                        <div className="text-lg font-bold text-red-400">{yearlyExpenses.total_expenses.toLocaleString()} DZD</div>
+                      </div>
+                    </div>
+                  </div>
                 </Card>
               </div>
             </motion.div>
@@ -1409,7 +1435,7 @@ useEffect(() => {
           </form>
         </Modal>
 
-        {/* Commercial Cars Modal with enriched data */}
+        {/* ✅ FIXED: Pass supplierItems */}
         <CommercialCarsModal
           open={showCommercialCars}
           onClose={() => setShowCommercialCars(false)}
@@ -1417,6 +1443,7 @@ useEffect(() => {
           cars={getEnrichedCars()}
           suppliers={fournisseurs}
           currencyList={currencyList}
+          supplierItems={supplierItems}  // ✅ Now passed
         />
       </main>
     </div>

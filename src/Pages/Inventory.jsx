@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 
-// ✅ FIXED: Removed trailing spaces
+// ✅ FIXED: Removed trailing spaces in URL
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 const Inventory = () => {
@@ -10,8 +10,8 @@ const Inventory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Get auth token
-  const authToken = localStorage.getItem("authToken");
+  // ✅ REMOVED: authToken check — no auth needed anymore
+  // const authToken = localStorage.getItem("authToken");
 
   // Build fast currency lookup
   const currencyMap = useMemo(() => {
@@ -22,25 +22,18 @@ const Inventory = () => {
     return map;
   }, [currencies]);
 
-  // Fetch data on mount
+  // Fetch data on mount — NO AUTH
   useEffect(() => {
-    if (!authToken) {
-      setError("Non autorisé. Veuillez vous reconnecter.");
-      setLoading(false);
-      return;
-    }
-
     const fetchData = async () => {
       try {
         setLoading(true);
         setError("");
 
-        // ✅ Fetch currencies WITH auth header
+        // ✅ Fetch currencies WITHOUT auth
         const currencyRes = await fetch(`${API_BASE_URL}/currencies/`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${authToken}`, // 🔑 Required by your API
           },
         });
 
@@ -49,17 +42,15 @@ const Inventory = () => {
           throw new Error(errData.detail || "Échec du chargement des devises");
         }
         const currencyData = await currencyRes.json();
-        // Your API likely returns { "currencies": [...] } or just array — handle both
         setCurrencies(Array.isArray(currencyData) ? currencyData : currencyData.currencies || []);
 
-        // ✅ Fetch cars WITH auth + correct body
+        // ✅ Fetch cars WITHOUT auth — still POST + empty body (per your API spec)
         const carRes = await fetch(`${API_BASE_URL}/cars/all`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${authToken}`, // 🔑 Required
           },
-          body: JSON.stringify({}), // Matches `getCars` schema (all optional)
+          body: JSON.stringify({}), // required by your OpenAPI (getCars schema)
         });
 
         if (!carRes.ok) {
@@ -67,7 +58,6 @@ const Inventory = () => {
           throw new Error(errData.detail || "Échec du chargement des véhicules");
         }
         const carData = await carRes.json();
-        // Handle response structure: your API may return { "cars": [...] }
         const carList = Array.isArray(carData) ? carData : carData.cars || [];
         setCars(carList);
       } catch (err) {
@@ -79,7 +69,7 @@ const Inventory = () => {
     };
 
     fetchData();
-  }, [authToken]);
+  }, []); // ✅ Removed authToken from deps — run once on mount
 
   // Format price in DZD (in millions)
   const formatPriceInMillions = (priceInDZD) => {
@@ -91,12 +81,10 @@ const Inventory = () => {
   // Get car image safely
   const getCarImage = (car) => {
     if (Array.isArray(car.images) && car.images.length > 0) {
-      // If images are URLs
       if (typeof car.images[0] === "string") return car.images[0];
-      // If images are objects with url field (adjust if needed)
       if (car.images[0]?.url) return car.images[0].url;
     }
-    return "/placeholder-car.jpg"; // Make sure this exists in public/
+    return "/placeholder-car.jpg"; // Ensure this file exists in public/
   };
 
   const totalres = cars.length;
@@ -178,7 +166,7 @@ const Inventory = () => {
 
               return (
                 <motion.div
-                  key={car.id || car.model + car.year}
+                  key={car.id || car.model + "-" + car.year}
                   initial={{ scale: 1 }}
                   whileHover={{ scale: 1.05, y: -5 }}
                   whileTap={{ scale: 1 }}
