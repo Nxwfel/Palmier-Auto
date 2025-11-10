@@ -13,6 +13,7 @@ import MarketingAgent from './Pages/MarketingAgent.jsx'
 import SuperAdminLogin from './Pages/SuperAdminLogin.jsx'
 import AdminsLogin from './Pages/AdminsLogin.jsx'
 import ProtectedRoute from './Components/ProtectedRoute.jsx'
+import AdminsProtectedRoute from './Pages/AdminsProtectedRoute.jsx'
 import './index.css'
 
 createRoot(document.getElementById('root')).render(
@@ -29,7 +30,14 @@ createRoot(document.getElementById('root')).render(
         <Route path='/account' element={<UserAccount/>} />
         <Route path='/adminlogin' element={<SuperAdminLogin/>} />
         <Route path='*' element={<h1 className='text-center mt-20 text-3xl'>404 - Page Not Found</h1>} />
-        <Route path='/commercials' element={<Commercials/>} />
+          <Route
+            path="/commercials"
+            element={
+              <AdminsProtectedRoute allowedRoles={["commercials"]}>
+                <Commercials />
+              </AdminsProtectedRoute>
+            }
+          />
         <Route path='/adminslogin' element={<AdminsLogin/>} />
         <Route path='/accountant' element={<Accountant/>} />
         <Route path='/marketing' element={<MarketingAgent/>} />

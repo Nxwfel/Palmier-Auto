@@ -258,6 +258,9 @@ export default function AdminSuperPanel() {
   const [supplierItems, setSupplierItems] = useState([]);
   const [showCommercialCars, setShowCommercialCars] = useState(false);
   const [selectedCommercial, setSelectedCommercial] = useState(null);
+  const [editingPayment, setEditingPayment] = useState({});
+  const [tempPassword, setTempPassword] = useState("");
+  const [newCommercialPhone, setNewCommercialPhone] = useState("");
 
   // --- Auth-aware fetchers ---
   useEffect(() => {
@@ -293,20 +296,23 @@ export default function AdminSuperPanel() {
 
   useEffect(() => {
     const fetchExpenses = async () => {
-      try {
-        const response = await apiFetch(`${API_BASE}/expenses/monthly`);
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-        const data = await response.json();
-        setExpenses({
-          total_amount: data.total_amount || 0,
-          purchases: data.purchases || 0,
-          transport: data.transport || 0,
-          other: data.other || 0
-        });
-      } catch (err) {
-        console.error("Error fetching expenses:", err);
-      }
-    };
+  try {
+    const response = await apiFetch(`${API_BASE}/expenses/monthly`);
+    const data = await response.json();
+
+    // ✅ Safe fallback
+    const safeData = data || {};
+    setExpenses({
+      total_amount: safeData.total_amount || 0,
+      purchases: safeData.purchases || 0,
+      transport: safeData.transport || 0,
+      other: safeData.other || 0
+    });
+  } catch (err) {
+    // fallback
+    setExpenses({ total_amount: 0, purchases: 0, transport: 0, other: 0 });
+  }
+};
     fetchExpenses();
   }, []);
 
@@ -447,6 +453,7 @@ export default function AdminSuperPanel() {
         const response = await apiFetch(`${API_BASE}/suppliers_items/`);
         if (!response.ok) throw new Error('Failed to fetch supplier items');
         const data = await response.json();
+        console.log(data);
         setSupplierItems(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching supplier items:", err);
@@ -502,55 +509,67 @@ export default function AdminSuperPanel() {
   }, []);
 
   useEffect(() => {
-    const fetchCurrencies = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/currencies/`);
-        if (!response.ok) throw new Error('Failed to fetch currencies');
-        const data = await response.json();
-        setCurrencyList(Array.isArray(data) ? data : []);
-        const currencyMap = {};
-        if (Array.isArray(data)) {
-          data.forEach(curr => {
-            currencyMap[curr.code] = curr.exchange_rate_to_dzd;
-          });
-        }
-        setCurrencies(currencyMap);
+  let isMounted = true;
 
+  const fetchCurrencies = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/currencies/`);
+      if (!response.ok) throw new Error('Fetch failed');
+      const data = await response.json();
+      if (!isMounted) return;
+
+      setCurrencyList(Array.isArray(data) ? data : []);
+      const currencyMap = {};
+      data.forEach(curr => {
+        currencyMap[curr.code] = curr.exchange_rate_to_dzd;
+      });
+      setCurrencies(currencyMap);
+
+      // ✅ Only initialize missing currencies IF list is empty
+      if (data.length === 0) {
         const defaultCurrencies = [
-          { code: "DZD", name: "Algerian Dinar", rate: 1 },
-          { code: "EUR", name: "Euro", rate: 145 },
-          { code: "USD", name: "US Dollar", rate: 135 },
-          { code: "CAD", name: "Canadian Dollar", rate: 98 },
-          { code: "AED", name: "UAE Dirham", rate: 36.8 },
+          { code: "dzd", name: "Algerian Dinar", rate: 1 },
+          { code: "eur", name: "Euro", rate: 145 },
+          { code: "usd", name: "US Dollar", rate: 135 },
+          { code: "cad", name: "Canadian Dollar", rate: 98 },
+          { code: "aed", name: "UAE Dirham", rate: 36.8 },
         ];
-        const missing = defaultCurrencies.filter(dc => !data.some(c => c.code === dc.code));
-        for (const curr of missing) {
-          try {
-            await apiFetch(`${API_BASE}/currencies/`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                code: curr.code.toLowerCase(),
-                name: curr.name,
-                exchange_rate_to_dzd: curr.rate
-              })
-            });
-          } catch (err) {
-            console.warn(`Failed to create currency ${curr.code}:`, err);
-          }
+
+        // ✅ Sequential creation with 500ms delay
+        for (let i = 0; i < defaultCurrencies.length; i++) {
+          if (!isMounted) break;
+          const curr = defaultCurrencies[i];
+          await fetch(`${API_BASE}/currencies/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: curr.code,
+              name: curr.name,
+              exchange_rate_to_dzd: curr.rate
+            })
+          });
+          // ⏳ Small delay to avoid 429
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
-        const finalResponse = await fetch(`${API_BASE}/currencies/`);
-        const finalData = await finalResponse.json();
-        setCurrencyList(Array.isArray(finalData) ? finalData : []);
-      } catch (err) {
-        console.error("Error fetching/initializing currencies:", err);
-        setCurrencyList([]);
-      } finally {
-        setLoading(false);
+
+        // Final re-fetch
+        const finalRes = await fetch(`${API_BASE}/currencies/`);
+        const finalData = await finalRes.json();
+        if (isMounted) {
+          setCurrencyList(Array.isArray(finalData) ? finalData : []);
+        }
       }
-    };
-    fetchCurrencies();
-  }, []);
+    } catch (err) {
+      console.error("Currency init error:", err);
+    } finally {
+      if (isMounted) setLoading(false);
+    }
+  };
+
+  fetchCurrencies();
+
+  return () => { isMounted = false; }; // Cleanup
+}, []); // ✅ Empty deps — runs once
 
   const handleCurrencyChange = async (code, value) => {
     const numericValue = parseFloat(value);
@@ -608,7 +627,7 @@ export default function AdminSuperPanel() {
   const initialCarForm = {
     model: "", color: "", year: "", engine: "", power: "", fuelType: "", milage: "",
     country: "", commercial_comission: "", price: "", shippingDate: "", arrivingDate: "",
-    currency_id: "", commercial_id: "", imageFiles: [],
+    currency_id: "", quantity:"", imageFiles: [],
   };
   const [carForm, setCarForm] = useState(initialCarForm);
 
@@ -633,8 +652,10 @@ export default function AdminSuperPanel() {
 
   const handleSubmitCar = async (e) => {
     e.preventDefault();
-    if (!carForm.model || !carForm.commercial_id || !carForm.currency_id) {
-      alert("Model, Commercial, and Currency are required");
+    // commercial_id was removed from backend in some deployments.
+    // Only require model and currency now.
+    if (!carForm.model || !carForm.currency_id || !carForm.quantity) {
+      alert("Model, Currency, and Quantity are required");
       return;
     }
     try {
@@ -642,6 +663,7 @@ export default function AdminSuperPanel() {
       formData.append('model', carForm.model);
       formData.append('color', carForm.color);
       formData.append('year', parseInt(carForm.year) || new Date().getFullYear());
+    formData.append('quantity', parseInt(carForm.quantity) || 1);
       formData.append('engine', carForm.engine);
       formData.append('power', carForm.power);
       formData.append('fuel_type', carForm.fuelType);
@@ -652,7 +674,10 @@ export default function AdminSuperPanel() {
       formData.append('shipping_date', carForm.shippingDate || new Date().toISOString().split('T')[0]);
       formData.append('arriving_date', carForm.arrivingDate || new Date().toISOString().split('T')[0]);
       formData.append('currency_id', parseInt(carForm.currency_id));
-      formData.append('commercial_id', parseInt(carForm.commercial_id));
+      // Append commercial_id only when present (some backends don't expect it)
+      if (carForm.commercial_id) {
+        formData.append('commercial_id', parseInt(carForm.commercial_id));
+      }
       if (carForm.imageFiles && carForm.imageFiles.length > 0) {
         Array.from(carForm.imageFiles).forEach(file => {
           formData.append('images', file);
@@ -667,6 +692,7 @@ export default function AdminSuperPanel() {
 
       // ✅ Auth header for FormData
       const token = localStorage.getItem("authToken");
+      console.log(token);
       const response = await fetch(url, {
         method,
         headers: token ? { "Authorization": `Bearer ${token}` } : {},
@@ -751,7 +777,9 @@ export default function AdminSuperPanel() {
   e.preventDefault();
   setCommercialLoading(true);
   setMessage("");
-  setGeneratedPassword(""); // Reset
+  setTempPassword("");
+  setNewCommercialPhone(CommercialForm.phone_number); // Save phone now
+
   try {
     const isUpdate = !!CommercialForm.commercial_id;
     const url = `${API_BASE}/commercials/`;
@@ -762,11 +790,8 @@ export default function AdminSuperPanel() {
       wilaya: CommercialForm.wilaya,
       address: CommercialForm.address,
     };
-    // Only include password on creation (not update), but backend generates it anyway
-    if (!isUpdate) {
-      // We don’t send password — backend generates it
-      // requestBody.password = CommercialForm.password; // ❌ Remove if backend auto-generates
-    } else {
+
+    if (isUpdate) {
       requestBody.commercial_id = CommercialForm.commercial_id;
     }
 
@@ -776,26 +801,35 @@ export default function AdminSuperPanel() {
       body: JSON.stringify(requestBody),
     });
 
-    const responseData = await response.json(); // ✅ Parse response
+    const responseData = await response.json();
 
     if (response.ok) {
       setMessage("Commercial saved successfully ✅");
 
-      // ✅ Check if password was generated and returned
-      if (!isUpdate && responseData.password) {
-        setGeneratedPassword(responseData.password);
-        setShowPasswordModal(true); // Show password modal
+      // ✅ Handle password ONLY on creation (not update)
+      if (!isUpdate) {
+        // Check if response has the expected format
+        if (responseData.status === 200 && responseData.detail?.startsWith("password:")) {
+          const password = responseData.detail.split("password:")[1];
+          setTempPassword(password);
+          setShowPasswordModal(true); // Show modal automatically
+        } else {
+          // Fallback: maybe backend changed format?
+          console.warn("Password not found in expected format:", responseData);
+        }
       }
 
-      // Reset form & refresh list
-      setCommercialForm({ name: "", surname: "", phone_number: "", password: "", wilaya: "", address: "" });
+      // Reset & refresh
+      setCommercialForm({ name: "", surname: "", phone_number: "", wilaya: "", address: "" });
       setShowAddCommercial(false);
-      const freshCommercials = await fetch(`${API_BASE}/commercials/`).then(r => r.json());
-      setCommercials(Array.isArray(freshCommercials) ? freshCommercials : []);
+      const fresh = await fetch(`${API_BASE}/commercials/`).then(r => r.json());
+      setCommercials(Array.isArray(fresh) ? fresh : []);
+
     } else {
       setMessage(`❌ Error: ${responseData.detail || "Failed to save commercial"}`);
     }
   } catch (error) {
+    console.error("Network error:", error);
     setMessage("⚠️ Network error: " + error.message);
   } finally {
     setCommercialLoading(false);
@@ -852,7 +886,7 @@ export default function AdminSuperPanel() {
   const handleLogout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("user");
-    navigate("/admin-login");
+    navigate("/");
   };
 
   if (loading) {
@@ -872,7 +906,6 @@ export default function AdminSuperPanel() {
           { id: "cars", icon: Car, label: "Cars" },
           { id: "fournisseurs", icon: CreditCard, label: "Fournisseurs" },
           { id: "commercials", icon: Users, label: "Commercials" },
-          { id: "logs", icon: Clock, label: "Logs" },
           { id: "currency", icon: DollarSign, label: "currency" },
         ].map(({ id, icon: Icon, label }) => (
           <button
@@ -1011,12 +1044,11 @@ export default function AdminSuperPanel() {
                     <thead>
                       <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
                         <th className="py-3 px-3">ID</th>
-                        <th className="py-3 px-3">Model</th>
-                        <th className="py-3 px-3">Color</th>
-                        <th className="py-3 px-3">Year</th>
+                        <th className="py-3 px-3">Modéle</th>
+                        <th className="py-3 px-3">Couleur</th>
+                        <th className="py-3 px-3">Année</th>
                         <th className="py-3 px-3">Price</th>
-                        <th className="py-3 px-3">Country</th>
-                        <th className="py-3 px-3">Commercial</th>
+                        <th className="py-3 px-3">Quantity</th>
                         <th className="py-3 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -1037,10 +1069,7 @@ export default function AdminSuperPanel() {
                               <td className="py-3 px-3">
                                 {(car.price || 0).toLocaleString()} {currencyList.find(c => c.id === car.currency_id)?.code.toUpperCase() || 'DZD'}
                               </td>
-                              <td className="py-3 px-3">{car.country || '—'}</td>
-                              <td className="py-3 px-3">
-                                {commercial ? `${commercial.name} ${commercial.surname}` : '—'}
-                              </td>
+                              <td className="py-3 px-3">{car.quantity || 1}</td>
                               <td className="py-3 px-3 text-right">
                                 <button onClick={() => handleEdit(car)} className="text-blue-400 mr-2">
                                   <Edit2 className="w-4 h-4" />
@@ -1120,53 +1149,152 @@ export default function AdminSuperPanel() {
                   <h3 className="text-lg font-semibold mb-4">Supplier Finance Details</h3>
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {fournisseurs.map((supplier) => {
-                      const itemsForSupplier = supplierItems.filter(item => item.supplier_id === supplier.id);
-                      if (itemsForSupplier.length === 0) return null;
-                      return (
-                        <div key={supplier.id} className="border border-neutral-800 rounded-lg p-3 bg-neutral-900/30">
-                          <h4 className="font-medium text-purple-400 mb-2">
-                            {supplier.name} {supplier.surname}
-                          </h4>
-                          <div className="space-y-2">
-                            {itemsForSupplier.map((item) => {
-                              const car = cars.find(c => c.id === item.car_id) || {};
-                              const currency = currencyList.find(c => c.id === item.currency_id);
-                              const totalCostDZD = (item.price || 0) * (currency?.exchange_rate_to_dzd || 1);
-                              const paidDZD = item.payment_amount || 0;
-                              const remainingDZD = totalCostDZD - paidDZD;
-                              return (
-                                <div key={item.supplier_item_id} className="bg-neutral-800/40 p-3 rounded">
-                                  <div className="flex justify-between">
-                                    <span className="text-sm text-neutral-300 font-medium">{car.model || 'Unknown Car'}</span>
-                                    <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Car ID: {car.id}</span>
-                                  </div>
-                                  <div className="text-sm mt-1">
-                                    <div className="flex justify-between">
-                                      <span className="text-neutral-400">Total Cost:</span>
-                                      <span>{totalCostDZD.toLocaleString()} DZD</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-neutral-400">Paid:</span>
-                                      <span className="text-emerald-400">{paidDZD.toLocaleString()} DZD</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-neutral-400">Remaining:</span>
-                                      <span className={remainingDZD > 0 ? 'text-red-400' : 'text-green-400'}>
-                                        {remainingDZD.toLocaleString()} DZD
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between mt-1">
-                                      <span className="text-neutral-400">Original Price:</span>
-                                      <span>{(item.price || 0).toLocaleString()} {currency?.code.toUpperCase()}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
+  // Filter supplier items linked to this supplier
+  const items = supplierItems.filter(item => item.supplier_id === supplier.id);
+  
+  // Calculate totals
+  const totalOwed = items.reduce((sum, item) => {
+    const currency = currencyList.find(c => c.id === item.currency_id);
+    const rate = currency?.exchange_rate_to_dzd || 1;
+    return sum + ((item.price || 0) * rate);
+  }, 0);
+  
+  const totalPaid = items.reduce((sum, item) => sum + (item.payment_amount || 0), 0);
+  const remaining = totalOwed - totalPaid;
+
+  return (
+    <div key={supplier.id} className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-purple-500 transition">
+      <h3 className="text-lg font-semibold text-purple-400">
+        {supplier.name} {supplier.surname}
+      </h3>
+      <p className="text-sm text-gray-400">📞 {supplier.phone_number || "—"} | 📍 {supplier.address || "—"}</p>
+
+      {/* 💰 Summary Card */}
+      <div className="mt-3 p-3 bg-neutral-800/40 rounded-lg">
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="text-center">
+            <div className="text-emerald-400 font-medium">{totalOwed.toLocaleString()} DZD</div>
+            <div className="text-neutral-400">Total Owed</div>
+          </div>
+          <div className="text-center">
+            <div className="text-blue-400 font-medium">{totalPaid.toLocaleString()} DZD</div>
+            <div className="text-neutral-400">Paid</div>
+          </div>
+          <div className="text-center">
+            <div className={`font-bold ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
+              {remaining.toLocaleString()} DZD
+            </div>
+            <div className="text-neutral-400">Remaining</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 📋 Per-Item Payments */}
+      {items.length > 0 && (
+        <div className="mt-3">
+          <h4 className="text-sm font-medium text-purple-300 mb-2">Car Purchases & Payments</h4>
+          <div className="space-y-2">
+            {items.map((item) => {
+              const car = cars.find(c => c.id === item.car_id) || {};
+              const currency = currencyList.find(c => c.id === item.currency_id);
+              const totalCostDZD = (item.price || 0) * (currency?.exchange_rate_to_dzd || 1);
+              const remainingItem = totalCostDZD - (item.payment_amount || 0);
+
+              // Editable input value
+              const editingValue = editingPayment[item.supplier_item_id] ?? item.payment_amount;
+
+              return (
+                <div key={item.supplier_item_id} className="flex items-center justify-between text-sm bg-neutral-800/30 p-2 rounded">
+                  <div>
+                    <span className="font-medium">{car.model || 'Car'} #{car.id}</span>
+                    <span className="text-neutral-500 ml-2">{totalCostDZD.toLocaleString()} DZD</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="100"
+                      min="0"
+                      max={totalCostDZD}
+                      value={editingValue || ''}
+                      onChange={(e) => setEditingPayment(prev => ({
+                        ...prev,
+                        [item.supplier_item_id]: parseFloat(e.target.value) || 0
+                      }))}
+                      className="w-24 bg-neutral-700 text-white text-right px-2 py-1 rounded text-xs"
+                    />
+                    <button
+                      onClick={async () => {
+                        const newAmount = editingValue || 0;
+                        if (newAmount === (item.payment_amount || 0)) return;
+
+                        try {
+                          const res = await fetch(`${API_BASE}/suppliers_items/`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              supplier_item_id: item.supplier_item_id,
+                              payment_amount: newAmount
+                            })
+                          });
+
+                          if (res.ok) {
+                            // Optimistic update
+                            setSupplierItems(prev => 
+                              prev.map(i => 
+                                i.supplier_item_id === item.supplier_item_id 
+                                  ? { ...i, payment_amount: newAmount } 
+                                  : i
+                              )
+                            );
+                            setEditingPayment(prev => {
+                              const copy = { ...prev };
+                              delete copy[item.supplier_item_id];
+                              return copy;
+                            });
+                            pushLog("Admin", `Updated payment for supplier #${supplier.id} → ${newAmount} DZD`);
+                          } else {
+                            throw new Error('Update failed');
+                          }
+                        } catch (err) {
+                          alert("❌ Failed to update payment");
+                          console.error(err);
+                        }
+                      }}
+                      className={`px-2 py-1 rounded text-xs ${
+                        editingValue !== (item.payment_amount || 0)
+                          ? 'bg-emerald-600 hover:bg-emerald-700'
+                          : 'bg-neutral-600 cursor-not-allowed'
+                      }`}
+                      disabled={editingValue === (item.payment_amount || 0)}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ Action Buttons */}
+      <div className="flex justify-end mt-3 space-x-2">
+        <button
+          onClick={() => handleEditFournisseur(supplier)}
+          className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-xs"
+        >
+          Modifier
+        </button>
+        <button
+          onClick={() => handleDeleteFournisseur(supplier.id)}
+          className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs"
+        >
+          Supprimer
+        </button>
+      </div>
+    </div>
+  );
+})}
                   </div>
                 </Card>
                 <Card className="md:col-span-2">
@@ -1319,54 +1447,26 @@ export default function AdminSuperPanel() {
               </Card>
             </motion.div>
           )}
-
-          {/* Logs Tab */}
-          {tab === "logs" && (
-            <motion.div key="logs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-semibold">Historique d'Activité</h2>
-                <div className="text-sm text-neutral-400">Total operations: {logs.length}</div>
-              </div>
-              <Card>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {logs.map((l) => (
-                    <div key={l.id} className="flex items-start gap-4 p-3 bg-neutral-900/30 rounded">
-                      <div className="text-neutral-400 text-sm w-44">{new Date(l.date).toLocaleString()}</div>
-                      <div>
-                        <div className="font-medium">{l.actor}</div>
-                        <div className="text-sm text-neutral-400">{l.action}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </motion.div>
-          )}
         </AnimatePresence>
 
         {/* Modals */}
         <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
           <form onSubmit={handleSubmitCar} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Model" className="bg-neutral-800 p-2 rounded" required />
-              <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Color" className="bg-neutral-800 p-2 rounded" />
-              <input type="number" value={carForm.year} onChange={(e) => setCarForm({ ...carForm, year: e.target.value })} placeholder="Year" className="bg-neutral-800 p-2 rounded" />
-              <input value={carForm.engine} onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })} placeholder="Engine" className="bg-neutral-800 p-2 rounded" />
-              <input value={carForm.power} onChange={(e) => setCarForm({ ...carForm, power: e.target.value })} placeholder="Power" className="bg-neutral-800 p-2 rounded" />
-              <input value={carForm.fuelType} onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })} placeholder="Fuel Type" className="bg-neutral-800 p-2 rounded" />
-              <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Mileage" className="bg-neutral-800 p-2 rounded" />
-              <input type="text" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Price" className="bg-neutral-800 p-2 rounded" />
-              <input type="text" value={carForm.commercial_comission} onChange={(e) => setCarForm({ ...carForm, commercial_comission: e.target.value })} placeholder="Commercial Commission %" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Modèle" className="bg-neutral-800 p-2 rounded" required />
+              <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Couleur" className="bg-neutral-800 p-2 rounded" />
+              <input type="number" value={carForm.year} onChange={(e) => setCarForm({ ...carForm, year: e.target.value })} placeholder="Année" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.engine} onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })} placeholder="Moteur" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.power} onChange={(e) => setCarForm({ ...carForm, power: e.target.value })} placeholder="Puissance" className="bg-neutral-800 p-2 rounded" />
+              <input value={carForm.fuelType} onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })} placeholder="Type de carburant" className="bg-neutral-800 p-2 rounded" />
+              <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Kilometrage" className="bg-neutral-800 p-2 rounded" />
+              <input type="text" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Prix" className="bg-neutral-800 p-2 rounded" />
+              <input type="text" value={carForm.commercial_comission} onChange={(e) => setCarForm({ ...carForm, commercial_comission: e.target.value })} placeholder="Commission %" className="bg-neutral-800 p-2 rounded" />
+              <input type="text" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="quantité" className="bg-neutral-800 p-2 rounded" />
               <select value={carForm.currency_id} onChange={(e) => setCarForm({ ...carForm, currency_id: e.target.value })} className="bg-neutral-800 p-2 rounded" required>
-                <option value="">Select Currency</option>
+                <option value="">Selectionnez un devise</option>
                 {currencyList.map(curr => (
                   <option key={curr.id} value={curr.id}>{curr.name} ({curr.code.toUpperCase()})</option>
-                ))}
-              </select>
-              <select value={carForm.commercial_id} onChange={(e) => setCarForm({ ...carForm, commercial_id: e.target.value })} className="bg-neutral-800 p-2 rounded" required>
-                <option value="">Select Commercial</option>
-                {commercials.map(cm => (
-                  <option key={cm.id} value={cm.id}>{cm.name} {cm.surname}</option>
                 ))}
               </select>
               <label className="flex flex-col gap-[.3vh]">Date d'achat
@@ -1382,10 +1482,10 @@ export default function AdminSuperPanel() {
                 Upload Images
               </label>
               {carForm.imageFiles && carForm.imageFiles.length > 0 && (
-                <span className="text-sm text-neutral-400">{carForm.imageFiles.length} file(s) selected</span>
+                <span className="text-sm text-neutral-400">{carForm.imageFiles.length} fichier(s) selectionnée</span>
               )}
             </div>
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-3 z-30 cursor-pointer">
               <button type="button" onClick={() => setShowAddCar(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
               <button type="submit" className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400">
                 {editingCar ? 'Update Car' : 'Save Car'}
@@ -1400,9 +1500,6 @@ export default function AdminSuperPanel() {
               <input type="text" name="name" placeholder="Name" value={CommercialForm.name} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
               <input type="text" name="surname" placeholder="Surname" value={CommercialForm.surname} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
               <input type="text" name="phone_number" placeholder="Phone Number" value={CommercialForm.phone_number} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
-              {!CommercialForm.commercial_id && (
-                <input type="password" name="password" placeholder="Password" value={CommercialForm.password} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
-              )}
               <input type="text" name="wilaya" placeholder="Wilaya" value={CommercialForm.wilaya} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
               <input type="text" name="address" placeholder="Address" value={CommercialForm.address} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
             </div>
@@ -1415,6 +1512,70 @@ export default function AdminSuperPanel() {
             </div>
           </form>
         </Modal>
+        {/* Temporary Password Modal */}
+{showPasswordModal && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div className="bg-neutral-800 rounded-2xl w-full max-w-md border border-neutral-700">
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-xl font-bold text-white">
+            Identifiants du Commercial
+          </h2>
+          <button
+            onClick={() => setShowPasswordModal(false)}
+            className="text-neutral-400 hover:text-white text-2xl"
+          >
+            &times;
+          </button>
+        </div>
+
+        <p className="text-neutral-300 text-sm mb-4">
+          Le commercial peut se connecter avec ces identifiants :
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs text-neutral-400">Téléphone</label>
+            <code className="block mt-1 bg-neutral-900 px-3 py-2.5 rounded font-mono text-emerald-400">
+              {newCommercialPhone}
+            </code>
+          </div>
+
+          <div>
+            <label className="text-xs text-neutral-400">Mot de passe temporaire</label>
+            <div className="mt-1 flex">
+              <code className="bg-neutral-900 px-3 py-2.5 rounded-l font-mono text-emerald-400 flex-1">
+                {tempPassword}
+              </code>
+              <button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(tempPassword);
+                  // Optional: show toast "Copied!"
+                }}
+                className="bg-emerald-600 hover:bg-emerald-500 px-4 rounded-r font-medium"
+                title="Copier le mot de passe"
+              >
+                📋
+              </button>
+            </div>
+            <p className="text-xs text-yellow-400 mt-2">
+              ⚠️ Ce mot de passe ne sera plus affiché après fermeture.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 text-right">
+          <button
+            onClick={() => setShowPasswordModal(false)}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium"
+          >
+            J’ai copié le mot de passe
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
         <Modal
           open={showAddFournisseur}
