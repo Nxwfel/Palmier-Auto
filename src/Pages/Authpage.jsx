@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, Phone, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = "http://localhost:8000"; // 👈 Adjust to your backend URL
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com"; // 👈 Adjust to your backend URL
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);

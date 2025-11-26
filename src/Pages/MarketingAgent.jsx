@@ -4,6 +4,29 @@ import { Plus, Car, Trash2, Edit, X } from "lucide-react";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com"; // Removed trailing space
 
+// ✅ Helper function to make authenticated API calls
+const apiFetch = async (url, options = {}) => {
+  const token = localStorage.getItem("authToken");
+  
+  // For FormData, don't set Content-Type; let browser auto-set with boundary
+  const headers = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  // Only merge custom headers if NOT sending FormData
+  if (!(options.body instanceof FormData) && options.headers) {
+    Object.assign(headers, options.headers);
+  }
+  
+  const response = await fetch(url, { ...options, headers });
+  if (response.status === 401) {
+    localStorage.removeItem("authToken");
+    window.location.href = "/marketinglogin";
+    throw new Error("Unauthorized");
+  }
+  return response;
+};
+
 const MarketingAgent = () => {
   const [cars, setCars] = useState([]);
   const [currencies, setCurrencies] = useState([]);
@@ -86,7 +109,7 @@ const MarketingAgent = () => {
 
   const fetchCars = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cars/all`, {
+      const response = await apiFetch(`${API_BASE_URL}/cars/all`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -100,7 +123,9 @@ const MarketingAgent = () => {
 
   const fetchCurrencies = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/currencies/`);
+      const response = await apiFetch(`${API_BASE_URL}/currencies/`, {
+        headers: { "Content-Type": "application/json" },
+      });
       const data = await response.json();
       setCurrencies(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -157,8 +182,9 @@ const MarketingAgent = () => {
       formDataToSend.append("shipping_date", formData.shipping_date);
       formDataToSend.append("arriving_date", formData.arriving_date);
 
-      const response = await fetch(`${API_BASE_URL}/cars/`, {
+      const response = await apiFetch(`${API_BASE_URL}/cars/`, {
         method: "POST",
+        headers: {}, // apiFetch will add Authorization header
         body: formDataToSend,
       });
 
@@ -195,8 +221,9 @@ const MarketingAgent = () => {
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette voiture ?")) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/cars/?car_id=${carId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/cars/?car_id=${carId}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
       });
 
       if (response.ok) {
@@ -279,8 +306,9 @@ const handleSaveEdit = async (e) => {
     formDataToSend.append("shipping_date", editForm.shipping_date || "");
     formDataToSend.append("arriving_date", editForm.arriving_date || "");
 
-    const response = await fetch(`${API_BASE_URL.trim()}/cars/`, {
+    const response = await apiFetch(`${API_BASE_URL}/cars/`, {
       method: "PUT",
+      headers: {}, // apiFetch will attach Authorization
       body: formDataToSend,
     });
 
@@ -581,8 +609,7 @@ const handleSaveEdit = async (e) => {
                       <th className="p-2">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {cars.map((car) => (
+                  <tbody>{cars.map((car) => (
                       <tr key={car.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
                         <td className="p-2">{car.model}</td>
                         <td className="p-2">{car.color}</td>
@@ -888,8 +915,7 @@ const handleSaveEdit = async (e) => {
                       <th className="p-2">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {filteredCars.map((car) => (
+                  <tbody>{filteredCars.map((car) => (
                       <tr key={car.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
                         <td className="p-2">{car.model}</td>
                         <td className="p-2">{car.color}</td>

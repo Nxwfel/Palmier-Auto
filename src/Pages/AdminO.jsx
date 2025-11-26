@@ -217,8 +217,7 @@ const apiFetch = async (url, options = {}) => {
 export default function AdminSuperPanel() {
   const API_BASE = 'https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com';
   const [tempPassword, setTempPassword] = useState("");
-  const [passwordModalType, setPasswordModalType] = useState(null); // "commercial", "marketer", "accountant"
-  const [userPhoneForPassword, setUserPhoneForPassword] = useState("");
+  const [newCommercialPhone, setNewCommercialPhone] = useState("");
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editingSupplierItem, setEditingSupplierItem] = useState({}); // ✅ New state for editable supplier items
   const [generatedPassword, setGeneratedPassword] = useState("");
@@ -233,8 +232,6 @@ export default function AdminSuperPanel() {
   const [cars, setCars] = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
   const [commercials, setCommercials] = useState([]);
-  const [marketers, setMarketers] = useState([]);
-  const [accountants, setAccountants] = useState([]);
   const [logs, setLogs] = useState([]);
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState([]);
@@ -263,21 +260,6 @@ export default function AdminSuperPanel() {
   const [showAddCommercial, setShowAddCommercial] = useState(false);
   const [message, setMessage] = useState("");
   const [commercialLoading, setCommercialLoading] = useState(false);
-  
-  // ✅ Marketer & Accountant States
-  const [marketerForm, setMarketerForm] = useState({
-    name: "", surname: "", phone_number: "", address: ""
-  });
-  const [showAddMarketer, setShowAddMarketer] = useState(false);
-  const [marketerLoading, setMarketerLoading] = useState(false);
-  const [marketerMessage, setMarketerMessage] = useState("");
-  
-  const [accountantForm, setAccountantForm] = useState({
-    name: "", surname: "", phone_number: "", address: ""
-  });
-  const [showAddAccountant, setShowAddAccountant] = useState(false);
-  const [accountantLoading, setAccountantLoading] = useState(false);
-  const [accountantMessage, setAccountantMessage] = useState("");
 
   const pushLog = (actor, action) => {
     setLogs((p) => [{ id: Date.now(), actor, action, date: new Date().toISOString() }, ...p]);
@@ -369,6 +351,23 @@ export default function AdminSuperPanel() {
     fetchCaisse();
   }, []);
 
+  useEffect(() => {
+    const fetchCars = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/cars/all`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await response.json();
+        setCars(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching cars:", err);
+        setCars([]);
+      }
+    };
+    fetchCars();
+  }, []);
   useEffect(() => {
     const fetchCars = async () => {
       try {
@@ -477,36 +476,6 @@ export default function AdminSuperPanel() {
     fetchCommercials();
   }, []);
 
-  // ✅ Fetch Marketers
-  useEffect(() => {
-    const fetchMarketers = async () => {
-      try {
-        const response = await apiFetch(`${API_BASE}/marketers/`);
-        const data = await response.json();
-        setMarketers(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Error fetching marketers:", err);
-        setMarketers([]);
-      }
-    };
-    fetchMarketers();
-  }, []);
-
-  // ✅ Fetch Accountants
-  useEffect(() => {
-    const fetchAccountants = async () => {
-      try {
-        const response = await apiFetch(`${API_BASE}/accountants/`);
-        const data = await response.json();
-        setAccountants(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Error fetching accountants:", err);
-        setAccountants([]);
-      }
-    };
-    fetchAccountants();
-  }, []);
-
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -535,6 +504,56 @@ export default function AdminSuperPanel() {
     fetchClients();
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCurrencies = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/currencies/`);
+        const data = await response.json();
+        if (!isMounted) return;
+        setCurrencyList(Array.isArray(data) ? data : []);
+        const currencyMap = {};
+        data.forEach(curr => {
+          currencyMap[curr.code] = curr.exchange_rate_to_dzd;
+        });
+        setCurrencies(currencyMap);
+        if (data.length === 0) {
+          const defaultCurrencies = [
+            { code: "dzd", name: "Algerian Dinar", rate: 1 },
+            { code: "eur", name: "Euro", rate: 145 },
+            { code: "usd", name: "US Dollar", rate: 135 },
+            { code: "cad", name: "Canadian Dollar", rate: 98 },
+            { code: "aed", name: "UAE Dirham", rate: 36.8 },
+          ];
+          for (let i = 0; i < defaultCurrencies.length; i++) {
+            if (!isMounted) break;
+            const curr = defaultCurrencies[i];
+            await fetch(`${API_BASE}/currencies/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                code: curr.code,
+                name: curr.name,
+                exchange_rate_to_dzd: curr.rate
+              })
+            });
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          const finalRes = await fetch(`${API_BASE}/currencies/`);
+          const finalData = await finalRes.json();
+          if (isMounted) {
+            setCurrencyList(Array.isArray(finalData) ? finalData : []);
+          }
+        }
+      } catch (err) {
+        console.error("Currency init error:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchCurrencies();
+    return () => { isMounted = false; };
+  }, []);
   useEffect(() => {
     let isMounted = true;
     const fetchCurrencies = async () => {
@@ -593,7 +612,7 @@ export default function AdminSuperPanel() {
     try {
       const existing = currencyList.find(c => c.code.toLowerCase() === code.toLowerCase());
       if (existing) {
-        await apiFetch(`${API_BASE}/currencies/`, {
+        const response = await apiFetch(`${API_BASE}/currencies/`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -602,7 +621,7 @@ export default function AdminSuperPanel() {
           })
         });
       } else {
-        await apiFetch(`${API_BASE}/currencies/`, {
+        const response = await apiFetch(`${API_BASE}/currencies/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -611,12 +630,33 @@ export default function AdminSuperPanel() {
             exchange_rate_to_dzd: numericValue
           })
         });
+        const fresh = await fetch(`${API_BASE}/currencies/`).then(r => r.json());
+        setCurrencyList(Array.isArray(fresh) ? fresh : []);
+        const map = {};
+        fresh.forEach(c => { map[c.code] = c.exchange_rate_to_dzd; });
+        setCurrencies(map);
         const fresh = await apiFetch(`${API_BASE}/currencies/`).then(r => r.json());
         setCurrencyList(Array.isArray(fresh) ? fresh : []);
         const map = {};
         fresh.forEach(c => { map[c.code] = c.exchange_rate_to_dzd; });
         setCurrencies(map);
       }
+            } else {
+              const response = await apiFetch(`${API_BASE}/currencies/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  code: code.toLowerCase(),
+                  name: { dzd: 'Algerian Dinar', eur: 'Euro', usd: 'US Dollar', cad: 'Canadian Dollar', aed: 'UAE Dirham' }[code] || code.toUpperCase(),
+                  exchange_rate_to_dzd: numericValue
+                })
+              });
+              const fresh = await apiFetch(`${API_BASE}/currencies/`).then(r => r.json());
+              setCurrencyList(Array.isArray(fresh) ? fresh : []);
+              const map = {};
+              fresh.forEach(c => { map[c.code] = c.exchange_rate_to_dzd; });
+              setCurrencies(map);
+            }
       pushLog("Admin", `Updated ${code.toUpperCase()} exchange rate to ${numericValue} DZD`);
     } catch (err) {
       console.error("Error updating currency:", err);
@@ -683,10 +723,10 @@ export default function AdminSuperPanel() {
       if (editingCar) {
         formData.append('car_id', editingCar.id);
       }
-
-      // Use apiFetch with FormData: don't set Content-Type so browser can set boundary
-      const response = await apiFetch(url, {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(url, {
         method,
+        headers: token ? { "Authorization": `Bearer ${token}` } : {},
         body: formData
       });
       if (!response.ok) {
@@ -696,13 +736,37 @@ export default function AdminSuperPanel() {
       pushLog("Admin", `${editingCar ? 'Updated' : 'Added'} car ${carForm.model}`);
       setShowAddCar(false);
       setCarForm(initialCarForm);
-      const carsResponse = await apiFetch(`${API_BASE}/cars/all`, {
+      const carsResponse = await fetch(`${API_BASE}/cars/all`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       const carsData = await carsResponse.json();
       setCars(Array.isArray(carsData) ? carsData : []);
+          const url = `${API_BASE}/cars/`;
+          const method = editingCar ? 'PUT' : 'POST';
+          if (editingCar) {
+            formData.append('car_id', editingCar.id);
+          }
+          const token = localStorage.getItem("authToken");
+          const response = await apiFetch(url, {
+            method,
+            body: formData
+          });
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          }
+          pushLog("Admin", `${editingCar ? 'Updated' : 'Added'} car ${carForm.model}`);
+          setShowAddCar(false);
+          setCarForm(initialCarForm);
+          const carsResponse = await apiFetch(`${API_BASE}/cars/all`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          const carsData = await carsResponse.json();
+          setCars(Array.isArray(carsData) ? carsData : []);
     } catch (err) {
       console.error("Error saving car:", err);
       alert("Error saving car: " + err.message);
@@ -735,6 +799,22 @@ export default function AdminSuperPanel() {
   const handleDelete = async (id) => {
     if (!confirm("Supprimer cette voiture ?")) return;
     try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${API_BASE}/cars/?car_id=${id}`, {
+        method: 'DELETE',
+        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+      });
+      if (!response.ok) throw new Error('Failed to delete car');
+      setCars((p) => p.filter((c) => c.id !== id));
+      pushLog("Admin", `Deleted car ${id}`);
+    } catch (err) {
+      console.error("Error deleting car:", err);
+      alert("Error deleting car: " + err.message);
+    }
+  };
+  const handleDelete = async (id) => {
+    if (!confirm("Supprimer cette voiture ?")) return;
+    try {
       const response = await apiFetch(`${API_BASE}/cars/?car_id=${id}`, {
         method: 'DELETE'
       });
@@ -763,7 +843,7 @@ export default function AdminSuperPanel() {
     setCommercialLoading(true);
     setMessage("");
     setTempPassword("");
-    setUserPhoneForPassword(CommercialForm.phone_number);
+    setNewCommercialPhone(CommercialForm.phone_number);
     try {
       const isUpdate = !!CommercialForm.commercial_id;
       const url = `${API_BASE}/commercials/`;
@@ -777,10 +857,13 @@ export default function AdminSuperPanel() {
       if (isUpdate) {
         requestBody.commercial_id = CommercialForm.commercial_id;
       }
-
-      const response = await apiFetch(url, {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(url, {
         method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(requestBody),
       });
       const responseData = await response.json();
@@ -794,18 +877,51 @@ export default function AdminSuperPanel() {
           } else if (responseData.detail?.startsWith("password:")) {
             password = responseData.detail.split("password:")[1];
           } else {
-            const pwdRes = await apiFetch(`${API_BASE}/commercials/random_password`);
+            const pwdRes = await fetch(`${API_BASE}/commercials/random_password`, {
+              headers: { "Authorization": `Bearer ${token}` }
+            });
             const pwdData = await pwdRes.json();
             password = pwdData.password || pwdData.detail || "temp123";
           }
           setTempPassword(password);
-                   setPasswordModalType("commercial");
           setShowPasswordModal(true);
         }
         setCommercialForm({ name: "", surname: "", phone_number: "", wilayas: [], address: "" });
         setShowAddCommercial(false);
-        const fresh = await apiFetch(`${API_BASE}/commercials/`).then(r => r.json());
+        const fresh = await fetch(`${API_BASE}/commercials/`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        }).then(r => r.json());
         setCommercials(Array.isArray(fresh) ? fresh : []);
+            if (isUpdate) {
+              requestBody.commercial_id = CommercialForm.commercial_id;
+            }
+            const response = await apiFetch(url, {
+              method: isUpdate ? "PUT" : "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(requestBody),
+            });
+            const responseData = await response.json();
+            if (response.ok) {
+              setMessage("Commercial saved successfully ✅");
+              if (!isUpdate) {
+                // ✅ Flexible password extraction
+                let password = "";
+                if (responseData.password) {
+                  password = responseData.password;
+                } else if (responseData.detail?.startsWith("password:")) {
+                  password = responseData.detail.split("password:")[1];
+                } else {
+                  const pwdRes = await apiFetch(`${API_BASE}/commercials/random_password`);
+                  const pwdData = await pwdRes.json();
+                  password = pwdData.password || pwdData.detail || "temp123";
+                }
+                setTempPassword(password);
+                setShowPasswordModal(true);
+              }
+              setCommercialForm({ name: "", surname: "", phone_number: "", wilayas: [], address: "" });
+              setShowAddCommercial(false);
+              const fresh = await apiFetch(`${API_BASE}/commercials/`).then(r => r.json());
+              setCommercials(Array.isArray(fresh) ? fresh : []);
       } else {
         setMessage(`❌ Error: ${responseData.detail || "Failed to save commercial"}`);
       }
@@ -814,146 +930,6 @@ export default function AdminSuperPanel() {
       setMessage("⚠️ Network error: " + error.message);
     } finally {
       setCommercialLoading(false);
-    }
-  };
-
-  // ✅ Handle Marketer Submit
-  const handleMarketerSubmit = async (e) => {
-    e.preventDefault();
-    setMarketerLoading(true);
-    setMarketerMessage("");
-    setTempPassword("");
-    setUserPhoneForPassword(marketerForm.phone_number);
-    try {
-      const isUpdate = !!marketerForm.marketer_id;
-      const url = `${API_BASE}/marketers/`;
-      const requestBody = {
-        name: marketerForm.name,
-        surname: marketerForm.surname,
-        phone_number: marketerForm.phone_number,
-        address: marketerForm.address,
-      };
-      if (isUpdate) {
-        requestBody.marketer_id = marketerForm.marketer_id;
-      }
-
-      const response = await apiFetch(url, {
-        method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-      const responseData = await response.json();
-      if (response.ok) {
-        setMarketerMessage("Marketer saved successfully ✅");
-        if (!isUpdate) {
-          let password = "";
-          if (responseData.password) {
-            password = responseData.password;
-          } else if (responseData.detail?.startsWith("password:")) {
-            password = responseData.detail.split("password:")[1];
-          } else {
-            password = "temp123";
-          }
-          setTempPassword(password);
-          setPasswordModalType("marketer");
-          setShowPasswordModal(true);
-        }
-        setMarketerForm({ name: "", surname: "", phone_number: "", address: "" });
-        setShowAddMarketer(false);
-        const fresh = await apiFetch(`${API_BASE}/marketers/`).then(r => r.json());
-        setMarketers(Array.isArray(fresh) ? fresh : []);
-      } else {
-        setMarketerMessage(`❌ Error: ${responseData.detail || "Failed to save marketer"}`);
-      }
-    } catch (error) {
-      console.error("❌ Network error:", error);
-      setMarketerMessage("⚠️ Network error: " + error.message);
-    } finally {
-      setMarketerLoading(false);
-    }
-  };
-
-  // ✅ Handle Accountant Submit
-  const handleAccountantSubmit = async (e) => {
-    e.preventDefault();
-    setAccountantLoading(true);
-    setAccountantMessage("");
-    setTempPassword("");
-    setUserPhoneForPassword(accountantForm.phone_number);
-    try {
-      const isUpdate = !!accountantForm.accountant_id;
-      const url = `${API_BASE}/accountants/`;
-      const requestBody = {
-        name: accountantForm.name,
-        surname: accountantForm.surname,
-        phone_number: accountantForm.phone_number,
-        address: accountantForm.address,
-      };
-      if (isUpdate) {
-        requestBody.accountant_id = accountantForm.accountant_id;
-      }
-
-      const response = await apiFetch(url, {
-        method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-      const responseData = await response.json();
-      if (response.ok) {
-        setAccountantMessage("Accountant saved successfully ✅");
-        if (!isUpdate) {
-          let password = "";
-          if (responseData.password) {
-            password = responseData.password;
-          } else if (responseData.detail?.startsWith("password:")) {
-            password = responseData.detail.split("password:")[1];
-          } else {
-            password = "temp123";
-          }
-          setTempPassword(password);
-          setPasswordModalType("accountant");
-          setShowPasswordModal(true);
-        }
-        setAccountantForm({ name: "", surname: "", phone_number: "", address: "" });
-        setShowAddAccountant(false);
-        const fresh = await apiFetch(`${API_BASE}/accountants/`).then(r => r.json());
-        setAccountants(Array.isArray(fresh) ? fresh : []);
-      } else {
-        setAccountantMessage(`❌ Error: ${responseData.detail || "Failed to save accountant"}`);
-      }
-    } catch (error) {
-      console.error("❌ Network error:", error);
-      setAccountantMessage("⚠️ Network error: " + error.message);
-    } finally {
-      setAccountantLoading(false);
-    }
-  };
-
-  // ✅ Delete Marketer
-  const handleDeleteMarketer = async (id) => {
-    if (!window.confirm("Delete this marketer?")) return;
-    try {
-      await apiFetch(`${API_BASE}/marketers/?marketer_id=${id}`, {
-        method: 'DELETE'
-      });
-      setMarketers(marketers.filter(m => m.id !== id));
-    } catch (err) {
-      console.error("Error deleting marketer:", err);
-      alert("Error deleting marketer");
-    }
-  };
-
-  // ✅ Delete Accountant
-  const handleDeleteAccountant = async (id) => {
-    if (!window.confirm("Delete this accountant?")) return;
-    try {
-      await apiFetch(`${API_BASE}/accountants/?accountant_id=${id}`, {
-        method: 'DELETE'
-      });
-      setAccountants(accountants.filter(a => a.id !== id));
-    } catch (err) {
-      console.error("Error deleting accountant:", err);
-      alert("Error deleting accountant");
     }
   };
 
@@ -975,7 +951,7 @@ export default function AdminSuperPanel() {
     setSupplierItems(prev => 
       prev.map(i => 
         i.supplier_item_id === item.supplier_item_id 
-          ? { ...i, price: newPrice, payment_amount: newPaid } 
+          ? { ...i, price: newPrice, payment_amount: newPaid }
           : i
       )
     );
@@ -986,10 +962,12 @@ export default function AdminSuperPanel() {
     });
 
     try {
-      const response = await apiFetch(`${API_BASE}/suppliers_items/`, {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${API_BASE}/suppliers_items/`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           supplier_item_id: item.supplier_item_id,
@@ -1048,8 +1026,6 @@ export default function AdminSuperPanel() {
           { id: "fournisseurs", icon: CreditCard, label: "Fournisseurs" },
           { id: "commercials", icon: Users, label: "Commercials" },
           { id: "currency", icon: DollarSign, label: "currency" },
-                 { id: "marketers", icon: Users, label: "Marketers" },
-                 { id: "accountants", icon: Users, label: "Accountants" },
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
@@ -1598,90 +1574,6 @@ export default function AdminSuperPanel() {
               </Card>
             </motion.div>
           )}
-
-          {tab === "marketers" && (
-            <motion.div key="marketers" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-semibold">Marketing Agents Management</h2>
-                <button onClick={() => { setMarketerForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddMarketer(true); }} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                  Add Marketer +
-                </button>
-              </div>
-              <Card>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
-                        <th className="py-3 px-3">ID</th>
-                        <th className="py-3 px-3">Name</th>
-                        <th className="py-3 px-3">Phone</th>
-                        <th className="py-3 px-3">Address</th>
-                        <th className="py-3 px-3">Created</th>
-                        <th className="py-3 px-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {marketers.map((marketer) => (
-                        <tr key={marketer.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
-                          <td className="py-3 px-3 font-mono text-emerald-400">{marketer.id}</td>
-                          <td className="py-3 px-3">{marketer.name} {marketer.surname}</td>
-                          <td className="py-3 px-3">{marketer.phone_number}</td>
-                          <td className="py-3 px-3 text-sm text-neutral-400">{marketer.address}</td>
-                          <td className="py-3 px-3 text-sm text-neutral-400">{new Date(marketer.created_at).toLocaleDateString()}</td>
-                          <td className="py-3 px-3 text-right space-x-2">
-                            <button onClick={() => { setMarketerForm(marketer); setShowAddMarketer(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
-                            <button onClick={() => handleDeleteMarketer(marketer.id)} className="text-red-400 hover:text-red-300">Delete</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            </motion.div>
-          )}
-
-          {tab === "accountants" && (
-            <motion.div key="accountants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-semibold">Accountants Management</h2>
-                <button onClick={() => { setAccountantForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddAccountant(true); }} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                  Add Accountant +
-                </button>
-              </div>
-              <Card>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
-                        <th className="py-3 px-3">ID</th>
-                        <th className="py-3 px-3">Name</th>
-                        <th className="py-3 px-3">Phone</th>
-                        <th className="py-3 px-3">Address</th>
-                        <th className="py-3 px-3">Created</th>
-                        <th className="py-3 px-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {accountants.map((accountant) => (
-                        <tr key={accountant.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
-                          <td className="py-3 px-3 font-mono text-emerald-400">{accountant.id}</td>
-                          <td className="py-3 px-3">{accountant.name} {accountant.surname}</td>
-                          <td className="py-3 px-3">{accountant.phone_number}</td>
-                          <td className="py-3 px-3 text-sm text-neutral-400">{accountant.address}</td>
-                          <td className="py-3 px-3 text-sm text-neutral-400">{new Date(accountant.created_at).toLocaleDateString()}</td>
-                          <td className="py-3 px-3 text-right space-x-2">
-                            <button onClick={() => { setAccountantForm(accountant); setShowAddAccountant(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
-                            <button onClick={() => handleDeleteAccountant(accountant.id)} className="text-red-400 hover:text-red-300">Delete</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            </motion.div>
-          )}
         </AnimatePresence>
 
         {/* Modals */}
@@ -1758,67 +1650,21 @@ export default function AdminSuperPanel() {
           </form>
         </Modal>
 
-        {/* Marketer Modal */}
-        <Modal open={showAddMarketer} onClose={() => setShowAddMarketer(false)} title={marketerForm.marketer_id ? "Edit Marketer" : "Add Marketer"}>
-          <form onSubmit={handleMarketerSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Name" value={marketerForm.name} onChange={(e) => setMarketerForm({ ...marketerForm, name: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Surname" value={marketerForm.surname} onChange={(e) => setMarketerForm({ ...marketerForm, surname: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Phone Number" value={marketerForm.phone_number} onChange={(e) => setMarketerForm({ ...marketerForm, phone_number: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Address" value={marketerForm.address} onChange={(e) => setMarketerForm({ ...marketerForm, address: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-            </div>
-            {marketerMessage && <p className={`text-sm ${marketerMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{marketerMessage}</p>}
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setShowAddMarketer(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" disabled={marketerLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
-                {marketerLoading ? 'Saving...' : marketerForm.marketer_id ? 'Update Marketer' : 'Add Marketer'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* Accountant Modal */}
-        <Modal open={showAddAccountant} onClose={() => setShowAddAccountant(false)} title={accountantForm.accountant_id ? "Edit Accountant" : "Add Accountant"}>
-          <form onSubmit={handleAccountantSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Name" value={accountantForm.name} onChange={(e) => setAccountantForm({ ...accountantForm, name: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Surname" value={accountantForm.surname} onChange={(e) => setAccountantForm({ ...accountantForm, surname: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Phone Number" value={accountantForm.phone_number} onChange={(e) => setAccountantForm({ ...accountantForm, phone_number: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Address" value={accountantForm.address} onChange={(e) => setAccountantForm({ ...accountantForm, address: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-            </div>
-            {accountantMessage && <p className={`text-sm ${accountantMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{accountantMessage}</p>}
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setShowAddAccountant(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" disabled={accountantLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
-                {accountantLoading ? 'Saving...' : accountantForm.accountant_id ? 'Update Accountant' : 'Add Accountant'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* Dynamic Password Modal */}
+        {/* Temporary Password Modal (unchanged, just cleanup) */}
         {showPasswordModal && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
             <div className="bg-neutral-800 rounded-2xl w-full max-w-md border border-neutral-700">
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl font-bold text-white">
-                    {passwordModalType === "commercial" && "Identifiants du Commercial"}
-                    {passwordModalType === "marketer" && "Identifiants du Marketer"}
-                    {passwordModalType === "accountant" && "Identifiants du Accountant"}
-                  </h2>
+                  <h2 className="text-xl font-bold text-white">Identifiants du Commercial</h2>
                   <button onClick={() => setShowPasswordModal(false)} className="text-neutral-400 hover:text-white text-2xl">&times;</button>
                 </div>
-                <p className="text-neutral-300 text-sm mb-4">
-                  {passwordModalType === "commercial" && "Le commercial peut se connecter avec ces identifiants :"}
-                  {passwordModalType === "marketer" && "Le marketer peut se connecter avec ces identifiants :"}
-                  {passwordModalType === "accountant" && "L'accountant peut se connecter avec ces identifiants :"}
-                </p>
+                <p className="text-neutral-300 text-sm mb-4">Le commercial peut se connecter avec ces identifiants :</p>
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs text-neutral-400">Téléphone</label>
                     <code className="block mt-1 bg-neutral-900 px-3 py-2.5 rounded font-mono text-emerald-400">
-                      {userPhoneForPassword}
+                      {newCommercialPhone}
                     </code>
                   </div>
                   <div>

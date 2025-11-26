@@ -1,5 +1,6 @@
+// src/Pages/Commercials.jsx
 import React, { useState, useEffect, useMemo } from "react";
-
+import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
@@ -10,49 +11,49 @@ const Commercials = () => {
   const [orders, setOrders] = useState([]);
   const [cars, setCars] = useState([]);
   const [currencies, setCurrencies] = useState([]);
-  const [newClient, setNewClient] = useState({ 
-    name: "", 
-    surname: "",
-    phone: "", 
-    password: "",
-    wilaya: "",
-    address: "" 
+
+  const [newClient, setNewClient] = useState({
+    name: "", surname: "", phone: "", password: "", wilaya: "", address: ""
   });
-  const [newOrder, setNewOrder] = useState({ 
-    client_id: "", 
-    car_id: "", 
-    delivery_status: "shipping" 
+
+  const [newOrder, setNewOrder] = useState({
+    client_id: "", car_id: "", delivery_status: "shipping"
   });
-  const [search, setSearch] = useState("");
+
+  // Separate search states
+  const [searchOrders, setSearchOrders] = useState("");
+  const [searchCars, setSearchCars] = useState("");
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Modal states
+  // Modal
   const [selectedCar, setSelectedCar] = useState(null);
   const [selectedCarPriceInfo, setSelectedCarPriceInfo] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Edit states
+  // Edit order
   const [editingOrderId, setEditingOrderId] = useState(null);
-  const [editForm, setEditForm] = useState({ 
-    payment_amount: "", 
-    delivery_status: "" 
-  });
+  const [editForm, setEditForm] = useState({ payment_amount: "", delivery_status: "" });
 
-  // Build currency map for fast lookup
+  // Request to admin
+  const [requestModel, setRequestModel] = useState("");
+  const [requestDetails, setRequestDetails] = useState("");
+  const [requestSent, setRequestSent] = useState(false);
+
+  const navigate = useNavigate();
+
+  // Currency map for fast lookup
   const currencyMap = useMemo(() => {
     const map = new Map();
-    currencies.forEach(c => {
-      if (c.id !== undefined) map.set(c.id, c);
-    });
+    currencies.forEach(c => c.id !== undefined && map.set(c.id, c));
     return map;
   }, [currencies]);
 
-  // Helper to compute car prices
   const getCarPriceInfo = (car) => {
-    if (!car || !car.price || car.currency_id === undefined) {
-      return { originalPrice: car?.price || null, currencyCode: "???", priceInDZD: null };
+    if (!car?.price || car.currency_id === undefined) {
+      return { originalPrice: null, currencyCode: "???", priceInDZD: null };
     }
     const currency = currencyMap.get(car.currency_id);
     const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : null;
@@ -63,7 +64,6 @@ const Commercials = () => {
     };
   };
 
-  // Fetch data on mount
   useEffect(() => {
     fetchClients();
     fetchOrders();
@@ -74,13 +74,14 @@ const Commercials = () => {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/clients/`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/clients/`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      if (!response.ok) throw new Error("Failed to fetch clients");
-      const data = await response.json();
-      setClients(data);
+      if (res.status === 401) return navigate('/commercialslogin');
+      if (!res.ok) throw new Error("Failed to fetch clients");
+      const data = await res.json();
+      setClients(data || []);
     } catch (err) {
       setError("Erreur lors du chargement des clients");
       console.error(err);
@@ -91,44 +92,47 @@ const Commercials = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/orders/`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      if (!response.ok) throw new Error("Failed to fetch orders");
-      const data = await response.json();
-      setOrders(data);
+      if (res.status === 401) return navigate('/commercialslogin');
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      const data = await res.json();
+      setOrders(data || []);
     } catch (err) {
-      console.error("Error fetching orders:", err);
+      console.error(err);
     }
   };
 
   const fetchCars = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cars/all`, {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/cars/all`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({})
       });
-      if (!response.ok) throw new Error("Failed to fetch cars");
-      const data = await response.json();
-      setCars(data);
+      if (res.status === 401) return navigate('/commercialslogin');
+      if (!res.ok) throw new Error("Failed to fetch cars");
+      const data = await res.json();
+      setCars(data || []);
     } catch (err) {
-      console.error("Error fetching cars:", err);
+      console.error(err);
     }
   };
 
   const fetchCurrencies = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/currencies/`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/currencies/`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      if (!response.ok) throw new Error("Failed to fetch currencies");
-      const data = await response.json();
-      setCurrencies(data);
+      if (!res.ok) throw new Error("Failed to fetch currencies");
+      const data = await res.json();
+      setCurrencies(data || []);
     } catch (err) {
-      console.error("Error fetching currencies:", err);
+      console.error(err);
     }
   };
 
@@ -137,12 +141,12 @@ const Commercials = () => {
       alert("Veuillez remplir tous les champs !");
       return;
     }
-
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/clients/`, {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/clients/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name: newClient.name,
           surname: newClient.surname,
@@ -152,15 +156,17 @@ const Commercials = () => {
           address: newClient.address,
         }),
       });
-
-      if (!response.ok) throw new Error("Failed to add client");
-
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error("API Error:", err);
+        throw new Error(err.detail || err.message || "Erreur serveur");
+      }
       alert("Client ajouté avec succès!");
       setNewClient({ name: "", surname: "", phone: "", password: "", wilaya: "", address: "" });
       fetchClients();
     } catch (err) {
-      alert("Erreur lors de l'ajout du client");
-      console.error(err);
+      console.error("Add Client Error:", err);
+      alert("Erreur : " + (err.message || "Inconnu"));
     } finally {
       setLoading(false);
     }
@@ -168,264 +174,275 @@ const Commercials = () => {
 
   const handleAddOrder = async () => {
     if (!newOrder.client_id || !newOrder.car_id) {
-      alert("Veuillez sélectionner un client et une voiture !");
+      alert("Client et voiture requis");
       return;
     }
-
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/orders/`, {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/orders/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(newOrder),
       });
-
-      if (!response.ok) throw new Error("Échec de la création de la commande");
-
-      alert("Commande ajoutée avec succès !");
+      if (!res.ok) throw new Error("Échec création commande");
+      alert("Commande ajoutée !");
       setNewOrder({ client_id: "", car_id: "", delivery_status: "shipping" });
       fetchOrders();
     } catch (err) {
-      alert("Erreur lors de l'ajout de la commande");
-      console.error(err);
+      alert("Erreur ajout commande");
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpdateOrder = async (orderId) => {
+    // Build the body - only include fields that have values
+    const body = {
+      order_id: orderId
+    };
+    
+    if (editForm.payment_amount !== "") {
+      body.payment_amount = parseFloat(editForm.payment_amount);
+    }
+    
+    if (editForm.delivery_status) {
+      body.delivery_status = editForm.delivery_status;
+    }
+    
+    console.log("=== UPDATE ORDER DEBUG ===");
+    console.log("Order ID:", orderId);
+    console.log("Edit Form:", editForm);
+    console.log("Request Body:", JSON.stringify(body, null, 2));
+    console.log("API URL:", `${API_BASE_URL}/orders/`);
+    
+    const token = localStorage.getItem('authToken');
+    console.log("Token exists:", !!token);
+    
     try {
       setLoading(true);
-      const body = {
-        order_id: orderId,
-        ...(editForm.payment_amount !== "" && { payment_amount: parseFloat(editForm.payment_amount) }),
-        ...(editForm.delivery_status && { delivery_status: editForm.delivery_status }),
-      };
-
-      const response = await fetch(`${API_BASE_URL}/orders/`, {
+      
+      const res = await fetch(`${API_BASE_URL}/orders/`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        },
         body: JSON.stringify(body),
       });
-
-      if (!response.ok) throw new Error("Échec de la mise à jour");
-
-      alert("Commande mise à jour !");
+      
+      console.log("Response status:", res.status);
+      console.log("Response ok:", res.ok);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Error response text:", errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        console.error("Parsed error:", errorData);
+        throw new Error(errorData.detail || errorData.message || `Erreur HTTP ${res.status}`);
+      }
+      
+      const responseData = await res.json();
+      console.log("Success response:", responseData);
+      
+      alert("Mise à jour réussie");
       setEditingOrderId(null);
       setEditForm({ payment_amount: "", delivery_status: "" });
       fetchOrders();
     } catch (err) {
-      alert("Erreur lors de la mise à jour");
-      console.error(err);
+      console.error("=== UPDATE ORDER ERROR ===");
+      console.error("Error type:", err.name);
+      console.error("Error message:", err.message);
+      console.error("Full error:", err);
+      
+      if (err.message.includes("Failed to fetch")) {
+        alert(`❌ ERREUR CORS - Le backend bloque les requêtes depuis votre navigateur.
+
+Le backend doit ajouter le middleware CORS pour accepter les requêtes depuis http://localhost:5173
+
+Demandez au développeur backend d'ajouter:
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+Payload envoyé: ${JSON.stringify(body, null, 2)}`);
+      } else {
+        alert("Erreur mise à jour: " + err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteOrder = async (orderId) => {
-    if (!window.confirm("Êtes-vous sûr de supprimer cette commande ?")) return;
-
+    if (!confirm("Supprimer cette commande ?")) return;
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/orders/?order_id=${orderId}`, {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/orders/?order_id=${orderId}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!response.ok) throw new Error("Échec de la suppression");
-
-      alert("Commande supprimée !");
+      if (!res.ok) throw new Error("SupDeletion échouée");
+      alert("Commande supprimée");
       fetchOrders();
     } catch (err) {
-      alert("Erreur lors de la suppression");
-      console.error(err);
+      alert("Erreur suppression");
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleMenu = () => setMenuOpen(!menuOpen);
-  const toggletab = (tab) => {
-    setActiveTab(tab);
-    setMenuOpen(false);
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    navigate('/commercialslogin');
   };
 
-  // Group cars by model for display
-  const groupedCars = cars.reduce((acc, car) => {
-    const existing = acc.find(c => c.model === car.model);
-    if (existing) {
-      existing.quantity += 1;
-      if (!existing.colors.includes(car.color)) {
-        existing.colors.push(car.color);
-      }
-    } else {
-      acc.push({
-        model: car.model,
-        quantity: 1,
-        colors: [car.color],
+  const handleSendRequest = async () => {
+    if (!requestModel.trim()) return alert("Modèle requis");
+    try {
+      const token = localStorage.getItem('authToken');
+      await fetch(`${API_BASE_URL}/requests/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ model: requestModel, details: requestDetails }),
       });
-    }
-    return acc;
-  }, []);
-
-  const getStatusText = (deliveryStatus) => {
-    switch (deliveryStatus) {
-      case "shipping": return "En expédition";
-      case "arrived": return "Arrivé";
-      case "showroom": return "En showroom";
-      default: return deliveryStatus;
+      setRequestSent(true);
+      setRequestModel("");
+      setRequestDetails("");
+      setTimeout(() => setRequestSent(false), 5000);
+      alert("Demande envoyée !");
+    } catch (err) {
+      alert("Échec envoi demande");
     }
   };
+
+  // Grouped cars
+  const groupedCars = useMemo(() => {
+    const groups = [];
+    cars.forEach(car => {
+      let g = groups.find(g => g.model === car.model);
+      if (!g) {
+        g = { model: car.model, quantity: 0, colors: [] };
+        groups.push(g);
+      }
+      g.quantity++;
+      if (!g.colors.includes(car.color)) g.colors.push(car.color);
+    });
+    return groups;
+  }, [cars]);
+
+  const getRepresentativeCar = (model) => {
+    return cars.find(c => c.model === model && c.price != null && c.currency_id != null) ||
+           cars.find(c => c.model === model);
+  };
+
+  const getStatusText = (s) => ({
+    shipping: "En expédition",
+    arrived: "Arrivé",
+    showroom: "En showroom"
+  }[s] || s);
+
+  // Filtered lists
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o =>
+      (o.client_name?.toLowerCase() || "").includes(searchOrders.toLowerCase()) ||
+      (o.car_model?.toLowerCase() || "").includes(searchOrders.toLowerCase())
+    );
+  }, [orders, searchOrders]);
+
+  const filteredGroupedCars = useMemo(() => {
+    return groupedCars.filter(g =>
+      g.model.toLowerCase().includes(searchCars.toLowerCase())
+    );
+  }, [groupedCars, searchCars]);
 
   return (
     <div className="h-screen w-screen font-main flex bg-gradient-to-br from-neutral-950 to-neutral-900 text-white overflow-hidden">
       {/* Sidebar */}
-      <div className={`fixed z-20 h-screen w-64 ${menuOpen ? 'translate-x-0' : '-translate-x-64'} md:translate-x-0 flex flex-col bg-neutral-900 border-r border-neutral-800 p-4 transition-transform duration-300`}>
-        <div className="flex flex-col gap-4">
-          <button onClick={toggleMenu} className="md:hidden self-start p-2 hover:bg-neutral-800 rounded">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="gray" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-            </svg>
-          </button>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-neutral-900 border-r border-neutral-800 p-4 transform transition-transform duration-300 ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+        <div className="flex flex-col h-full">
+          <div className="flex-1 space-y-3">
+            <button onClick={() => setMenuOpen(false)} className="md:hidden mb-4 p-2 hover:bg-neutral-800 rounded">
+              <svg className="w-6 h-6" fill="none" stroke="gray" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 className="text-2xl font-bold mb-8">Palmier Auto</h2>
 
-          <h2 className="text-2xl font-bold mb-6">Palmier Auto</h2>
-          
-          <button
-            onClick={() => toggletab('addClient')}
-            className={`w-full p-3 text-left rounded-lg flex items-center gap-3 transition ${activeTab === 'addClient' ? 'bg-emerald-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-            </svg>
-            <span className="text-sm">Ajouter un client</span>
-          </button>
-          
-          <button
-            onClick={() => toggletab('orders')}
-            className={`w-full p-3 text-left rounded-lg flex items-center gap-3 transition ${activeTab === 'orders' ? 'bg-emerald-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.3} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-            </svg>
-            <span className="text-sm">Commandes</span>
-          </button>
-          
-          <button
-            onClick={() => toggletab('cars')}
-            className={`w-full p-3 text-left rounded-lg flex items-center gap-3 transition ${activeTab === 'cars' ? 'bg-emerald-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 256 256">
-              <path fill="#fff" d="M240 112h-10.8l-27.78-62.5A16 16 0 0 0 186.8 40H69.2a16 16 0 0 0-14.62 9.5L26.8 112H16a8 8 0 0 0 0 16h8v80a16 16 0 0 0 16 16h24a16 16 0 0 0 16-16v-16h96v16a16 16 0 0 0 16 16h24a16 16 0 0 0 16-16v-80h8a8 8 0 0 0 0-16ZM69.2 56h117.6l24.89 56H44.31ZM64 208H40v-16h24Zm128 0v-16h24v16Zm24-32H40v-48h176ZM56 152a8 8 0 0 1 8-8h16a8 8 0 0 1 0 16H64a8 8 0 0 1-8-8Zm112 0a8 8 0 0 1 8-8h16a8 8 0 0 1 0 16h-16a8 8 0 0 1-8-8Z"></path>
-            </svg>
-            <span className="text-sm">Voiture Disponible</span>
-          </button>
-          
-          <button
-            onClick={() => toggletab('requests')}
-            className={`w-full p-3 text-left rounded-lg flex items-center gap-3 transition ${activeTab === 'requests' ? 'bg-emerald-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-            </svg>
-            <span className="text-sm">Demande Client</span>
+            {[
+              { id: "addClient", label: "Ajouter Client" },
+              { id: "orders", label: "Commandes" },
+              { id: "cars", label: "Voitures" },
+              { id: "requests", label: "Demande Admin" }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); setMenuOpen(false); }}
+                className={`w-full text-left p-3 rounded-lg transition ${activeTab === tab.id ? 'bg-emerald-600' : 'hover:bg-neutral-800'}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <button onClick={handleLogout} className="w-full p-3 bg-red-600 hover:bg-red-700 rounded-lg transition">
+            Déconnexion
           </button>
         </div>
-
-        <button className="mt-auto w-full p-3 text-left rounded-lg flex items-center gap-3 bg-red-600 hover:bg-red-700 transition">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-          </svg>
-          <span className="text-sm">Logout</span>
-        </button>
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 overflow-y-auto p-8">
-        <button onClick={toggleMenu} className="md:hidden mb-4 p-2 hover:bg-neutral-800 rounded">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.3} stroke="gray" className="w-8 h-8">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
+      <main className="flex-1 md:ml-64 overflow-y-auto p-6 md:p-8">
+        <button onClick={() => setMenuOpen(true)} className="md:hidden mb-6 p-2 bg-neutral-800 rounded-lg">
+          <svg className="w-8 h-8" fill="none" stroke="gray" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
 
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-200 px-4 py-3 rounded mb-4">
+          <div className="mb-6 p-4 bg-red-500/20 border border-red-500 text-red-300 rounded-lg">
             {error}
           </div>
         )}
 
-        {/* ADD CLIENT */}
+        {/* Add Client Tab */}
         {activeTab === "addClient" && (
           <div className="space-y-8">
-            <h1 className="text-4xl font-semibold">Ajouter un Client</h1>
-            
-            <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
-              <h2 className="text-xl font-semibold mb-4">Nouveau Client</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Nom"
-                  value={newClient.name}
-                  onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                  className="bg-neutral-800 p-3 rounded-lg outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Prénom"
-                  value={newClient.surname}
-                  onChange={(e) => setNewClient({ ...newClient, surname: e.target.value })}
-                  className="bg-neutral-800 p-3 rounded-lg outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Téléphone"
-                  value={newClient.phone}
-                  onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                  className="bg-neutral-800 p-3 rounded-lg outline-none"
-                />
-                <input
-                  type="password"
-                  placeholder="Mot de passe"
-                  value={newClient.password}
-                  onChange={(e) => setNewClient({ ...newClient, password: e.target.value })}
-                  className="bg-neutral-800 p-3 rounded-lg outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Wilaya"
-                  value={newClient.wilaya}
-                  onChange={(e) => setNewClient({ ...newClient, wilaya: e.target.value })}
-                  className="bg-neutral-800 p-3 rounded-lg outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Adresse"
-                  value={newClient.address}
-                  onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
-                  className="bg-neutral-800 p-3 rounded-lg outline-none"
-                />
+            <h1 className="text-4xl font-bold">Ajouter un Client</h1>
+            <form onSubmit={(e) => { e.preventDefault(); handleAddClient(); }} className="bg-neutral-900/80 p-8 rounded-2xl border border-neutral-800">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {["name", "surname", "phone", "password", "wilaya", "address"].map(field => (
+                  <input
+                    key={field}
+                    type={field === "password" ? "password" : "text"}
+                    placeholder={field === "name" ? "Nom" : field === "surname" ? "Prénom" : field === "phone" ? "Téléphone" : field === "password" ? "Mot de passe" : field === "wilaya" ? "Wilaya" : "Adresse"}
+                    value={newClient[field]}
+                    onChange={e => setNewClient({ ...newClient, [field]: e.target.value })}
+                    className="bg-neutral-800 p-4 rounded-lg outline-none"
+                    required
+                  />
+                ))}
               </div>
-              <button
-                onClick={handleAddClient}
-                disabled={loading}
-                className="mt-4 w-full bg-emerald-600 py-3 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
-              >
-                {loading ? "Chargement..." : "Ajouter Client"}
+              <button type="submit" disabled={loading} className="mt-8 w-full bg-emerald-600 py-4 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 transition">
+                {loading ? "Ajout en cours..." : "Ajouter Client"}
               </button>
-            </div>
+            </form>
 
             <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
-              <h2 className="text-xl font-semibold mb-4">Clients Enregistrés</h2>
-              <div className="max-h-96 overflow-y-auto space-y-3">
-                {loading ? (
-                  <p className="text-neutral-500">Chargement...</p>
-                ) : clients.length === 0 ? (
-                  <p className="text-neutral-500">Aucun client ajouté.</p>
+              <h2 className="text-2xl font-semibold mb-4">Clients enregistrés</h2>
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {clients.length === 0 ? (
+                  <p className="text-neutral-500">Aucun client</p>
                 ) : (
-                  clients.map((c) => (
-                    <div key={c.id} className="bg-neutral-800 p-4 rounded-xl">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-lg">{c.name} {c.surname}</p>
-                          <p className="text-sm text-neutral-400">{c.phone_number}</p>
-                          <p className="text-xs text-neutral-500 mt-1">{c.wilaya} - {c.address}</p>
-                        </div>
-                        <span className="text-green-400 text-sm">#{c.id}</span>
-                      </div>
+                  clients.map(c => (
+                    <div key={c.id} className="bg-neutral-800 p-4 rounded-lg">
+                      <p className="font-medium text-lg">{c.name} {c.surname} <span className="text-emerald-400 text-sm">#{c.id}</span></p>
+                      <p className="text-sm text-neutral-400">{c.phone_number} • {c.wilaya}</p>
                     </div>
                   ))
                 )}
@@ -434,358 +451,179 @@ const Commercials = () => {
           </div>
         )}
 
-        {/* ORDERS */}
+        {/* Orders Tab */}
         {activeTab === "orders" && (
-          <div>
-            {/* Add Order Form */}
-            <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800 mb-8">
-              <h2 className="text-2xl font-semibold mb-4">Ajouter une Commande</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <select
-                  value={newOrder.client_id}
-                  onChange={(e) => setNewOrder({ ...newOrder, client_id: e.target.value })}
-                  className="bg-neutral-800 p-3 rounded-lg outline-none"
-                >
+          <div className="space-y-8">
+            <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
+              <h2 className="text-2xl font-semibold mb-6">Nouvelle Commande</h2>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <select value={newOrder.client_id} onChange={e => setNewOrder({ ...newOrder, client_id: e.target.value })} className="bg-neutral-800 p-4 rounded-lg">
                   <option value="">Sélectionner un client</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name} {client.surname} ({client.phone_number})
-                    </option>
-                  ))}
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name} {c.surname}</option>)}
                 </select>
-
-                <select
-                  value={newOrder.car_id}
-                  onChange={(e) => setNewOrder({ ...newOrder, car_id: e.target.value })}
-                  className="bg-neutral-800 p-3 rounded-lg outline-none"
-                >
+                <select value={newOrder.car_id} onChange={e => setNewOrder({ ...newOrder, car_id: e.target.value })} className="bg-neutral-800 p-4 rounded-lg">
                   <option value="">Sélectionner une voiture</option>
-                  {cars.map((car) => (
-                    <option key={car.id} value={car.id}>
-                      {car.model} - {car.color} ({car.year})
-                    </option>
-                  ))}
+                  {cars.map(car => <option key={car.id} value={car.id}>{car.model} - {car.color}</option>)}
                 </select>
-
-                <select
-                  value={newOrder.delivery_status}
-                  onChange={(e) => setNewOrder({ ...newOrder, delivery_status: e.target.value })}
-                  className="bg-neutral-800 p-3 rounded-lg outline-none"
-                >
+                <select value={newOrder.delivery_status} onChange={e => setNewOrder({ ...newOrder, delivery_status: e.target.value })} className="bg-neutral-800 p-4 rounded-lg">
                   <option value="shipping">En expédition</option>
                   <option value="arrived">Arrivé</option>
-                  <option value="showroom">En showroom</option>
+                  <option value="showroom">Showroom</option>
                 </select>
-
-                <button
-                  onClick={handleAddOrder}
-                  disabled={loading}
-                  className="bg-emerald-600 py-3 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
-                >
-                  {loading ? "Chargement..." : "Ajouter Commande"}
+                <button onClick={handleAddOrder} disabled={loading} className="bg-emerald-600 py-4 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50">
+                  Ajouter
                 </button>
               </div>
             </div>
 
-            {/* Orders List */}
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-semibold">Commandes</h2>
+              <h2 className="text-3xl font-bold">Commandes</h2>
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 text-neutral-400" size={18} />
+                <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
                 <input
-                  type="text"
+                  value={searchOrders}
+                  onChange={e => setSearchOrders(e.target.value)}
                   placeholder="Rechercher..."
-                  className="bg-neutral-800 pl-10 pr-3 py-2 rounded-lg outline-none text-sm"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64"
                 />
               </div>
             </div>
 
             <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-              {orders
-                .filter(
-                  (o) =>
-                    (o.client_name && o.client_name.toLowerCase().includes(search.toLowerCase())) ||
-                    (o.car_model && o.car_model.toLowerCase().includes(search.toLowerCase()))
-                )
-                .map((order) => (
-                  <div key={order.order_id} className="p-6 bg-neutral-900/90 rounded-2xl border border-neutral-800">
-                    {editingOrderId === order.order_id ? (
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <h3 className="font-semibold">{order.car_model}</h3>
-                          <button
-                            onClick={() => setEditingOrderId(null)}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            Annuler
-                          </button>
-                        </div>
-
-                        <div>
-                          <label className="text-sm text-neutral-400">Paiement (DZD)</label>
-                          <input
-                            type="number"
-                            defaultValue={order.payment_amount || ""}
-                            onChange={(e) => setEditForm({ ...editForm, payment_amount: e.target.value })}
-                            className="w-full bg-neutral-800 p-2 rounded mt-1 text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-sm text-neutral-400">Statut</label>
-                          <select
-                            defaultValue={order.delivery_status}
-                            onChange={(e) => setEditForm({ ...editForm, delivery_status: e.target.value })}
-                            className="w-full bg-neutral-800 p-2 rounded mt-1 text-sm"
-                          >
-                            <option value="shipping">En expédition</option>
-                            <option value="arrived">Arrivé</option>
-                            <option value="showroom">En showroom</option>
-                          </select>
-                        </div>
-
-                        <button
-                          onClick={() => handleUpdateOrder(order.order_id)}
-                          className="w-full bg-blue-600 py-2 rounded text-sm hover:bg-blue-700"
-                        >
-                          Sauvegarder
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-start mb-3">
-                          <h3 className="font-semibold text-lg">{order.car_model}</h3>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                setEditingOrderId(order.order_id);
-                                setEditForm({
-                                  payment_amount: order.payment_amount || "",
-                                  delivery_status: order.delivery_status || "shipping",
-                                });
-                              }}
-                              className="text-blue-400 hover:text-blue-300"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() => handleDeleteOrder(order.order_id)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-                        <p className="text-sm text-neutral-400">Client: {order.client_name} {order.client_surname}</p>
-                        <p className="text-sm text-neutral-400">Téléphone: {order.client_phone}</p>
-                        <p className="text-sm mt-2">
-                          <span className="text-neutral-400">Statut:</span>{" "}
-                          <span className="text-white">{getStatusText(order.delivery_status)}</span>
-                        </p>
-                        <p className="text-sm">
-                          <span className="text-neutral-400">Prix:</span>{" "}
-                          <span className="text-green-400">{order.price_dzd?.toLocaleString() || 0} DZD</span>
-                        </p>
-                        <p className="text-sm">
-                          <span className="text-neutral-400">Payé:</span>{" "}
-                          <span className="text-blue-400">{order.payment_amount?.toLocaleString() || 0} DZD</span>
-                        </p>
-                      </>
-                    )}
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-
-        {/* REQUESTS */}
-        {activeTab === "requests" && (
-          <div>
-            <h2 className="text-3xl font-semibold mb-6">Demande à l'Admin</h2>
-            <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800 max-w-2xl">
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Modèle non disponible"
-                  className="w-full bg-neutral-800 p-3 rounded-lg outline-none"
-                />
-                <textarea
-                  placeholder="Détails ou remarques..."
-                  className="w-full bg-neutral-800 p-3 rounded-lg outline-none h-40 resize-none"
-                ></textarea>
-                <button className="w-full bg-emerald-600 py-3 rounded-lg hover:bg-green-700 font-medium transition">
-                  Envoyer la demande
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CARS */}
-        {activeTab === "cars" && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-semibold">Voitures Disponibles</h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 text-neutral-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Rechercher un modèle..."
-                  className="bg-neutral-800 pl-10 pr-3 py-2 rounded-lg outline-none text-sm"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-              {groupedCars
-                .filter((car) =>
-                  car.model.toLowerCase().includes(search.toLowerCase())
-                )
-                .map((groupedCar, index) => {
-                  const representativeCar = cars.find(c => c.model === groupedCar.model && c.color === groupedCar.colors[0]);
-                  return (
-                    <div
-                      key={index}
-                      onClick={() => {
-                        if (representativeCar) {
-                          setSelectedCar(representativeCar);
-                          setSelectedCarPriceInfo(getCarPriceInfo(representativeCar));
-                          setIsModalOpen(true);
-                        }
-                      }}
-                      className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800 hover:scale-105 hover:bg-neutral-800 cursor-pointer transition"
-                    >
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="font-semibold text-lg">{groupedCar.model}</h3>
-                        <span className="text-green-500 font-medium">
-                          {groupedCar.quantity} unités
-                        </span>
-                      </div>
-                      <p className="text-neutral-400 text-sm mb-2">
-                        Couleurs disponibles :
-                      </p>
-                      <div className="flex gap-2 flex-wrap">
-                        {groupedCar.colors.map((color, i) => (
-                          <span
-                            key={i}
-                            className="bg-neutral-800 px-3 py-1 rounded-full text-sm border border-neutral-700"
-                          >
-                            {color}
-                          </span>
-                        ))}
+              {filteredOrders.map(order => (
+                <div key={order.order_id} className="bg-neutral-900/90 p-6 rounded-2xl border border-neutral-800">
+                  {editingOrderId === order.order_id ? (
+                    <div className="space-y-4">
+                      <input
+                        type="number"
+                        placeholder="Paiement (DZD)"
+                        value={editForm.payment_amount}
+                        onChange={e => setEditForm({ ...editForm, payment_amount: e.target.value })}
+                        className="w-full bg-neutral-800 p-3 rounded-lg"
+                      />
+                      <select
+                        value={editForm.delivery_status}
+                        onChange={e => setEditForm({ ...editForm, delivery_status: e.target.value })}
+                        className="w-full bg-neutral-800 p-3 rounded-lg"
+                      >
+                        <option value="shipping">En expédition</option>
+                        <option value="arrived">Arrivé</option>
+                        <option value="showroom">Showroom</option>
+                      </select>
+                      <div className="flex gap-3">
+                        <button onClick={() => handleUpdateOrder(order.order_id)} className="flex-1 bg-blue-600 py-2 rounded-lg">Sauvegarder</button>
+                        <button onClick={() => setEditingOrderId(null)} className="flex-1 bg-neutral-700 py-2 rounded-lg">Annuler</button>
                       </div>
                     </div>
-                  );
-                })}
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-xl font-bold">{order.car_model}</h3>
+                        <div className="flex gap-2">
+                          <button onClick={() => setEditingOrderId(order.order_id)} className="text-blue-400 hover:text-blue-300">Edit</button>
+                          <button onClick={() => handleDeleteOrder(order.order_id)} className="text-red-400 hover:text-red-300">Delete</button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-neutral-400">Client: {order.client_name} {order.client_surname}</p>
+                      <p className="text-sm text-neutral-400">Tel: {order.client_phone}</p>
+                      <p className="text-sm mt-3">Statut: <span className="text-white font-medium">{getStatusText(order.delivery_status)}</span></p>
+                      <p className="text-sm">Prix: <span className="text-green-400 font-medium">{order.price_dzd?.toLocaleString() || 0} DZD</span></p>
+                      <p className="text-sm">Payé: <span className="text-blue-400 font-medium">{order.payment_amount?.toLocaleString() || 0} DZD</span></p>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Cars Tab */}
+        {activeTab === "cars" && (
+          <div>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold">Voitures Disponibles</h2>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
+                <input value={searchCars} onChange={e => setSearchCars(e.target.value)} placeholder="Rechercher modèle..." className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64" />
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-4 md:grid-cols-3 gap-6">
+              {filteredGroupedCars.map(g => {
+                const rep = getRepresentativeCar(g.model);
+                return (
+                  <div
+                    key={g.model}
+                    onClick={() => rep && (setSelectedCar(rep), setSelectedCarPriceInfo(getCarPriceInfo(rep)), setIsModalOpen(true))}
+                    className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800 hover:scale-105 cursor-pointer transition"
+                  >
+                    <h3 className="text-xl font-bold mb-2">{g.model}</h3>
+                    <p className="text-emerald-400 font-medium mb-4">{g.quantity} unité{g.quantity > 1 ? 's' : ''}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {g.colors.map(c => (
+                        <span key={c} className="bg-neutral-800 px-3 py-1 rounded-full text-xs">{c}</span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Requests Tab */}
+        {activeTab === "requests" && (
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold mb-8">Demande à l'Admin</h2>
+            {requestSent && <div className="mb-6 p-4 bg-green-600/20 border border-green-500 text-green-300 rounded-lg">Demande envoyée avec succès !</div>}
+            <div className="bg-neutral-900/80 p-8 rounded-2xl border border-neutral-800 space-y-6">
+              <input
+                value={requestModel}
+                onChange={e => setRequestModel(e.target.value)}
+                placeholder="Modèle recherché"
+                className="w-full bg-neutral-800 p-4 rounded-lg outline-none"
+              />
+              <textarea
+                value={requestDetails}
+                onChange={e => setRequestDetails(e.target.value)}
+                placeholder="Détails supplémentaires..."
+                className="w-full bg-neutral-800 p-4 rounded-lg h-32 resize-none outline-none"
+              />
+              <button onClick={handleSendRequest} className="w-full bg-emerald-600 py-4 rounded-lg font-semibold hover:bg-emerald-700 transition">
+                Envoyer la demande
+              </button>
             </div>
           </div>
         )}
 
         {/* Car Detail Modal */}
         {isModalOpen && selectedCar && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-neutral-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-neutral-700">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-2xl font-bold text-white">
-                    {selectedCar.model} <span className="text-emerald-400">({selectedCar.year})</span>
-                  </h2>
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="text-neutral-400 hover:text-white text-2xl"
-                  >
-                    &times;
-                  </button>
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-neutral-400">Couleur:</span>{" "}
-                      <span className="text-white ml-1">{selectedCar.color}</span>
-                    </div>
-                    {selectedCarPriceInfo && (
-                      <>
-                        <div>
-                          <span className="text-neutral-400">Prix ({selectedCarPriceInfo.currencyCode}):</span>{" "}
-                          <span className="text-white ml-1">
-                            {selectedCarPriceInfo.originalPrice?.toLocaleString() || 'N/A'}
-                          </span>
-                        </div>
-                        {selectedCarPriceInfo.priceInDZD !== null && (
-                          <div className="md:col-span-2 pt-2 border-t border-neutral-700">
-                            <span className="text-neutral-400">Prix en DZD:</span>{" "}
-                            <span className="text-green-400 ml-1 font-medium">
-                              {selectedCarPriceInfo.priceInDZD.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {selectedCar.engine && (
-                    <div>
-                      <span className="text-neutral-400">Moteur:</span>{" "}
-                      <span className="text-white ml-1">{selectedCar.engine}</span>
-                    </div>
-                  )}
-
-                  {selectedCar.power && (
-                    <div>
-                      <span className="text-neutral-400">Puissance:</span>{" "}
-                      <span className="text-white ml-1">{selectedCar.power}</span>
-                    </div>
-                  )}
-
-                  {selectedCar.fuel_type && (
-                    <div>
-                      <span className="text-neutral-400">Carburant:</span>{" "}
-                      <span className="text-white ml-1">{selectedCar.fuel_type}</span>
-                    </div>
-                  )}
-
-                  {selectedCar.milage !== undefined && (
-                    <div>
-                      <span className="text-neutral-400">Kilométrage:</span>{" "}
-                      <span className="text-white ml-1">{selectedCar.milage} km</span>
-                    </div>
-                  )}
-
-                  {selectedCar.country && (
-                    <div>
-                      <span className="text-neutral-400">Origine:</span>{" "}
-                      <span className="text-white ml-1">{selectedCar.country}</span>
-                    </div>
-                  )}
-
-                  {selectedCar.shipping_date && (
-                    <div>
-                      <span className="text-neutral-400">Date d'expédition:</span>{" "}
-                      <span className="text-white ml-1">{selectedCar.shipping_date}</span>
-                    </div>
-                  )}
-
-                  {selectedCar.arriving_date && (
-                    <div>
-                      <span className="text-neutral-400">Date d'arrivée:</span>{" "}
-                      <span className="text-white ml-1">{selectedCar.arriving_date}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 bg-neutral-700 rounded-lg hover:bg-neutral-600 transition"
-                  >
-                    Fermer
-                  </button>
-                </div>
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setIsModalOpen(false)}>
+            <div className="bg-neutral-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 border border-neutral-700" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-3xl font-bold">{selectedCar.model} ({selectedCar.year})</h2>
+                <button onClick={() => setIsModalOpen(false)} className="text-4xl text-neutral-400 hover:text-white">&times;</button>
+              </div>
+              <div className="space-y-4 text-lg">
+                <p><span className="text-neutral-400">Couleur:</span> {selectedCar.color}</p>
+                {selectedCarPriceInfo?.originalPrice && (
+                  <p><span className="text-neutral-400">Prix:</span> {selectedCarPriceInfo.originalPrice.toLocaleString()} {selectedCarPriceInfo.currencyCode}</p>
+                )}
+                {selectedCarPriceInfo?.priceInDZD && (
+                  <p className="text-2xl font-bold text-emerald-400">
+                    Prix en DZD: {selectedCarPriceInfo.priceInDZD.toLocaleString()} DZD
+                  </p>
+                )}
+                {selectedCar.engine && <p><span className="text-neutral-400">Moteur:</span> {selectedCar.engine}</p>}
+                {selectedCar.power && <p><span className="text-neutral-400">Puissance:</span> {selectedCar.power}</p>}
+                {selectedCar.fuel_type && <p><span className="text-neutral-400">Carburant:</span> {selectedCar.fuel_type}</p>}
+                {selectedCar.milage != null && <p><span className="text-neutral-400">Kilométrage:</span> {selectedCar.milage.toLocaleString()} km</p>}
+                {selectedCar.country && <p><span className="text-neutral-400">Origine:</span> {selectedCar.country}</p>}
+              </div>
+              <div className="mt-10 text-right">
+                <button onClick={() => setIsModalOpen(false)} className="px-8 py-3 bg-neutral-700 rounded-lg hover:bg-neutral-600 transition">
+                  Fermer
+                </button>
               </div>
             </div>
           </div>
