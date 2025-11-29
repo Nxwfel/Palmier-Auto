@@ -128,7 +128,7 @@ const Inventory = () => {
   // Format price in DZD (in millions)
   const formatPriceInMillions = (priceInDZD) => {
     if (priceInDZD == null || priceInDZD === 0) return "Prix non disponible";
-    const millions = priceInDZD / 1_000_000;
+    const millions = priceInDZD / 1_000_0;
     return `${millions.toFixed(1)} Millions DZD`;
   };
 

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 
+// ✅ FIXED: Trimmed trailing spaces
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 const Commercials = () => {
@@ -12,18 +13,27 @@ const Commercials = () => {
   const [cars, setCars] = useState([]);
   const [currencies, setCurrencies] = useState([]);
 
+  // ✅ Added `nin`
   const [newClient, setNewClient] = useState({
-    name: "", surname: "", phone: "", password: "", wilaya: "", address: ""
+    name: "", 
+    surname: "", 
+    phone: "", 
+    password: "", 
+    wilaya: "", 
+    address: "",
+    nin: ""
   });
 
-  const [newOrder, setNewOrder] = useState({
-    client_id: "", car_id: "", delivery_status: "shipping"
-  });
+  // ✅ Initialize as null (not "")
+const [newOrder, setNewOrder] = useState({
+  client_id: null,
+  car_id: null,
+  car_color: "",    // ✅ NEW
+  delivery_status: "shipping"
+});
 
-  // Separate search states
   const [searchOrders, setSearchOrders] = useState("");
   const [searchCars, setSearchCars] = useState("");
-
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -44,7 +54,6 @@ const Commercials = () => {
 
   const navigate = useNavigate();
 
-  // Currency map for fast lookup
   const currencyMap = useMemo(() => {
     const map = new Map();
     currencies.forEach(c => c.id !== undefined && map.set(c.id, c));
@@ -52,16 +61,10 @@ const Commercials = () => {
   }, [currencies]);
 
   const getCarPriceInfo = (car) => {
-    if (!car?.price || car.currency_id === undefined) {
-      return { originalPrice: null, currencyCode: "???", priceInDZD: null };
-    }
+    if (!car?.price || car.currency_id === undefined) return { originalPrice: null, currencyCode: "???", priceInDZD: null };
     const currency = currencyMap.get(car.currency_id);
     const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : null;
-    return {
-      originalPrice: car.price,
-      currencyCode: currency?.code || "???",
-      priceInDZD
-    };
+    return { originalPrice: car.price, currencyCode: currency?.code || "???", priceInDZD };
   };
 
   useEffect(() => {
@@ -137,8 +140,14 @@ const Commercials = () => {
   };
 
   const handleAddClient = async () => {
-    if (!newClient.name || !newClient.surname || !newClient.phone || !newClient.password || !newClient.wilaya || !newClient.address) {
-      alert("Veuillez remplir tous les champs !");
+    const { name, surname, phone, password, wilaya, address, nin } = newClient;
+    if (!name || !surname || !phone || !password || !wilaya || !address || !nin) {
+      alert("Veuillez remplir tous les champs (y compris le NIN) !");
+      return;
+    }
+    const parsedNIN = parseInt(nin, 10);
+    if (isNaN(parsedNIN) || parsedNIN <= 0) {
+      alert("Le NIN doit être un nombre entier positif !");
       return;
     }
     try {
@@ -148,130 +157,123 @@ const Commercials = () => {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          name: newClient.name,
-          surname: newClient.surname,
-          phone_number: newClient.phone,
-          password: newClient.password,
-          wilaya: newClient.wilaya,
-          address: newClient.address,
+          name,
+          surname,
+          nin: parsedNIN,
+          phone_number: phone,
+          password,
+          wilaya,
+          address,
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.error("API Error:", err);
-        throw new Error(err.detail || err.message || "Erreur serveur");
+        const errData = await res.json().catch(() => ({}));
+        let errMessage = "Erreur serveur inconnue";
+        if (errData.detail && Array.isArray(errData.detail)) {
+          errMessage = errData.detail.map(d => `${d.loc.join('.')}: ${d.msg}`).join('\n');
+        } else if (errData.detail) {
+          errMessage = errData.detail;
+        } else if (errData.message) {
+          errMessage = errData.message;
+        }
+        throw new Error(errMessage);
       }
-      alert("Client ajouté avec succès!");
-      setNewClient({ name: "", surname: "", phone: "", password: "", wilaya: "", address: "" });
+      alert("✅ Client ajouté avec succès !");
+      setNewClient({ name: "", surname: "", phone: "", password: "", wilaya: "", address: "", nin: "" });
       fetchClients();
     } catch (err) {
       console.error("Add Client Error:", err);
-      alert("Erreur : " + (err.message || "Inconnu"));
+      alert("❌ Erreur ajout client :\n" + err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ FIXED: Parse IDs as integers
   const handleAddOrder = async () => {
-    if (!newOrder.client_id || !newOrder.car_id) {
-      alert("Client et voiture requis");
-      return;
-    }
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/orders/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(newOrder),
-      });
-      if (!res.ok) throw new Error("Échec création commande");
-      alert("Commande ajoutée !");
-      setNewOrder({ client_id: "", car_id: "", delivery_status: "shipping" });
-      fetchOrders();
-    } catch (err) {
-      alert("Erreur ajout commande");
-    } finally {
-      setLoading(false);
-    }
+  const { client_id, car_id, car_color, delivery_status } = newOrder;
+
+  const clientId = Number(client_id);
+  const carId = Number(car_id);
+
+  if (!clientId || !carId || !car_color) {
+    alert("⚠️ Sélectionnez un client, une voiture et une couleur.");
+    return;
+  }
+
+  const payload = {
+    client_id: clientId,
+    car_id: carId,
+    car_color, // ✅ include color
+    delivery_status
   };
 
+  console.log("📤 Order payload:", payload);
+
+  try {
+    setLoading(true);
+    const token = localStorage.getItem("authToken");
+    const res = await fetch(`${API_BASE_URL}/orders/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      let errData;
+      try { errData = await res.json(); } catch { errData = { detail: await res.text() }; }
+      
+      if (Array.isArray(errData.detail)) {
+        const errors = errData.detail
+          .map(d => `${d.loc?.join('.')}: ${d.msg}`)
+          .join('\n');
+        throw new Error(`Validation échouée:\n${errors}`);
+      }
+      throw new Error(errData.detail || `HTTP ${res.status}`);
+    }
+
+    alert("✅ Commande ajoutée !");
+    setNewOrder({ client_id: null, car_id: null, car_color: "", delivery_status: "shipping" });
+    fetchOrders();
+  } catch (err) {
+    console.error("❌ Erreur commande:", err);
+    alert("❌ Erreur:\n" + (err.message || "Échec réseau"));
+  } finally {
+    setLoading(false);
+  }
+};
   const handleUpdateOrder = async (orderId) => {
-    // Build the body - only include fields that have values
-    const body = {
-      order_id: orderId
-    };
-    
-    if (editForm.payment_amount !== "") {
-      body.payment_amount = parseFloat(editForm.payment_amount);
-    }
-    
-    if (editForm.delivery_status) {
-      body.delivery_status = editForm.delivery_status;
-    }
-    
-    console.log("=== UPDATE ORDER DEBUG ===");
-    console.log("Order ID:", orderId);
-    console.log("Edit Form:", editForm);
-    console.log("Request Body:", JSON.stringify(body, null, 2));
-    console.log("API URL:", `${API_BASE_URL}/orders/`);
-    
+    const body = { order_id: orderId };
+    if (editForm.payment_amount !== "") body.payment_amount = parseFloat(editForm.payment_amount);
+    if (editForm.delivery_status) body.delivery_status = editForm.delivery_status;
+
     const token = localStorage.getItem('authToken');
-    console.log("Token exists:", !!token);
-    
     try {
       setLoading(true);
-      
       const res = await fetch(`${API_BASE_URL}/orders/`, {
         method: "PUT",
-        headers: { 
-          "Content-Type": "application/json", 
-          Authorization: `Bearer ${token}` 
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       });
-      
-      console.log("Response status:", res.status);
-      console.log("Response ok:", res.ok);
-      
       if (!res.ok) {
         const errorText = await res.text();
-        console.error("Error response text:", errorText);
         let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { message: errorText };
-        }
-        console.error("Parsed error:", errorData);
-        throw new Error(errorData.detail || errorData.message || `Erreur HTTP ${res.status}`);
+        try { errorData = JSON.parse(errorText); } catch { errorData = { message: errorText }; }
+        throw new Error(errorData.detail || errorData.message || `HTTP ${res.status}`);
       }
-      
-      const responseData = await res.json();
-      console.log("Success response:", responseData);
-      
-      alert("Mise à jour réussie");
+      alert("✅ Mise à jour réussie");
       setEditingOrderId(null);
       setEditForm({ payment_amount: "", delivery_status: "" });
       fetchOrders();
     } catch (err) {
-      console.error("=== UPDATE ORDER ERROR ===");
-      console.error("Error type:", err.name);
-      console.error("Error message:", err.message);
-      console.error("Full error:", err);
-      
+      console.error("Update Order Error:", err);
       if (err.message.includes("Failed to fetch")) {
-        alert(`❌ ERREUR CORS - Le backend bloque les requêtes depuis votre navigateur.
-
-Le backend doit ajouter le middleware CORS pour accepter les requêtes depuis http://localhost:5173
-
-Demandez au développeur backend d'ajouter:
-from fastapi.middleware.cors import CORSMiddleware
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
-Payload envoyé: ${JSON.stringify(body, null, 2)}`);
+        alert(`❌ ERREUR CORS...\nPayload: ${JSON.stringify(body)}`);
       } else {
-        alert("Erreur mise à jour: " + err.message);
+        alert("❌ Erreur mise à jour: " + err.message);
       }
     } finally {
       setLoading(false);
@@ -287,11 +289,11 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("SupDeletion échouée");
-      alert("Commande supprimée");
+      if (!res.ok) throw new Error("Suppression échouée");
+      alert("✅ Commande supprimée");
       fetchOrders();
     } catch (err) {
-      alert("Erreur suppression");
+      alert("❌ Erreur suppression");
     } finally {
       setLoading(false);
     }
@@ -315,13 +317,27 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
       setRequestModel("");
       setRequestDetails("");
       setTimeout(() => setRequestSent(false), 5000);
-      alert("Demande envoyée !");
+      alert("✅ Demande envoyée !");
     } catch (err) {
-      alert("Échec envoi demande");
+      alert("❌ Échec envoi demande");
     }
   };
+  const getAvailableColors = (carId) => {
+  if (!carId) return [];
+  const car = cars.find(c => c.id === carId);
+  if (car) return [car.color]; // single car → 1 color
 
-  // Grouped cars
+  // If grouped by model (e.g. multiple units), find all with same model
+  const model = cars.find(c => c.id === carId)?.model;
+  if (model) {
+    const colors = [...new Set(
+      cars.filter(c => c.model === model && c.quantity > 0).map(c => c.color)
+    )];
+    return colors;
+  }
+  return [];
+};
+
   const groupedCars = useMemo(() => {
     const groups = [];
     cars.forEach(car => {
@@ -347,7 +363,6 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
     showroom: "En showroom"
   }[s] || s);
 
-  // Filtered lists
   const filteredOrders = useMemo(() => {
     return orders.filter(o =>
       (o.client_name?.toLowerCase() || "").includes(searchOrders.toLowerCase()) ||
@@ -373,7 +388,6 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
               </svg>
             </button>
             <h2 className="text-2xl font-bold mb-8">Palmier Auto</h2>
-
             {[
               { id: "addClient", label: "Ajouter Client" },
               { id: "orders", label: "Commandes" },
@@ -389,7 +403,6 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
               </button>
             ))}
           </div>
-
           <button onClick={handleLogout} className="w-full p-3 bg-red-600 hover:bg-red-700 rounded-lg transition">
             Déconnexion
           </button>
@@ -427,6 +440,15 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
                     required
                   />
                 ))}
+                <input
+                  type="number"
+                  placeholder="NIN (Numéro d'Identité)"
+                  value={newClient.nin}
+                  onChange={e => setNewClient({ ...newClient, nin: e.target.value })}
+                  className="bg-neutral-800 p-4 rounded-lg outline-none"
+                  required
+                  min="1"
+                />
               </div>
               <button type="submit" disabled={loading} className="mt-8 w-full bg-emerald-600 py-4 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 transition">
                 {loading ? "Ajout en cours..." : "Ajouter Client"}
@@ -442,6 +464,7 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
                   clients.map(c => (
                     <div key={c.id} className="bg-neutral-800 p-4 rounded-lg">
                       <p className="font-medium text-lg">{c.name} {c.surname} <span className="text-emerald-400 text-sm">#{c.id}</span></p>
+                      <p className="text-sm text-neutral-400">NIN: {c.nin}</p>
                       <p className="text-sm text-neutral-400">{c.phone_number} • {c.wilaya}</p>
                     </div>
                   ))
@@ -456,24 +479,82 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
           <div className="space-y-8">
             <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
               <h2 className="text-2xl font-semibold mb-6">Nouvelle Commande</h2>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <select value={newOrder.client_id} onChange={e => setNewOrder({ ...newOrder, client_id: e.target.value })} className="bg-neutral-800 p-4 rounded-lg">
-                  <option value="">Sélectionner un client</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.name} {c.surname}</option>)}
-                </select>
-                <select value={newOrder.car_id} onChange={e => setNewOrder({ ...newOrder, car_id: e.target.value })} className="bg-neutral-800 p-4 rounded-lg">
-                  <option value="">Sélectionner une voiture</option>
-                  {cars.map(car => <option key={car.id} value={car.id}>{car.model} - {car.color}</option>)}
-                </select>
-                <select value={newOrder.delivery_status} onChange={e => setNewOrder({ ...newOrder, delivery_status: e.target.value })} className="bg-neutral-800 p-4 rounded-lg">
-                  <option value="shipping">En expédition</option>
-                  <option value="arrived">Arrivé</option>
-                  <option value="showroom">Showroom</option>
-                </select>
-                <button onClick={handleAddOrder} disabled={loading} className="bg-emerald-600 py-4 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50">
-                  Ajouter
-                </button>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+  <select 
+    value={newOrder.client_id ?? ""}
+    onChange={e => setNewOrder(prev => ({
+      ...prev,
+      client_id: e.target.value ? Number(e.target.value) : null
+    }))}
+    className="bg-neutral-800 p-4 rounded-lg"
+    required
+  >
+    <option value="">Sélectionner un client</option>
+    {clients.map(c => (
+      <option key={c.id} value={c.id}>{c.name} {c.surname}</option>
+    ))}
+  </select>
+
+  <select 
+    value={newOrder.car_id ?? ""}
+    onChange={e => {
+      const carId = e.target.value ? Number(e.target.value) : null;
+      setNewOrder(prev => ({
+        ...prev,
+        car_id: carId,
+        car_color: "" // reset color when car changes
+      }));
+    }}
+    className="bg-neutral-800 p-4 rounded-lg"
+    required
+  >
+    <option value="">Sélectionner une voiture</option>
+    {cars.filter(c => c.quantity > 0).map(car => (
+      <option key={car.id} value={car.id}>
+        {car.model} - {car.year} ({car.color})
+      </option>
+    ))}
+  </select>
+
+  {/* ✅ NEW: Color selector (only appears if car selected) */}
+  {newOrder.car_id && (
+    <select 
+      value={newOrder.car_color}
+      onChange={e => setNewOrder(prev => ({
+        ...prev,
+        car_color: e.target.value
+      }))}
+      className="bg-neutral-800 p-4 rounded-lg"
+      required
+    >
+      <option value="">Sélectionner la couleur</option>
+      {getAvailableColors(newOrder.car_id).map(color => (
+        <option key={color} value={color}>{color}</option>
+      ))}
+    </select>
+  )}
+
+  <select 
+    value={newOrder.delivery_status} 
+    onChange={e => setNewOrder(prev => ({
+      ...prev,
+      delivery_status: e.target.value
+    }))}
+    className="bg-neutral-800 p-4 rounded-lg"
+  >
+    <option value="shipping">En expédition</option>
+    <option value="arrived">Arrivé</option>
+    <option value="showroom">Showroom</option>
+  </select>
+
+  <button 
+    onClick={handleAddOrder} 
+    disabled={loading}
+    className="bg-emerald-600 py-4 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50"
+  >
+    Ajouter
+  </button>
+</div>
             </div>
 
             <div className="flex justify-between items-center mb-6">
@@ -544,10 +625,14 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
               <h2 className="text-3xl font-bold">Voitures Disponibles</h2>
               <div className="relative">
                 <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
-                <input value={searchCars} onChange={e => setSearchCars(e.target.value)} placeholder="Rechercher modèle..." className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64" />
+                <input 
+                  value={searchCars} 
+                  onChange={e => setSearchCars(e.target.value)} 
+                  placeholder="Rechercher modèle..." 
+                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64" 
+                />
               </div>
             </div>
-
             <div className="grid lg:grid-cols-4 md:grid-cols-3 gap-6">
               {filteredGroupedCars.map(g => {
                 const rep = getRepresentativeCar(g.model);
@@ -560,9 +645,7 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
                     <h3 className="text-xl font-bold mb-2">{g.model}</h3>
                     <p className="text-emerald-400 font-medium mb-4">{g.quantity} unité{g.quantity > 1 ? 's' : ''}</p>
                     <div className="flex flex-wrap gap-2">
-                      {g.colors.map(c => (
-                        <span key={c} className="bg-neutral-800 px-3 py-1 rounded-full text-xs">{c}</span>
-                      ))}
+                      {g.colors.map(c => <span key={c} className="bg-neutral-800 px-3 py-1 rounded-full text-xs">{c}</span>)}
                     </div>
                   </div>
                 );
@@ -575,7 +658,7 @@ Payload envoyé: ${JSON.stringify(body, null, 2)}`);
         {activeTab === "requests" && (
           <div className="max-w-2xl mx-auto">
             <h2 className="text-3xl font-bold mb-8">Demande à l'Admin</h2>
-            {requestSent && <div className="mb-6 p-4 bg-green-600/20 border border-green-500 text-green-300 rounded-lg">Demande envoyée avec succès !</div>}
+            {requestSent && <div className="mb-6 p-4 bg-green-600/20 border border-green-500 text-green-300 rounded-lg">✅ Demande envoyée avec succès !</div>}
             <div className="bg-neutral-900/80 p-8 rounded-2xl border border-neutral-800 space-y-6">
               <input
                 value={requestModel}

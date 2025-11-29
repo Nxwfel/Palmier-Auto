@@ -1,9 +1,11 @@
+// src/Pages/AuthPage.jsx
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, Phone, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com"; // 👈 Adjust to your backend URL
+// ✅ FIXED: Trim trailing spaces
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,56 +14,84 @@ const AuthPage = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [nin, setNin] = useState(""); // ✅ Required for signup
+  const [wilaya, setWilaya] = useState("");
+  const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
-    setError("");
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    if (!isLogin && password !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas.");
-      setLoading(false);
-      return;
+    if (!isLogin) {
+      if (password !== confirmPassword) {
+        setError("Les mots de passe ne correspondent pas.");
+        setLoading(false);
+        return;
+      }
+      if (!nin || !wilaya || !address || !fullName) {
+        setError("Tous les champs sont requis pour l'inscription.");
+        setLoading(false);
+        return;
+      }
     }
 
     try {
-      const endpoint = `${API_BASE_URL}/users/login`;
-      const payload = {
-        phone_number: phone,
-        password: password,
-      };
+      let response;
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      if (isLogin) {
+        // ✅ Login
+        response = await fetch(`${API_BASE_URL}/users/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone_number: phone, password }),
+        });
+
+      } else {
+        // ✅ Signup — split full name
+        const [name, ...surnameParts] = fullName.trim().split(" ");
+        const surname = surnameParts.join(" ") || name;
+
+        const payload = {
+          name,
+          surname,
+          nin: parseInt(nin, 10),
+          phone_number: phone,
+          password,
+          wilaya,
+          address,
+        };
+
+        response = await fetch(`${API_BASE_URL}/users/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
 
       const data = await response.json();
 
-      if (response.ok) {
-        // ✅ Login successful
-        // Save token to localStorage (or use context/AuthProvider)
-        localStorage.setItem("authToken", data.access_token); // adjust key based on actual response
-        navigate("/dashboard");
-      } else {
-        // ❌ Handle error (e.g., invalid credentials)
-        setError(data.detail || "Échec de la connexion. Vérifiez vos identifiants.");
+      if (!response.ok) {
+        const msg = data.detail || data.message || "Erreur inconnue";
+        setError(msg);
+        setLoading(false);
+        return;
       }
+
+      if (!data.access_token) {
+        setError("Token manquant dans la réponse.");
+        setLoading(false);
+        return;
+      }
+      const token = data.access_token;
+      
     } catch (err) {
-      console.error("Login error:", err);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      console.error("Auth error:", err);
+      setError("Erreur réseau. Réessayez ultérieurement.");
     } finally {
       setLoading(false);
     }
@@ -89,12 +119,12 @@ const AuthPage = () => {
             transition={{ duration: 0.4 }}
             className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent"
           >
-            {isLogin ? "Bienvenue" : "Inscrivez-vous"}
+            {isLogin ? "Connexion" : "Inscription"}
           </motion.h1>
           <p className="text-gray-400 text-sm mt-2">
             {isLogin
-              ? "Se connecter pour accéder à votre compte"
-              : "Rejoignez-nous et gérez votre showroom plus intelligemment"}
+              ? "Connectez-vous avec vos identifiants"
+              : "Créez un compte client"}
           </p>
         </div>
 
@@ -106,24 +136,63 @@ const AuthPage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {!isLogin && (
-            <div className="relative">
-              <User className="absolute left-3 top-3.5 text-gray-500 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Nom Complet"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required={!isLogin}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
-              />
-            </div>
+            <>
+              <div className="relative">
+                <User className="absolute left-3 top-3.5 text-gray-500 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Nom Complet"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                />
+              </div>
+
+              <div className="relative">
+                <User className="absolute left-3 top-3.5 text-gray-500 w-5 h-5" />
+                <input
+                  type="number"
+                  placeholder="NIN (Numéro d'Identité)"
+                  value={nin}
+                  onChange={(e) => setNin(e.target.value)}
+                  required
+                  min="1"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                />
+              </div>
+
+              <div className="relative">
+                <User className="absolute left-3 top-3.5 text-gray-500 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Wilaya"
+                  value={wilaya}
+                  onChange={(e) => setWilaya(e.target.value)}
+                  required
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                />
+              </div>
+
+              <div className="relative">
+                <User className="absolute left-3 top-3.5 text-gray-500 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Adresse"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  required
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                />
+              </div>
+            </>
           )}
 
           <div className="relative">
             <Phone className="absolute left-3 top-3.5 text-gray-500 w-5 h-5" />
             <input
               type="text"
-              placeholder="Num Tel"
+              placeholder="Numéro de téléphone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
@@ -135,7 +204,7 @@ const AuthPage = () => {
             <Lock className="absolute left-3 top-3.5 text-gray-500 w-5 h-5" />
             <input
               type={showPassword ? "text" : "password"}
-              placeholder="Mot de Passe"
+              placeholder="Mot de passe"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -146,11 +215,7 @@ const AuthPage = () => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-3.5 text-gray-500 hover:text-gray-300"
             >
-              {showPassword ? (
-                <EyeOff className="w-5 h-5" />
-              ) : (
-                <Eye className="w-5 h-5" />
-              )}
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
 
@@ -162,7 +227,7 @@ const AuthPage = () => {
                 placeholder="Confirmer le mot de passe"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                required={!isLogin}
+                required
                 className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
               />
             </div>
@@ -184,21 +249,15 @@ const AuthPage = () => {
         <div className="text-center mt-6 text-sm text-gray-400">
           {isLogin ? (
             <>
-              Vous n'avez pas de compte?{" "}
-              <button
-                onClick={toggleMode}
-                className="text-emerald-400 hover:text-emerald-300 font-medium"
-              >
-                Inscrivez-vous
+              Pas encore de compte ?{" "}
+              <button onClick={() => setIsLogin(false)} className="text-emerald-400 hover:text-emerald-300 font-medium">
+                S’inscrire
               </button>
             </>
           ) : (
             <>
-              Vous avez déjà un compte?{" "}
-              <button
-                onClick={toggleMode}
-                className="text-emerald-400 hover:text-emerald-300 font-medium"
-              >
+              Déjà inscrit ?{" "}
+              <button onClick={() => setIsLogin(true)} className="text-emerald-400 hover:text-emerald-300 font-medium">
                 Se connecter
               </button>
             </>

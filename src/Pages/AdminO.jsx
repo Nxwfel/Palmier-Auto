@@ -25,7 +25,7 @@ const Card = ({ children, className = "" }) => (
   </div>
 );
 
-// ✅ FIXED: Now supports editable supplier finances
+// ✅ FIXED: Now supports editable cars with full form
 const CommercialCarsModal = ({ 
   open, 
   onClose, 
@@ -33,8 +33,13 @@ const CommercialCarsModal = ({
   cars, 
   suppliers, 
   currencyList,
-  supplierItems  
+  supplierItems,
+  onCarUpdate,
+  onCarDelete
 }) => {
+  const [editingCarId, setEditingCarId] = useState(null);
+  const [editCarForm, setEditCarForm] = useState(null);
+
   if (!commercial) return null;
   const soldCars = cars.filter(car => car.commercial_id === commercial.id);
   
@@ -48,6 +53,82 @@ const CommercialCarsModal = ({
     return price * (currency?.exchange_rate_to_dzd || 1);
   };
 
+  const handleEditCar = (car) => {
+    setEditingCarId(car.id);
+    setEditCarForm({
+      car_id: car.id,
+      currency_id: car.currency_id || "",
+      model: car.model || "",
+      color: car.color || "",
+      year: car.year || "",
+      engine: car.engine || "",
+      power: car.power || "",
+      fuel_type: car.fuel_type || "",
+      milage: car.milage || "",
+      country: car.country || "",
+      commercial_comission: car.commercial_comission || "",
+      quantity: car.quantity || "",
+      price: car.price || "",
+      wholesale_price: car.wholesale_price || "",
+      shipping_date: car.shipping_date || "",
+      arriving_date: car.arriving_date || "",
+      images: [],
+    });
+  };
+
+  const handleEditCarChange = (e) => {
+    setEditCarForm({ ...editCarForm, [e.target.name]: e.target.value });
+  };
+
+  const handleSaveCarEdit = async () => {
+    if (!editCarForm) return;
+    
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("car_id", editCarForm.car_id);
+      formDataToSend.append("currency_id", editCarForm.currency_id || "");
+      formDataToSend.append("model", editCarForm.model || "");
+      formDataToSend.append("color", editCarForm.color || "");
+      formDataToSend.append("year", editCarForm.year || "");
+      formDataToSend.append("engine", editCarForm.engine || "");
+      formDataToSend.append("power", editCarForm.power || "");
+      formDataToSend.append("fuel_type", editCarForm.fuel_type || "");
+      formDataToSend.append("milage", editCarForm.milage || "");
+      formDataToSend.append("country", editCarForm.country || "");
+      formDataToSend.append("commercial_comission", editCarForm.commercial_comission || "");
+      formDataToSend.append("quantity", editCarForm.quantity || "");
+      formDataToSend.append("price", editCarForm.price || "");
+      formDataToSend.append("wholesale_price", editCarForm.wholesale_price || "");
+      formDataToSend.append("shipping_date", editCarForm.shipping_date || "");
+      formDataToSend.append("arriving_date", editCarForm.arriving_date || "");
+      editCarForm.images.forEach(file => {
+        formDataToSend.append("images", file);
+      });
+
+      const response = await apiFetch(`https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com/cars/`, {
+        method: "PUT",
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        alert("Car updated successfully!");
+        setEditingCarId(null);
+        setEditCarForm(null);
+        onCarUpdate?.();
+      } else {
+        alert("Failed to update car");
+      }
+    } catch (error) {
+      console.error("Edit error:", error);
+      alert("Error updating car");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCarId(null);
+    setEditCarForm(null);
+  };
+
   return (
     <AnimatePresence>
       {open && (
@@ -55,16 +136,16 @@ const CommercialCarsModal = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
         >
           <div className="absolute inset-0 bg-black/60" onClick={onClose} />
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 20, opacity: 0 }}
-            className="relative z-10 w-[95%] md:w-[80%] lg:w-[70%] p-6 bg-neutral-900 rounded-2xl border border-neutral-800 max-h-[90vh] overflow-y-auto"
+            className="relative z-10 w-full max-w-4xl bg-neutral-900 rounded-2xl border border-neutral-800 max-h-[90vh] overflow-y-auto"
           >
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 sticky top-0 bg-neutral-900/95 p-6 border-b border-neutral-800">
               <h3 className="text-2xl font-semibold">
                 Cars Sold by {commercial.name} {commercial.surname}
               </h3>
@@ -72,74 +153,147 @@ const CommercialCarsModal = ({
                 <X className="w-6 h-6" />
               </button>
             </div>
-            {soldCars.length === 0 ? (
-              <div className="text-center py-8 text-neutral-400">
-                <Car className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No cars sold yet</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {soldCars.map((car) => {
-                  // ✅ Use all supplier items (not just first)
-                  const itemsForCar = supplierItems.filter(item => item.car_id === car.id);
-                  const carCurrency = currencyList.find(c => c.id === car.currency_id);
-                  const salePriceDZD = (car.price || 0) * (carCurrency?.exchange_rate_to_dzd || 1);
 
-                  return (
-                    <div key={car.id} className="bg-neutral-800/30 rounded-xl p-4 border border-neutral-700">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h4 className="text-lg font-semibold text-emerald-400 mb-2">{car.model}</h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-neutral-400">Sale Price:</span>
-                              <span className="text-emerald-400">{salePriceDZD.toLocaleString()} DZD</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-neutral-400">Year:</span>
-                              <span>{car.year || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-neutral-400">Color:</span>
-                              <span>{car.color || 'N/A'}</span>
-                            </div>
+            <div className="p-6">
+              {soldCars.length === 0 ? (
+                <div className="text-center py-8 text-neutral-400">
+                  <Car className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No cars sold yet</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {soldCars.map((car) => {
+                    if (editingCarId === car.id && editCarForm) {
+                      // Edit Form
+                      return (
+                        <div key={car.id} className="bg-neutral-800/50 rounded-xl p-6 border border-emerald-500/30">
+                          <h4 className="text-lg font-semibold text-emerald-400 mb-4">Edit Car #{car.id}</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                            <select
+                              name="currency_id"
+                              value={editCarForm.currency_id}
+                              onChange={handleEditCarChange}
+                              className="bg-neutral-700 p-2 rounded text-sm"
+                            >
+                              <option value="">Select Currency</option>
+                              {currencyList.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name} ({c.code})
+                                </option>
+                              ))}
+                            </select>
+                            <input name="model" value={editCarForm.model} onChange={handleEditCarChange} placeholder="Model" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="color" value={editCarForm.color} onChange={handleEditCarChange} placeholder="Color" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="year" type="number" value={editCarForm.year} onChange={handleEditCarChange} placeholder="Year" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="engine" value={editCarForm.engine} onChange={handleEditCarChange} placeholder="Engine" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="power" value={editCarForm.power} onChange={handleEditCarChange} placeholder="Power" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="fuel_type" value={editCarForm.fuel_type} onChange={handleEditCarChange} placeholder="Fuel Type" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="milage" type="number" step="0.01" value={editCarForm.milage} onChange={handleEditCarChange} placeholder="Mileage" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="quantity" type="number" value={editCarForm.quantity} onChange={handleEditCarChange} placeholder="Quantity" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="country" value={editCarForm.country} onChange={handleEditCarChange} placeholder="Country" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="commercial_comission" type="number" step="0.01" value={editCarForm.commercial_comission} onChange={handleEditCarChange} placeholder="Commission" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="price" type="number" step="0.01" value={editCarForm.price} onChange={handleEditCarChange} placeholder="Price" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="wholesale_price" type="number" step="0.01" value={editCarForm.wholesale_price} onChange={handleEditCarChange} placeholder="Wholesale Price" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="shipping_date" type="date" value={editCarForm.shipping_date} onChange={handleEditCarChange} className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="arriving_date" type="date" value={editCarForm.arriving_date} onChange={handleEditCarChange} className="bg-neutral-700 p-2 rounded text-sm" />
+                          </div>
+                          <div className="mb-4">
+                            <label className="block text-xs text-neutral-400 mb-2">Add/Update Images (optional)</label>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files);
+                                setEditCarForm(prev => ({ ...prev, images: files }));
+                              }}
+                              className="w-full bg-neutral-700 text-sm p-2 rounded file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-emerald-600 file:text-white"
+                            />
+                            {editCarForm.images.length > 0 && (
+                              <p className="text-xs text-neutral-400 mt-2">{editCarForm.images.length} image(s) selected</p>
+                            )}
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button onClick={handleCancelEdit} className="px-3 py-1.5 rounded bg-neutral-700 text-sm hover:bg-neutral-600">
+                              Cancel
+                            </button>
+                            <button onClick={handleSaveCarEdit} className="px-3 py-1.5 rounded bg-emerald-600 text-sm hover:bg-emerald-700">
+                              Save Changes
+                            </button>
                           </div>
                         </div>
-                        <div>
-                          <h5 className="font-medium text-purple-400 mb-2">Supplier Costs</h5>
-                          {itemsForCar.length === 0 ? (
-                            <p className="text-neutral-500 text-sm">No supplier records</p>
-                          ) : (
+                      );
+                    }
+
+                    // Display View
+                    const itemsForCar = supplierItems.filter(item => item.car_id === car.id);
+                    const carCurrency = currencyList.find(c => c.id === car.currency_id);
+                    const salePriceDZD = (car.price || 0) * (carCurrency?.exchange_rate_to_dzd || 1);
+
+                    return (
+                      <div key={car.id} className="bg-neutral-800/30 rounded-xl p-4 border border-neutral-700">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="text-lg font-semibold text-emerald-400 mb-2">{car.model}</h4>
                             <div className="space-y-2 text-sm">
-                              {itemsForCar.map((item, i) => {
-                                const supCurr = currencyList.find(c => c.id === item.currency_id);
-                                const costDZD = (item.price || 0) * (supCurr?.exchange_rate_to_dzd || 1);
-                                const paid = item.payment_amount || 0;
-                                const remaining = costDZD - paid;
-                                return (
-                                  <div key={i} className="bg-neutral-900/30 p-2 rounded text-xs">
-                                    <div><span className="text-neutral-400">Supplier:</span> {getSupplierName(item.supplier_id)}</div>
-                                    <div><span className="text-neutral-400">Cost:</span> {(item.price || 0).toLocaleString()} {supCurr?.code.toUpperCase()} → <span className="text-purple-400">{costDZD.toLocaleString()} DZD</span></div>
-                                    <div><span className="text-neutral-400">Paid:</span> <span className="text-blue-400">{paid.toLocaleString()} DZD</span></div>
-                                    <div><span className="text-neutral-400">Remaining:</span> <span className={remaining > 0 ? 'text-red-400' : 'text-green-400'}>{remaining.toLocaleString()} DZD</span></div>
-                                  </div>
-                                );
-                              })}
+                              <div className="flex justify-between">
+                                <span className="text-neutral-400">Sale Price:</span>
+                                <span className="text-emerald-400">{salePriceDZD.toLocaleString()} DZD</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-neutral-400">Year:</span>
+                                <span>{car.year || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-neutral-400">Color:</span>
+                                <span>{car.color || 'N/A'}</span>
+                              </div>
                             </div>
-                          )}
+                          </div>
+                          <div>
+                            <h5 className="font-medium text-purple-400 mb-2">Supplier Costs</h5>
+                            {itemsForCar.length === 0 ? (
+                              <p className="text-neutral-500 text-sm">No supplier records</p>
+                            ) : (
+                              <div className="space-y-2 text-sm">
+                                {itemsForCar.map((item, i) => {
+                                  const supCurr = currencyList.find(c => c.id === item.currency_id);
+                                  const costDZD = (item.price || 0) * (supCurr?.exchange_rate_to_dzd || 1);
+                                  const paid = item.payment_amount || 0;
+                                  const remaining = costDZD - paid;
+                                  return (
+                                    <div key={i} className="bg-neutral-900/30 p-2 rounded text-xs">
+                                      <div><span className="text-neutral-400">Supplier:</span> {getSupplierName(item.supplier_id)}</div>
+                                      <div><span className="text-neutral-400">Cost:</span> {(item.price || 0).toLocaleString()} {supCurr?.code.toUpperCase()} → <span className="text-purple-400">{costDZD.toLocaleString()} DZD</span></div>
+                                      <div><span className="text-neutral-400">Paid:</span> <span className="text-blue-400">{paid.toLocaleString()} DZD</span></div>
+                                      <div><span className="text-neutral-400">Remaining:</span> <span className={remaining > 0 ? 'text-red-400' : 'text-green-400'}>{remaining.toLocaleString()} DZD</span></div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-neutral-700 flex justify-between items-center">
+                          <div className="flex flex-wrap gap-2">
+                            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">ID: {car.id}</span>
+                            <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">Country: {car.country || 'N/A'}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleEditCar(car)} className="text-emerald-400 hover:text-emerald-300 text-sm px-2 py-1 rounded bg-emerald-500/10">
+                              Edit
+                            </button>
+                            <button onClick={() => onCarDelete?.(car.id)} className="text-red-400 hover:text-red-300 text-sm px-2 py-1 rounded bg-red-500/10">
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-4 pt-4 border-t border-neutral-700">
-                        <div className="flex flex-wrap gap-2">
-                          <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">ID: {car.id}</span>
-                          <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">Country: {car.country || 'N/A'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </motion.div>
         </motion.div>
       )}
@@ -197,27 +351,47 @@ const Modal = ({ open, onClose, title, children }) => (
   </AnimatePresence>
 );
 
-// ✅ Centralized Auth-Aware Fetch
+// ✅ Centralized Auth-Aware Fetch (handles both JSON and FormData)
 const apiFetch = async (url, options = {}) => {
-  const token = localStorage.getItem("authToken");
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token && { "Authorization": `Bearer ${token}` }),
-    ...options.headers,
-  };
-  const response = await fetch(url, { ...options, headers });
-  if (response.status === 401) {
-    localStorage.removeItem("authToken");
-    window.location.href = "/adminlogin";
-    throw new Error("Unauthorized");
+  try {
+    const token = localStorage.getItem("authToken");
+    const headers = {
+      ...(token && { "Authorization": `Bearer ${token}` }),
+      ...options.headers,
+    };
+    
+    // Only set Content-Type for JSON, not for FormData (let browser handle it)
+    if (!(options.body instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
+    }
+    
+    const response = await fetch(url, { 
+      ...options, 
+      headers,
+      timeout: 30000 
+    });
+    
+    if (response.status === 401) {
+      localStorage.removeItem("authToken");
+      window.location.href = "/adminlogin";
+      throw new Error("Unauthorized");
+    }
+    return response;
+  } catch (error) {
+    console.error("API Fetch Error:", {
+      url,
+      message: error.message,
+      stack: error.stack
+    });
+    throw error;
   }
-  return response;
 };
 
 export default function AdminSuperPanel() {
   const API_BASE = 'https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com';
   const [tempPassword, setTempPassword] = useState("");
-  const [newCommercialPhone, setNewCommercialPhone] = useState("");
+  const [passwordModalType, setPasswordModalType] = useState(null); // "commercial", "marketer", "accountant"
+  const [userPhoneForPassword, setUserPhoneForPassword] = useState("");
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editingSupplierItem, setEditingSupplierItem] = useState({}); // ✅ New state for editable supplier items
   const [generatedPassword, setGeneratedPassword] = useState("");
@@ -232,6 +406,8 @@ export default function AdminSuperPanel() {
   const [cars, setCars] = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
   const [commercials, setCommercials] = useState([]);
+  const [marketers, setMarketers] = useState([]);
+  const [accountants, setAccountants] = useState([]);
   const [logs, setLogs] = useState([]);
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState([]);
@@ -250,7 +426,7 @@ export default function AdminSuperPanel() {
   const [editingCar, setEditingCar] = useState(null);
   const initialCarForm = {
     model: "", color: "", year: "", engine: "", power: "", fuelType: "", milage: "",
-    country: "", commercial_comission: "", price: "", shippingDate: "", arrivingDate: "",
+    country: "", commercial_comission: "", price: "", wholesale_price: "", shippingDate: "", arrivingDate: "",
     currency_id: "", quantity: "", imageFiles: [],
   };
   const [carForm, setCarForm] = useState(initialCarForm);
@@ -260,7 +436,34 @@ export default function AdminSuperPanel() {
   const [showAddCommercial, setShowAddCommercial] = useState(false);
   const [message, setMessage] = useState("");
   const [commercialLoading, setCommercialLoading] = useState(false);
+  
+  // ✅ Marketer & Accountant States
+  const [marketerForm, setMarketerForm] = useState({
+    name: "", surname: "", phone_number: "", address: ""
+  });
+  const [showAddMarketer, setShowAddMarketer] = useState(false);
+  const [marketerLoading, setMarketerLoading] = useState(false);
+  const [marketerMessage, setMarketerMessage] = useState("");
+  
+  const [accountantForm, setAccountantForm] = useState({
+    name: "", surname: "", phone_number: "", address: ""
+  });
+  const [showAddAccountant, setShowAddAccountant] = useState(false);
+  const [showEditAccountant, setShowEditAccountant] = useState(false);
+  const [accountantLoading, setAccountantLoading] = useState(false);
+  const [accountantMessage, setAccountantMessage] = useState("");
+  const [wholesaleClients, setWholesaleClients] = useState([]);
+  const [wholesaleOrders, setWholesaleOrders] = useState([]);
 
+  const [wholesaleClientForm, setWholesaleClientForm] = useState({
+    name: "", surname: "", phone_number: "", address: "", company_name: ""
+  });
+  const [wholesaleOrderForm, setWholesaleOrderForm] = useState({
+    client_id: "", car_id: "", quantity: 1, delivery_status: "shipping"
+  });
+
+  const [showAddWholesaleClient, setShowAddWholesaleClient] = useState(false);
+  const [showAddWholesaleOrder, setShowAddWholesaleOrder] = useState(false);
   const pushLog = (actor, action) => {
     setLogs((p) => [{ id: Date.now(), actor, action, date: new Date().toISOString() }, ...p]);
   };
@@ -351,23 +554,6 @@ export default function AdminSuperPanel() {
     fetchCaisse();
   }, []);
 
-  useEffect(() => {
-    const fetchCars = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/cars/all`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
-        const data = await response.json();
-        setCars(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Error fetching cars:", err);
-        setCars([]);
-      }
-    };
-    fetchCars();
-  }, []);
   useEffect(() => {
     const fetchCars = async () => {
       try {
@@ -476,6 +662,36 @@ export default function AdminSuperPanel() {
     fetchCommercials();
   }, []);
 
+  // ✅ Fetch Marketers
+  useEffect(() => {
+    const fetchMarketers = async () => {
+      try {
+        const response = await apiFetch(`${API_BASE}/marketers/`);
+        const data = await response.json();
+        setMarketers(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching marketers:", err);
+        setMarketers([]);
+      }
+    };
+    fetchMarketers();
+  }, []);
+
+  // ✅ Fetch Accountants
+  useEffect(() => {
+    const fetchAccountants = async () => {
+      try {
+        const response = await apiFetch(`${API_BASE}/accountants/`);
+        const data = await response.json();
+        setAccountants(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching accountants:", err);
+        setAccountants([]);
+      }
+    };
+    fetchAccountants();
+  }, []);
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -504,56 +720,6 @@ export default function AdminSuperPanel() {
     fetchClients();
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchCurrencies = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/currencies/`);
-        const data = await response.json();
-        if (!isMounted) return;
-        setCurrencyList(Array.isArray(data) ? data : []);
-        const currencyMap = {};
-        data.forEach(curr => {
-          currencyMap[curr.code] = curr.exchange_rate_to_dzd;
-        });
-        setCurrencies(currencyMap);
-        if (data.length === 0) {
-          const defaultCurrencies = [
-            { code: "dzd", name: "Algerian Dinar", rate: 1 },
-            { code: "eur", name: "Euro", rate: 145 },
-            { code: "usd", name: "US Dollar", rate: 135 },
-            { code: "cad", name: "Canadian Dollar", rate: 98 },
-            { code: "aed", name: "UAE Dirham", rate: 36.8 },
-          ];
-          for (let i = 0; i < defaultCurrencies.length; i++) {
-            if (!isMounted) break;
-            const curr = defaultCurrencies[i];
-            await fetch(`${API_BASE}/currencies/`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                code: curr.code,
-                name: curr.name,
-                exchange_rate_to_dzd: curr.rate
-              })
-            });
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-          const finalRes = await fetch(`${API_BASE}/currencies/`);
-          const finalData = await finalRes.json();
-          if (isMounted) {
-            setCurrencyList(Array.isArray(finalData) ? finalData : []);
-          }
-        }
-      } catch (err) {
-        console.error("Currency init error:", err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    fetchCurrencies();
-    return () => { isMounted = false; };
-  }, []);
   useEffect(() => {
     let isMounted = true;
     const fetchCurrencies = async () => {
@@ -612,7 +778,7 @@ export default function AdminSuperPanel() {
     try {
       const existing = currencyList.find(c => c.code.toLowerCase() === code.toLowerCase());
       if (existing) {
-        const response = await apiFetch(`${API_BASE}/currencies/`, {
+        await apiFetch(`${API_BASE}/currencies/`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -621,7 +787,7 @@ export default function AdminSuperPanel() {
           })
         });
       } else {
-        const response = await apiFetch(`${API_BASE}/currencies/`, {
+        await apiFetch(`${API_BASE}/currencies/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -630,33 +796,12 @@ export default function AdminSuperPanel() {
             exchange_rate_to_dzd: numericValue
           })
         });
-        const fresh = await fetch(`${API_BASE}/currencies/`).then(r => r.json());
-        setCurrencyList(Array.isArray(fresh) ? fresh : []);
-        const map = {};
-        fresh.forEach(c => { map[c.code] = c.exchange_rate_to_dzd; });
-        setCurrencies(map);
         const fresh = await apiFetch(`${API_BASE}/currencies/`).then(r => r.json());
         setCurrencyList(Array.isArray(fresh) ? fresh : []);
         const map = {};
         fresh.forEach(c => { map[c.code] = c.exchange_rate_to_dzd; });
         setCurrencies(map);
       }
-            } else {
-              const response = await apiFetch(`${API_BASE}/currencies/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  code: code.toLowerCase(),
-                  name: { dzd: 'Algerian Dinar', eur: 'Euro', usd: 'US Dollar', cad: 'Canadian Dollar', aed: 'UAE Dirham' }[code] || code.toUpperCase(),
-                  exchange_rate_to_dzd: numericValue
-                })
-              });
-              const fresh = await apiFetch(`${API_BASE}/currencies/`).then(r => r.json());
-              setCurrencyList(Array.isArray(fresh) ? fresh : []);
-              const map = {};
-              fresh.forEach(c => { map[c.code] = c.exchange_rate_to_dzd; });
-              setCurrencies(map);
-            }
       pushLog("Admin", `Updated ${code.toUpperCase()} exchange rate to ${numericValue} DZD`);
     } catch (err) {
       console.error("Error updating currency:", err);
@@ -696,6 +841,12 @@ export default function AdminSuperPanel() {
     }
     try {
       const formData = new FormData();
+      
+      // Add car_id first if editing
+      if (editingCar) {
+        formData.append('car_id', editingCar.id);
+      }
+      
       formData.append('model', carForm.model);
       formData.append('color', carForm.color);
       formData.append('year', parseInt(carForm.year) || new Date().getFullYear());
@@ -707,66 +858,47 @@ export default function AdminSuperPanel() {
       formData.append('country', carForm.country);
       formData.append('commercial_comission', parseFloat(carForm.commercial_comission) || 0);
       formData.append('price', parseFloat(carForm.price) || 0);
+      formData.append('wholesale_price', parseFloat(carForm.wholesale_price) || 0);
       formData.append('shipping_date', carForm.shippingDate || new Date().toISOString().split('T')[0]);
       formData.append('arriving_date', carForm.arrivingDate || new Date().toISOString().split('T')[0]);
       formData.append('currency_id', parseInt(carForm.currency_id));
+      
       if (carForm.commercial_id) {
         formData.append('commercial_id', parseInt(carForm.commercial_id));
       }
+      
       if (carForm.imageFiles && carForm.imageFiles.length > 0) {
         Array.from(carForm.imageFiles).forEach(file => {
           formData.append('images', file);
         });
       }
+      
       const url = `${API_BASE}/cars/`;
       const method = editingCar ? 'PUT' : 'POST';
-      if (editingCar) {
-        formData.append('car_id', editingCar.id);
-      }
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(url, {
+
+      // Use apiFetch with FormData: don't set Content-Type so browser can set boundary
+      const response = await apiFetch(url, {
         method,
-        headers: token ? { "Authorization": `Bearer ${token}` } : {},
         body: formData
       });
+      
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
+      
       pushLog("Admin", `${editingCar ? 'Updated' : 'Added'} car ${carForm.model}`);
       setShowAddCar(false);
+      setEditingCar(null);
       setCarForm(initialCarForm);
-      const carsResponse = await fetch(`${API_BASE}/cars/all`, {
+      
+      const carsResponse = await apiFetch(`${API_BASE}/cars/all`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       const carsData = await carsResponse.json();
       setCars(Array.isArray(carsData) ? carsData : []);
-          const url = `${API_BASE}/cars/`;
-          const method = editingCar ? 'PUT' : 'POST';
-          if (editingCar) {
-            formData.append('car_id', editingCar.id);
-          }
-          const token = localStorage.getItem("authToken");
-          const response = await apiFetch(url, {
-            method,
-            body: formData
-          });
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-          }
-          pushLog("Admin", `${editingCar ? 'Updated' : 'Added'} car ${carForm.model}`);
-          setShowAddCar(false);
-          setCarForm(initialCarForm);
-          const carsResponse = await apiFetch(`${API_BASE}/cars/all`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-          });
-          const carsData = await carsResponse.json();
-          setCars(Array.isArray(carsData) ? carsData : []);
     } catch (err) {
       console.error("Error saving car:", err);
       alert("Error saving car: " + err.message);
@@ -786,6 +918,7 @@ export default function AdminSuperPanel() {
       country: car.country || "",
       commercial_comission: car.commercial_comission || "",
       price: car.price || "",
+      wholesale_price: car.wholesale_price || "",
       shippingDate: car.shipping_date || "",
       arrivingDate: car.arriving_date || "",
       currency_id: car.currency_id || "",
@@ -796,22 +929,6 @@ export default function AdminSuperPanel() {
     pushLog("Admin", `Opened Edit modal for ${car.model} (${car.id})`);
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Supprimer cette voiture ?")) return;
-    try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(`${API_BASE}/cars/?car_id=${id}`, {
-        method: 'DELETE',
-        headers: token ? { "Authorization": `Bearer ${token}` } : {}
-      });
-      if (!response.ok) throw new Error('Failed to delete car');
-      setCars((p) => p.filter((c) => c.id !== id));
-      pushLog("Admin", `Deleted car ${id}`);
-    } catch (err) {
-      console.error("Error deleting car:", err);
-      alert("Error deleting car: " + err.message);
-    }
-  };
   const handleDelete = async (id) => {
     if (!confirm("Supprimer cette voiture ?")) return;
     try {
@@ -843,7 +960,7 @@ export default function AdminSuperPanel() {
     setCommercialLoading(true);
     setMessage("");
     setTempPassword("");
-    setNewCommercialPhone(CommercialForm.phone_number);
+    setUserPhoneForPassword(CommercialForm.phone_number);
     try {
       const isUpdate = !!CommercialForm.commercial_id;
       const url = `${API_BASE}/commercials/`;
@@ -855,15 +972,13 @@ export default function AdminSuperPanel() {
         address: CommercialForm.address,
       };
       if (isUpdate) {
-        requestBody.commercial_id = CommercialForm.commercial_id;
+        requestBody.commercial_id = String(CommercialForm.commercial_id);
+        requestBody.password = true;
       }
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(url, {
+
+      const response = await apiFetch(url, {
         method: isUpdate ? "PUT" : "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
       const responseData = await response.json();
@@ -877,51 +992,18 @@ export default function AdminSuperPanel() {
           } else if (responseData.detail?.startsWith("password:")) {
             password = responseData.detail.split("password:")[1];
           } else {
-            const pwdRes = await fetch(`${API_BASE}/commercials/random_password`, {
-              headers: { "Authorization": `Bearer ${token}` }
-            });
+            const pwdRes = await apiFetch(`${API_BASE}/commercials/random_password`);
             const pwdData = await pwdRes.json();
             password = pwdData.password || pwdData.detail || "temp123";
           }
           setTempPassword(password);
+                   setPasswordModalType("commercial");
           setShowPasswordModal(true);
         }
         setCommercialForm({ name: "", surname: "", phone_number: "", wilayas: [], address: "" });
         setShowAddCommercial(false);
-        const fresh = await fetch(`${API_BASE}/commercials/`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        }).then(r => r.json());
+        const fresh = await apiFetch(`${API_BASE}/commercials/`).then(r => r.json());
         setCommercials(Array.isArray(fresh) ? fresh : []);
-            if (isUpdate) {
-              requestBody.commercial_id = CommercialForm.commercial_id;
-            }
-            const response = await apiFetch(url, {
-              method: isUpdate ? "PUT" : "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(requestBody),
-            });
-            const responseData = await response.json();
-            if (response.ok) {
-              setMessage("Commercial saved successfully ✅");
-              if (!isUpdate) {
-                // ✅ Flexible password extraction
-                let password = "";
-                if (responseData.password) {
-                  password = responseData.password;
-                } else if (responseData.detail?.startsWith("password:")) {
-                  password = responseData.detail.split("password:")[1];
-                } else {
-                  const pwdRes = await apiFetch(`${API_BASE}/commercials/random_password`);
-                  const pwdData = await pwdRes.json();
-                  password = pwdData.password || pwdData.detail || "temp123";
-                }
-                setTempPassword(password);
-                setShowPasswordModal(true);
-              }
-              setCommercialForm({ name: "", surname: "", phone_number: "", wilayas: [], address: "" });
-              setShowAddCommercial(false);
-              const fresh = await apiFetch(`${API_BASE}/commercials/`).then(r => r.json());
-              setCommercials(Array.isArray(fresh) ? fresh : []);
       } else {
         setMessage(`❌ Error: ${responseData.detail || "Failed to save commercial"}`);
       }
@@ -930,6 +1012,204 @@ export default function AdminSuperPanel() {
       setMessage("⚠️ Network error: " + error.message);
     } finally {
       setCommercialLoading(false);
+    }
+  };
+
+  // ✅ Handle Marketer Submit
+  const handleMarketerSubmit = async (e) => {
+    e.preventDefault();
+    setMarketerLoading(true);
+    setMarketerMessage("");
+    setTempPassword("");
+    setUserPhoneForPassword(marketerForm.phone_number);
+    try {
+      const isUpdate = !!marketerForm.marketer_id;
+      const url = `${API_BASE}/marketers/`;
+      const requestBody = {
+        name: marketerForm.name,
+        surname: marketerForm.surname,
+        phone_number: marketerForm.phone_number,
+        address: marketerForm.address,
+      };
+      if (isUpdate) {
+        requestBody.marketer_id = String(marketerForm.marketer_id);
+        requestBody.password = true;
+      }
+
+      const response = await apiFetch(url, {
+        method: isUpdate ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      const responseData = await response.json();
+      if (response.ok) {
+        setMarketerMessage("Marketer saved successfully ✅");
+        if (!isUpdate) {
+          let password = "";
+          if (responseData.password) {
+            password = responseData.password;
+          } else if (responseData.detail?.startsWith("password:")) {
+            password = responseData.detail.split("password:")[1];
+          } else {
+            password = "temp123";
+          }
+          setTempPassword(password);
+          setPasswordModalType("marketer");
+          setShowPasswordModal(true);
+        }
+        setMarketerForm({ name: "", surname: "", phone_number: "", address: "" });
+        setShowAddMarketer(false);
+        const fresh = await apiFetch(`${API_BASE}/marketers/`).then(r => r.json());
+        setMarketers(Array.isArray(fresh) ? fresh : []);
+      } else {
+        setMarketerMessage(`❌ Error: ${responseData.detail || "Failed to save marketer"}`);
+      }
+    } catch (error) {
+      console.error("❌ Network error:", error);
+      setMarketerMessage("⚠️ Network error: " + error.message);
+    } finally {
+      setMarketerLoading(false);
+    }
+  };
+
+  // ✅ Handle Accountant Submit
+  const handleAccountantSubmit = async (e) => {
+    e.preventDefault();
+    setAccountantLoading(true);
+    setAccountantMessage("");
+    setTempPassword("");
+    setUserPhoneForPassword(accountantForm.phone_number);
+    try {
+      const isUpdate = !!accountantForm.accountant_id;
+      const url = `${API_BASE}/accountants/`;
+      const requestBody = {
+        name: accountantForm.name,
+        surname: accountantForm.surname,
+        phone_number: accountantForm.phone_number,
+        address: accountantForm.address,
+      };
+      if (isUpdate) {
+        requestBody.accountant_id = String(accountantForm.accountant_id);
+        requestBody.password = true;
+      }
+
+      console.log("Submitting accountant:", { method: isUpdate ? "PUT" : "POST", url, requestBody });
+
+      const response = await apiFetch(url, {
+        method: isUpdate ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      const responseData = await response.json();
+      if (response.ok) {
+        setAccountantMessage("Accountant saved successfully ✅");
+        if (!isUpdate) {
+          let password = "";
+          if (responseData.password) {
+            password = responseData.password;
+          } else if (responseData.detail?.startsWith("password:")) {
+            password = responseData.detail.split("password:")[1];
+          } else {
+            password = "temp123";
+          }
+          setTempPassword(password);
+          setPasswordModalType("accountant");
+          setShowPasswordModal(true);
+        }
+        setAccountantForm({ name: "", surname: "", phone_number: "", address: "" });
+        setShowAddAccountant(false);
+        const fresh = await apiFetch(`${API_BASE}/accountants/`).then(r => r.json());
+        setAccountants(Array.isArray(fresh) ? fresh : []);
+      } else {
+        setAccountantMessage(`❌ Error: ${responseData.detail || "Failed to save accountant"}`);
+      }
+    } catch (error) {
+      console.error("❌ Accountant Submit Error:", error);
+      setAccountantMessage("⚠️ Network error: " + (error.message || "Unknown error"));
+    } finally {
+      setAccountantLoading(false);
+    }
+  };
+    const handleAccountantEdit = async (e) => {
+    e.preventDefault();
+    setAccountantLoading(true);
+    setAccountantMessage("");
+    setTempPassword("");
+    setUserPhoneForPassword(accountantForm.phone_number);
+    try {
+      const isUpdate = !!accountantForm.accountant_id;
+      const url = `${API_BASE}/accountants/`;
+      const requestBody = {
+        name: accountantForm.name,
+        surname: accountantForm.surname,
+        phone_number: accountantForm.phone_number,
+        address: accountantForm.address,
+      };
+      if (isUpdate) {
+        requestBody.accountant_id = accountantForm.accountant_id;
+      }
+
+      const response = await apiFetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      const responseData = await response.json();
+      if (response.ok) {
+        setAccountantMessage("Accountant saved successfully ✅");
+        if (!isUpdate) {
+          let password = "";
+          if (responseData.password) {
+            password = responseData.password;
+          } else if (responseData.detail?.startsWith("password:")) {
+            password = responseData.detail.split("password:")[1];
+          } else {
+            password = "temp123";
+          }
+          setTempPassword(password);
+          setPasswordModalType("accountant");
+          setShowPasswordModal(true);
+        }
+        setAccountantForm({ name: "", surname: "", phone_number: "", address: "" });
+        setShowEditAccountant(false);
+        const fresh = await apiFetch(`${API_BASE}/accountants/`).then(r => r.json());
+        setAccountants(Array.isArray(fresh) ? fresh : []);
+      } else {
+        setAccountantMessage(`❌ Error: ${responseData.detail || "Failed to save accountant"}`);
+      }
+    } catch (error) {
+      console.error("❌ Network error:", error);
+      setAccountantMessage("⚠️ Network error: " + error.message);
+    } finally {
+      setAccountantLoading(false);
+    }
+  };
+
+  // ✅ Delete Marketer
+  const handleDeleteMarketer = async (id) => {
+    if (!window.confirm("Delete this marketer?")) return;
+    try {
+      await apiFetch(`${API_BASE}/marketers/?marketer_id=${id}`, {
+        method: 'DELETE'
+      });
+      setMarketers(marketers.filter(m => m.id !== id));
+    } catch (err) {
+      console.error("Error deleting marketer:", err);
+      alert("Error deleting marketer");
+    }
+  };
+
+  // ✅ Delete Accountant
+  const handleDeleteAccountant = async (id) => {
+    if (!window.confirm("Delete this accountant?")) return;
+    try {
+      await apiFetch(`${API_BASE}/accountants/?accountant_id=${id}`, {
+        method: 'DELETE'
+      });
+      setAccountants(accountants.filter(a => a.id !== id));
+    } catch (err) {
+      console.error("Error deleting accountant:", err);
+      alert("Error deleting accountant");
     }
   };
 
@@ -951,7 +1231,7 @@ export default function AdminSuperPanel() {
     setSupplierItems(prev => 
       prev.map(i => 
         i.supplier_item_id === item.supplier_item_id 
-          ? { ...i, price: newPrice, payment_amount: newPaid }
+          ? { ...i, price: newPrice, payment_amount: newPaid } 
           : i
       )
     );
@@ -962,12 +1242,10 @@ export default function AdminSuperPanel() {
     });
 
     try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(`${API_BASE}/suppliers_items/`, {
+      const response = await apiFetch(`${API_BASE}/suppliers_items/`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           supplier_item_id: item.supplier_item_id,
@@ -1019,13 +1297,18 @@ export default function AdminSuperPanel() {
   return (
     <div className="min-h-screen font-main bg-gradient-to-br from-neutral-950 via-black to-neutral-950 text-white flex">
       {/* Sidebar */}
-      <aside className="w-20 md:w-28 flex flex-col items-center py-6 space-y-6 border-r border-neutral-800 bg-neutral-950/70 backdrop-blur-md fixed left-0 top-0 h-full">
+      <aside className="w-20 md:w-28 flex flex-col items-center py-6 space-y-6 border-r border-neutral-800 bg-neutral-900/70 backdrop-blur-md fixed left-0 top-0 h-full">
         {[
           { id: "overview", icon: BarChart3, label: "Overview" },
           { id: "cars", icon: Car, label: "Cars" },
           { id: "fournisseurs", icon: CreditCard, label: "Fournisseurs" },
           { id: "commercials", icon: Users, label: "Commercials" },
-          { id: "currency", icon: DollarSign, label: "currency" },
+          { id: "marketers", icon: Users, label: "Marketers" },
+          { id: "accountants", icon: Users, label: "Accountants" },
+          { id: "wholesale_clients", icon: Users, label: "Wholesale Clients" },
+          { id: "wholesale_orders", icon: FilePlus, label: "Wholesale Orders" },
+          { id: "clients_orders", icon: FilePlus, label: "Clients Orders" },
+          { id: "currency", icon: DollarSign, label: "Currency" },
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
@@ -1574,97 +1857,519 @@ export default function AdminSuperPanel() {
               </Card>
             </motion.div>
           )}
+
+          {tab === "marketers" && (
+            <motion.div key="marketers" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Marketing Agents Management</h2>
+                <button onClick={() => { setMarketerForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddMarketer(true); }} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  Add Marketer +
+                </button>
+              </div>
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Name</th>
+                        <th className="py-3 px-3">Phone</th>
+                        <th className="py-3 px-3">Address</th>
+                        <th className="py-3 px-3">Created</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {marketers.map((marketer) => (
+                        <tr key={marketer.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                          <td className="py-3 px-3 font-mono text-emerald-400">{marketer.id}</td>
+                          <td className="py-3 px-3">{marketer.name} {marketer.surname}</td>
+                          <td className="py-3 px-3">{marketer.phone_number}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">{marketer.address}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">{new Date(marketer.created_at).toLocaleDateString()}</td>
+                          <td className="py-3 px-3 text-right space-x-2">
+                            <button onClick={() => { setMarketerForm({ ...marketer, marketer_id: marketer.id }); setShowAddMarketer(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
+                            <button onClick={() => handleDeleteMarketer(marketer.id)} className="text-red-400 hover:text-red-300">Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {tab === "accountants" && (
+            <motion.div key="accountants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Accountants Management</h2>
+                <button onClick={() => { setAccountantForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddAccountant(true); }} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  Add Accountant +
+                </button>
+              </div>
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Name</th>
+                        <th className="py-3 px-3">Phone</th>
+                        <th className="py-3 px-3">Address</th>
+                        <th className="py-3 px-3">Created</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {accountants.map((accountant) => (
+                        <tr key={accountant.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                          <td className="py-3 px-3 font-mono text-emerald-400">{accountant.id}</td>
+                          <td className="py-3 px-3">{accountant.name} {accountant.surname}</td>
+                          <td className="py-3 px-3">{accountant.phone_number}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">{accountant.address}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">{new Date(accountant.created_at).toLocaleDateString()}</td>
+                          <td className="py-3 px-3 text-right space-x-2">
+                            <button onClick={() => { setAccountantForm({ ...accountant, accountant_id: accountant.id }); setShowEditAccountant(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
+                            <button onClick={() => handleDeleteAccountant(accountant.id)} className="text-red-400 hover:text-red-300">Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+          {tab === "wholesale_clients" && (
+                      <motion.div key="wholesale_clients" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                        <div className="flex items-center justify-between mb-6">
+                          <h2 className="text-3xl font-semibold">Wholesale Clients</h2>
+                          <button 
+                            onClick={() => { 
+                              setWholesaleClientForm({ name: "", surname: "", phone_number: "", address: "", company_name: "" }); 
+                              setShowAddWholesaleClient(true); 
+                            }} 
+                            className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                          >
+                            Add Wholesale Client +
+                          </button>
+                        </div>
+                        <Card>
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                                  <th className="py-3 px-3">ID</th>
+                                  <th className="py-3 px-3">Name</th>
+                                  <th className="py-3 px-3">Company</th>
+                                  <th className="py-3 px-3">Phone</th>
+                                  <th className="py-3 px-3">Address</th>
+                                  <th className="py-3 px-3">Created</th>
+                                  <th className="py-3 px-3 text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {wholesaleClients.map((client, i) => (
+                                  <tr key={client.id ?? `wclient-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                                    <td className="py-3 px-3 font-mono text-emerald-400">{client.id}</td>
+                                    <td className="py-3 px-3">{client.name} {client.surname}</td>
+                                    <td className="py-3 px-3 text-sm font-medium text-purple-400">{client.company_name || '—'}</td>
+                                    <td className="py-3 px-3">{client.phone_number}</td>
+                                    <td className="py-3 px-3 text-sm text-neutral-400">{client.address}</td>
+                                    <td className="py-3 px-3 text-sm text-neutral-400">
+                                      {new Date(client.created_at).toLocaleDateString()}
+                                    </td>
+                                    <td className="py-3 px-3 text-right space-x-2">
+                                      <button 
+                                        onClick={() => { 
+                                          setWholesaleClientForm(client); 
+                                          setShowAddWholesaleClient(true); 
+                                        }} 
+                                        className="text-blue-400 hover:text-blue-300"
+                                      >
+                                        Edit
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteWholesaleClient(client.id)} 
+                                        className="text-red-400 hover:text-red-300"
+                                      >
+                                        Delete
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    )}
+          
+                    {/* ✅ NEW: Wholesale Orders Tab */}
+                    {tab === "wholesale_orders" && (
+                      <motion.div key="wholesale_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                        <div className="flex items-center justify-between mb-6">
+                          <h2 className="text-3xl font-semibold">Wholesale Orders</h2>
+                          <button 
+                            onClick={() => { 
+                              setWholesaleOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" }); 
+                              setShowAddWholesaleOrder(true); 
+                            }} 
+                            className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                          >
+                            Add Wholesale Order +
+                          </button>
+                        </div>
+                        <Card>
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                                  <th className="py-3 px-3">ID</th>
+                                  <th className="py-3 px-3">Client</th>
+                                  <th className="py-3 px-3">Car</th>
+                                  <th className="py-3 px-3">Qty</th>
+                                  <th className="py-3 px-3">Status</th>
+                                  <th className="py-3 px-3">Value (DZD)</th>
+                                  <th className="py-3 px-3">Created</th>
+                                  <th className="py-3 px-3 text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {wholesaleOrders.map((order, i) => {
+                                  const client = wholesaleClients.find(c => c.id === order.client_id) || {};
+                                  const car = cars.find(c => c.id === order.car_id) || {};
+                                  const currency = currencyList.find(c => c.id === car.currency_id);
+                                  const rate = currency?.exchange_rate_to_dzd || 1;
+                                  const value = order.quantity * (car.wholesale_price || 0) * rate;
+                                  return (
+                                    <tr key={order.id ?? `worder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                                      <td className="py-3 px-3 font-mono text-emerald-400">{order.id}</td>
+                                      <td className="py-3 px-3">
+                                        {client.name} {client.surname}
+                                        <div className="text-xs text-purple-400">{client.company_name}</div>
+                                      </td>
+                                      <td className="py-3 px-3">
+                                        {car.model || '—'} #{car.id}
+                                        <div className="text-xs text-neutral-500">{car.color} · {car.year}</div>
+                                      </td>
+                                      <td className="py-3 px-3">{order.quantity}</td>
+                                      <td className="py-3 px-3">
+                                        <span className={`px-2 py-1 rounded text-xs ${
+                                          order.delivery_status === 'showroom' ? 'bg-green-500/20 text-green-400' :
+                                          order.delivery_status === 'arrived' ? 'bg-blue-500/20 text-blue-400' :
+                                          'bg-yellow-500/20 text-yellow-400'
+                                        }`}>
+                                          {order.delivery_status}
+                                        </span>
+                                      </td>
+                                      <td className="py-3 px-3 text-purple-400">{value.toLocaleString()}</td>
+                                      <td className="py-3 px-3 text-sm text-neutral-400">
+                                        {new Date(order.created_at).toLocaleDateString()}
+                                      </td>
+                                      <td className="py-3 px-3 text-right space-x-2">
+                                        <button 
+                                          onClick={() => { 
+                                            setWholesaleOrderForm({
+                                              order_id: order.id,
+                                              client_id: order.client_id,
+                                              car_id: order.car_id,
+                                              quantity: order.quantity,
+                                              delivery_status: order.delivery_status
+                                            }); 
+                                            setShowAddWholesaleOrder(true); 
+                                          }} 
+                                          className="text-blue-400 hover:text-blue-300"
+                                        >
+                                          Edit
+                                        </button>
+                                        <button 
+                                          onClick={() => handleDeleteWholesaleOrder(order.id)} 
+                                          className="text-red-400 hover:text-red-300"
+                                        >
+                                          Delete
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    )}
+                    {tab === "clients_orders" && (
+                      <motion.div key="clients_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                        <div className="flex items-center justify-between mb-6">
+                          <h2 className="text-3xl font-semibold">Clients Orders</h2>
+                          <button
+                            onClick={() => {
+                              setOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" });
+                              setShowAddOrder(true);
+                            }}
+                            className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                          >
+                            Add Order +
+                          </button>
+                        </div>
+                        <Card>
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                                  <th className="py-3 px-3">ID</th>
+                                  <th className="py-3 px-3">Client</th>
+                                  <th className="py-3 px-3">Phone</th>
+                                  <th className="py-3 px-3">Address</th>
+                                  <th className="py-3 px-3">Car</th>
+                                  <th className="py-3 px-3">Unit Price (DZD)</th>
+                                  <th className="py-3 px-3">Qty</th>
+                                  <th className="py-3 px-3">Total (DZD)</th>
+                                  <th className="py-3 px-3">Paid (DZD)</th>
+                                  <th className="py-3 px-3">Delivery</th>
+                                  <th className="py-3 px-3">Created</th>
+                                  <th className="py-3 px-3 text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {orders.map((order, i) => {
+                                  const client = clients.find(c => c.id === order.client_id) || {};
+                                  const car = cars.find(c => c.id === order.car_id) || {};
+                                  const currency = currencyList.find(c => c.id === car.currency_id);
+                                  const rate = currency?.exchange_rate_to_dzd || 1;
+                                  const unitPrice = car.price ? (car.price * rate) : (order.price_dzd || 0);
+                                  const totalValue = (order.quantity || 0) * unitPrice;
+                                  const paid = order.payment_amount || 0;
+                                  return (
+                                    <tr key={(order.id || order.order_id) ?? `corder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                                      <td className="py-3 px-3 font-mono text-emerald-400">{order.id || order.order_id}</td>
+                                      <td className="py-3 px-3">
+                                        {client.name} {client.surname}
+                                        <div className="text-xs text-neutral-400">{client.company_name || ''}</div>
+                                      </td>
+                                      <td className="py-3 px-3 text-sm text-neutral-400">{client.phone_number || order.client_phone || '—'}</td>
+                                      <td className="py-3 px-3 text-xs text-neutral-400">{client.address || '—'}</td>
+                                      <td className="py-3 px-3">
+                                        {car.model || '—'} #{car.id || order.car_id}
+                                        <div className="text-xs text-neutral-500">{car.color} · {car.year}</div>
+                                      </td>
+                                      <td className="py-3 px-3 text-purple-400">{Number(unitPrice || 0).toLocaleString()}</td>
+                                      <td className="py-3 px-3">{order.quantity}</td>
+                                      <td className="py-3 px-3 text-purple-400">{Number(totalValue || 0).toLocaleString()}</td>
+                                      <td className="py-3 px-3 text-blue-400">{Number(paid).toLocaleString()}</td>
+                                      <td className="py-3 px-3">
+                                        <span className={`px-2 py-1 rounded text-xs ${
+                                          order.delivery_status === 'showroom' ? 'bg-green-500/20 text-green-400' :
+                                          order.delivery_status === 'arrived' ? 'bg-blue-500/20 text-blue-400' :
+                                          'bg-yellow-500/20 text-yellow-400'
+                                        }`}>
+                                          {order.delivery_status}
+                                        </span>
+                                      </td>
+                                      <td className="py-3 px-3 text-sm text-neutral-400">
+                                        {order.created_at ? new Date(order.created_at).toLocaleString() : '—'}
+                                      </td>
+                                      <td className="py-3 px-3 text-right space-x-2">
+                                        <button
+                                          onClick={() => {
+                                            setOrderForm({
+                                              order_id: order.id || order.order_id,
+                                              client_id: order.client_id,
+                                              car_id: order.car_id,
+                                              quantity: order.quantity,
+                                              delivery_status: order.delivery_status,
+                                            });
+                                            setShowAddOrder(true);
+                                          }}
+                                          className="text-blue-400 hover:text-blue-300"
+                                        >
+                                          Edit
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteOrder(order.id || order.order_id)}
+                                          className="text-red-400 hover:text-red-300"
+                                        >
+                                          Delete
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    )}
+          
         </AnimatePresence>
 
         {/* Modals */}
-        <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
-          <form onSubmit={handleSubmitCar} className="space-y-4">
-            {/* ... (car form unchanged — omit for brevity) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Modèle" className="bg-neutral-800 p-2 rounded" required />
-              <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Couleur" className="bg-neutral-800 p-2 rounded" />
-              <input type="number" value={carForm.year} onChange={(e) => setCarForm({ ...carForm, year: e.target.value })} placeholder="Année" className="bg-neutral-800 p-2 rounded" />
-              <input value={carForm.engine} onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })} placeholder="Moteur" className="bg-neutral-800 p-2 rounded" />
-              <input value={carForm.power} onChange={(e) => setCarForm({ ...carForm, power: e.target.value })} placeholder="Puissance" className="bg-neutral-800 p-2 rounded" />
-              <input value={carForm.fuelType} onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })} placeholder="Type de carburant" className="bg-neutral-800 p-2 rounded" />
-              <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Kilometrage" className="bg-neutral-800 p-2 rounded" />
-              <input type="text" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Prix" className="bg-neutral-800 p-2 rounded" />
-              <input type="text" value={carForm.commercial_comission} onChange={(e) => setCarForm({ ...carForm, commercial_comission: e.target.value })} placeholder="Commission %" className="bg-neutral-800 p-2 rounded" />
-              <input type="text" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="quantité" className="bg-neutral-800 p-2 rounded" />
-              <select value={carForm.currency_id} onChange={(e) => setCarForm({ ...carForm, currency_id: e.target.value })} className="bg-neutral-800 p-2 rounded" required>
-                <option value="">Selectionnez un devise</option>
-                {currencyList.map(curr => (
-                  <option key={curr.id} value={curr.id}>{curr.name} ({curr.code.toUpperCase()})</option>
-                ))}
-              </select>
-              <label className="flex flex-col gap-[.3vh]">Date d'achat
-                <input type="date" value={carForm.shippingDate} onChange={(e) => setCarForm({ ...carForm, shippingDate: e.target.value })} className="bg-neutral-800 p-2 rounded" />
-              </label>
-              <label className="flex flex-col gap-[.3vh]">Date d'arrivée
-                <input type="date" value={carForm.arrivingDate} onChange={(e) => setCarForm({ ...carForm, arrivingDate: e.target.value })} className="bg-neutral-800 p-2 rounded" />
-              </label>
-            </div>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer bg-neutral-800 px-3 py-2 rounded">
-                <input type="file" accept="image/*" multiple onChange={(e) => setCarForm({ ...carForm, imageFiles: e.target.files })} className="hidden" />
-                Upload Images
-              </label>
-              {carForm.imageFiles && carForm.imageFiles.length > 0 && (
-                <span className="text-sm text-neutral-400">{carForm.imageFiles.length} fichier(s) selectionnée</span>
-              )}
-            </div>
-            <div className="flex justify-end gap-3 z-30 cursor-pointer">
-              <button type="button" onClick={() => setShowAddCar(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400">
-                {editingCar ? 'Update Car' : 'Save Car'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+      <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
+        <form onSubmit={handleSubmitCar} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <select value={carForm.currency_id} onChange={(e) => setCarForm({ ...carForm, currency_id: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required>
+              <option value="">Select Currency</option>
+              {currencyList.map(curr => (
+                <option key={curr.id} value={curr.id}>{curr.name} ({curr.code.toUpperCase()})</option>
+              ))}
+            </select>
+            <input autoFocus value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Model" className="bg-neutral-800 p-2 rounded text-sm" required />
+            <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Color" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input type="number" value={carForm.year} onChange={(e) => setCarForm({ ...carForm, year: e.target.value })} placeholder="Year" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input value={carForm.engine} onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })} placeholder="Engine" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input value={carForm.power} onChange={(e) => setCarForm({ ...carForm, power: e.target.value })} placeholder="Power" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input value={carForm.fuelType} onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })} placeholder="Fuel Type" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Mileage" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input value={carForm.country} onChange={(e) => setCarForm({ ...carForm, country: e.target.value })} placeholder="Country" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input type="number" step="0.01" value={carForm.commercial_comission} onChange={(e) => setCarForm({ ...carForm, commercial_comission: e.target.value })} placeholder="Commission" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input type="number" step="0.01" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Price" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input type="number" step="0.01" value={carForm.wholesale_price} onChange={(e) => setCarForm({ ...carForm, wholesale_price: e.target.value })} placeholder="Wholesale Price" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input type="number" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="Quantity" className="bg-neutral-800 p-2 rounded text-sm" />
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-neutral-400">Purchase Date</span>
+              <input type="date" value={carForm.shippingDate} onChange={(e) => setCarForm({ ...carForm, shippingDate: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-neutral-400">Arrival Date</span>
+              <input type="date" value={carForm.arrivingDate} onChange={(e) => setCarForm({ ...carForm, arrivingDate: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" />
+            </label>
+          </div>
+          <div className="mb-4">
+            <label className="flex items-center gap-2 cursor-pointer bg-neutral-800 px-3 py-2 rounded text-sm">
+              <input 
+                type="file" 
+                accept="image/*" 
+                multiple 
+                onChange={(e) => setCarForm({ ...carForm, imageFiles: Array.from(e.target.files) })} 
+                className="hidden" 
+              />
+              📸 Upload Images
+            </label>
+            {carForm.imageFiles && carForm.imageFiles.length > 0 && (
+              <p className="text-xs text-neutral-400 mt-2">{carForm.imageFiles.length} file(s) selected</p>
+            )}
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setShowAddCar(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Cancel</button>
+            <button type="submit" className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm">
+              {editingCar ? '✏️ Update Car' : '➕ Save Car'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
-        <Modal open={showAddCommercial} onClose={() => setShowAddCommercial(false)} title="Add Commercial">
+        <Modal open={showAddCommercial} onClose={() => setShowAddCommercial(false)} title={CommercialForm.commercial_id ? "Edit Commercial" : "Add Commercial"}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" name="name" placeholder="Name" value={CommercialForm.name} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" name="surname" placeholder="Surname" value={CommercialForm.surname} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" name="phone_number" placeholder="Phone Number" value={CommercialForm.phone_number} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
-              {/* ✅ Wilayas as comma-separated input */}
-              <input 
-                type="text" 
-                name="wilayas" 
-                placeholder="Wilayas (e.g. Algiers, Oran)" 
-                value={CommercialForm.wilayas.join(', ')} 
-                onChange={handleChange} 
-                className="bg-neutral-800 p-2 rounded" 
-                required 
-              />
-              <input type="text" name="address" placeholder="Address" value={CommercialForm.address} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
+              <input type="text" name="name" placeholder="Name" value={CommercialForm.name} onChange={handleChange} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" name="surname" placeholder="Surname" value={CommercialForm.surname} onChange={handleChange} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" name="phone_number" placeholder="Phone Number" value={CommercialForm.phone_number} onChange={handleChange} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" name="address" placeholder="Address" value={CommercialForm.address} onChange={handleChange} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <label className="md:col-span-2 flex flex-col gap-1">
+                <span className="text-xs text-neutral-400">Wilayas (comma-separated)</span>
+                <input 
+                  type="text" 
+                  name="wilayas" 
+                  placeholder="e.g. Algiers, Oran" 
+                  value={CommercialForm.wilayas.join(', ')} 
+                  onChange={handleChange} 
+                  className="bg-neutral-800 p-2 rounded text-sm" 
+                  required 
+                />
+              </label>
             </div>
             {message && <p className={`text-sm ${message.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{message}</p>}
             <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setShowAddCommercial(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" disabled={commercialLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
-                {commercialLoading ? 'Saving...' : CommercialForm.commercial_id ? 'Update Commercial' : 'Add Commercial'}
+              <button type="button" onClick={() => setShowAddCommercial(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Cancel</button>
+              <button type="submit" disabled={commercialLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm">
+                {commercialLoading ? '⏳ Saving...' : CommercialForm.commercial_id ? '✏️ Update Commercial' : '➕ Add Commercial'}
               </button>
             </div>
           </form>
         </Modal>
 
-        {/* Temporary Password Modal (unchanged, just cleanup) */}
+        {/* Marketer Modal */}
+        <Modal open={showAddMarketer} onClose={() => setShowAddMarketer(false)} title={marketerForm.marketer_id ? "Edit Marketer" : "Add Marketer"}>
+          <form onSubmit={handleMarketerSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input type="text" placeholder="Name" value={marketerForm.name} onChange={(e) => setMarketerForm({ ...marketerForm, name: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" placeholder="Surname" value={marketerForm.surname} onChange={(e) => setMarketerForm({ ...marketerForm, surname: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" placeholder="Phone Number" value={marketerForm.phone_number} onChange={(e) => setMarketerForm({ ...marketerForm, phone_number: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" placeholder="Address" value={marketerForm.address} onChange={(e) => setMarketerForm({ ...marketerForm, address: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+            </div>
+            {marketerMessage && <p className={`text-sm ${marketerMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{marketerMessage}</p>}
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowAddMarketer(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Cancel</button>
+              <button type="submit" disabled={marketerLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm">
+                {marketerLoading ? '⏳ Saving...' : marketerForm.marketer_id ? '✏️ Update Marketer' : '➕ Add Marketer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Accountant Modal */}
+        <Modal open={showAddAccountant} onClose={() => setShowAddAccountant(false)} title={accountantForm.accountant_id ? "Edit Accountant" : "Add Accountant"}>
+          <form onSubmit={handleAccountantSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input type="text" placeholder="Name" value={accountantForm.name} onChange={(e) => setAccountantForm({ ...accountantForm, name: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" placeholder="Surname" value={accountantForm.surname} onChange={(e) => setAccountantForm({ ...accountantForm, surname: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" placeholder="Phone Number" value={accountantForm.phone_number} onChange={(e) => setAccountantForm({ ...accountantForm, phone_number: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" placeholder="Address" value={accountantForm.address} onChange={(e) => setAccountantForm({ ...accountantForm, address: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+            </div>
+            {accountantMessage && <p className={`text-sm ${accountantMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{accountantMessage}</p>}
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowAddAccountant(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Cancel</button>
+              <button type="submit" disabled={accountantLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm">
+                {accountantLoading ? '⏳ Saving...' : accountantForm.accountant_id ? '✏️ Update Accountant' : '➕ Add Accountant'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        <Modal open={showEditAccountant} onClose={() => setShowEditAccountant(false)} title={accountantForm.accountant_id ? "Edit Accountant" : "Add Accountant"}>
+          <form onSubmit={handleAccountantSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input type="text" placeholder="Name" value={accountantForm.name} onChange={(e) => setAccountantForm({ ...accountantForm, name: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" placeholder="Surname" value={accountantForm.surname} onChange={(e) => setAccountantForm({ ...accountantForm, surname: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" placeholder="Phone Number" value={accountantForm.phone_number} onChange={(e) => setAccountantForm({ ...accountantForm, phone_number: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" placeholder="Address" value={accountantForm.address} onChange={(e) => setAccountantForm({ ...accountantForm, address: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required />
+            </div>
+            {accountantMessage && <p className={`text-sm ${accountantMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{accountantMessage}</p>}
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowEditAccountant(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Cancel</button>
+              <button type="submit" disabled={accountantLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm">
+                {accountantLoading ? '⏳ Saving...' : accountantForm.accountant_id ? '✏️ Update Accountant' : '➕ Add Accountant'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Dynamic Password Modal */}
         {showPasswordModal && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
             <div className="bg-neutral-800 rounded-2xl w-full max-w-md border border-neutral-700">
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl font-bold text-white">Identifiants du Commercial</h2>
+                  <h2 className="text-xl font-bold text-white">
+                    {passwordModalType === "commercial" && "Identifiants du Commercial"}
+                    {passwordModalType === "marketer" && "Identifiants du Marketer"}
+                    {passwordModalType === "accountant" && "Identifiants du Accountant"}
+                  </h2>
                   <button onClick={() => setShowPasswordModal(false)} className="text-neutral-400 hover:text-white text-2xl">&times;</button>
                 </div>
-                <p className="text-neutral-300 text-sm mb-4">Le commercial peut se connecter avec ces identifiants :</p>
+                <p className="text-neutral-300 text-sm mb-4">
+                  {passwordModalType === "commercial" && "Le commercial peut se connecter avec ces identifiants :"}
+                  {passwordModalType === "marketer" && "Le marketer peut se connecter avec ces identifiants :"}
+                  {passwordModalType === "accountant" && "L'accountant peut se connecter avec ces identifiants :"}
+                </p>
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs text-neutral-400">Téléphone</label>
                     <code className="block mt-1 bg-neutral-900 px-3 py-2.5 rounded font-mono text-emerald-400">
-                      {newCommercialPhone}
+                      {userPhoneForPassword}
                     </code>
                   </div>
                   <div>
@@ -1702,23 +2407,25 @@ export default function AdminSuperPanel() {
         <Modal
           open={showAddFournisseur}
           onClose={() => setShowAddFournisseur(false)}
-          title={fournisseurForm.id ? "Modifier Fournisseur" : "Ajouter Fournisseur"}
+          title={fournisseurForm.id ? "Edit Supplier" : "Add Supplier"}
         >
           <form onSubmit={handleAddFournisseur} className="space-y-4">
-            <input type="text" name="name" placeholder="Nom du fournisseur" value={fournisseurForm.name} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" required />
-            <input type="text" name="surname" placeholder="Surname" value={fournisseurForm.surname} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" />
-            <input type="text" name="phone_number" placeholder="Téléphone" value={fournisseurForm.phone_number} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" />
-            <input type="text" name="address" placeholder="Adresse" value={fournisseurForm.address} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input type="text" name="name" placeholder="Supplier Name" value={fournisseurForm.name} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="text" name="surname" placeholder="Surname" value={fournisseurForm.surname} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 rounded text-sm" />
+              <input type="text" name="phone_number" placeholder="Phone Number" value={fournisseurForm.phone_number} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 rounded text-sm" />
+              <input type="text" name="address" placeholder="Address" value={fournisseurForm.address} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 rounded text-sm" />
+            </div>
             <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setShowAddFournisseur(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg">
-                {fournisseurForm.id ? "Modifier" : "Ajouter"}
+              <button type="button" onClick={() => setShowAddFournisseur(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Cancel</button>
+              <button type="submit" className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white text-sm">
+                {fournisseurForm.id ? '✏️ Update Supplier' : '➕ Add Supplier'}
               </button>
             </div>
           </form>
         </Modal>
 
-        {/* ✅ Pass supplierItems */}
+        {/* ✅ Pass supplierItems + callbacks for edit/delete */}
         <CommercialCarsModal
           open={showCommercialCars}
           onClose={() => setShowCommercialCars(false)}
@@ -1727,6 +2434,55 @@ export default function AdminSuperPanel() {
           suppliers={fournisseurs}
           currencyList={currencyList}
           supplierItems={supplierItems}
+          onCarUpdate={() => {
+            const fetchCars = async () => {
+              try {
+                const response = await apiFetch(`${API_BASE}/cars/all`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({})
+                });
+                const data = await response.json();
+                setCars(Array.isArray(data) ? data : []);
+              } catch (err) {
+                console.error("Error fetching cars:", err);
+              }
+            };
+            fetchCars();
+          }}
+          onCarDelete={(carId) => {
+            const handleDelete = async (id) => {
+              if (!window.confirm("Are you sure you want to delete this car?")) return;
+              try {
+                const response = await apiFetch(`${API_BASE}/cars/?car_id=${id}`, {
+                  method: "DELETE",
+                });
+                if (response.ok) {
+                  alert("Car deleted successfully!");
+                  const fetchCars = async () => {
+                    try {
+                      const response = await apiFetch(`${API_BASE}/cars/all`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({})
+                      });
+                      const data = await response.json();
+                      setCars(Array.isArray(data) ? data : []);
+                    } catch (err) {
+                      console.error("Error fetching cars:", err);
+                    }
+                  };
+                  fetchCars();
+                } else {
+                  alert("Failed to delete car");
+                }
+              } catch (error) {
+                console.error("Delete error:", error);
+                alert("Error deleting car");
+              }
+            };
+            handleDelete(carId);
+          }}
         />
       </main>
     </div>

@@ -1041,15 +1041,18 @@ export default function AdminSuperPanel() {
   return (
     <div className="min-h-screen font-main bg-gradient-to-br from-neutral-950 via-black to-neutral-950 text-white flex">
       {/* Sidebar */}
-      <aside className="w-20 md:w-28 flex flex-col items-center py-6 space-y-6 border-r border-neutral-800 bg-neutral-950/70 backdrop-blur-md fixed left-0 top-0 h-full">
+      <aside className="w-20 md:w-28 flex flex-col items-center py-6 space-y-6 border-r border-neutral-800 bg-neutral-900/70 backdrop-blur-md fixed left-0 top-0 h-full">
         {[
           { id: "overview", icon: BarChart3, label: "Overview" },
           { id: "cars", icon: Car, label: "Cars" },
           { id: "fournisseurs", icon: CreditCard, label: "Fournisseurs" },
           { id: "commercials", icon: Users, label: "Commercials" },
-          { id: "currency", icon: DollarSign, label: "currency" },
-                 { id: "marketers", icon: Users, label: "Marketers" },
-                 { id: "accountants", icon: Users, label: "Accountants" },
+          { id: "marketers", icon: Users, label: "Marketers" },
+          { id: "accountants", icon: Users, label: "Accountants" },
+          { id: "wholesale_clients", icon: Users, label: "Wholesale Clients" },
+          { id: "wholesale_orders", icon: FilePlus, label: "Wholesale Orders" },
+          { id: "clients_orders", icon: FilePlus, label: "Clients Orders" },
+          { id: "currency", icon: DollarSign, label: "Currency" },
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
@@ -1089,13 +1092,19 @@ export default function AdminSuperPanel() {
                 <Stat label="Total Clients" value={clients.length} icon={Users} />
                 <Stat label="Total Orders" value={orders.length} icon={FilePlus} />
                 <Stat label="Total Suppliers" value={fournisseurs.length} icon={Users} />
+                <Stat label="Wholesale Orders" value={wholesaleOrders.length} icon={FilePlus} />
+                <Stat 
+                  label="Wholesale Value" 
+                  value={`${getTotalWholesaleValue().toLocaleString()} DZD`} 
+                  icon={DollarSign} 
+                />
               </div>
               <div className="grid md:grid-cols-3 gap-6">
                 <Card className="md:col-span-2">
                   <h3 className="text-lg font-semibold mb-4">Recent Cars</h3>
                   <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {cars.slice(0, 6).map((c) => (
-                      <div key={c.id} className="flex items-center gap-4 p-3 bg-neutral-900/40 rounded-lg border border-neutral-800">
+                    {cars.slice(0, 6).map((c, i) => (
+                      <div key={c.id ?? `recent-${i}`} className="flex items-center gap-4 p-3 bg-neutral-900/40 rounded-lg border border-neutral-800">
                         <div className="w-20 h-12 bg-neutral-800 rounded overflow-hidden flex items-center justify-center">
                           <Car className="w-8 h-8 text-neutral-600" />
                         </div>
@@ -1107,7 +1116,7 @@ export default function AdminSuperPanel() {
                             </div>
                             <div className="text-right">
                               <div className="text-sm text-neutral-400">{c.country}</div>
-                              <div className="text-sm text-emerald-400">{c.price?.toLocaleString()} DZD</div>
+                              <div className="text-sm text-emerald-400">{(c.price || 0).toLocaleString()} DZD</div>
                             </div>
                           </div>
                         </div>
@@ -1120,7 +1129,7 @@ export default function AdminSuperPanel() {
                   <div className="flex flex-col gap-3">
                     <button onClick={() => handleOpenAdd("Admin")} className="w-full p-3 rounded-lg text-left bg-emerald-500/10 hover:bg-emerald-500/20 transition">Add Car</button>
                     <button onClick={() => setTab("commercials")} className="w-full p-3 rounded-lg text-left bg-blue-500/10 hover:bg-blue-500/20 transition">Manage Commercials</button>
-                    <button onClick={() => setTab("fournisseurs")} className="w-full p-3 rounded-lg text-left bg-purple-500/10 hover:bg-purple-500/20 transition">Manage Suppliers</button>
+                    <button onClick={() => setTab("wholesale_clients")} className="w-full p-3 rounded-lg text-left bg-purple-500/10 hover:bg-purple-500/20 transition">Wholesale Clients</button>
                   </div>
                 </Card>
               </div>
@@ -1138,7 +1147,6 @@ export default function AdminSuperPanel() {
                   { code: 'cad', name: 'Canadian Dollar', symbol: 'CAD' },
                   { code: 'aed', name: 'UAE Dirham', symbol: 'AED' },
                 ].map((curr) => {
-                  const existing = currencyList.find(c => c.code.toLowerCase() === curr.code);
                   const currentRate = currencies[curr.code] !== undefined
                     ? currencies[curr.code]
                     : (curr.code === 'dzd' ? 1 : 0);
@@ -1156,11 +1164,6 @@ export default function AdminSuperPanel() {
                       <span className="text-neutral-400 text-sm">
                         1 {curr.symbol} = {currentRate} DZD
                       </span>
-                      {existing && (
-                        <span className="text-neutral-500 text-xs">
-                          Last updated: {new Date(existing.updated_at).toLocaleDateString()}
-                        </span>
-                      )}
                     </div>
                   );
                 })}
@@ -1173,8 +1176,18 @@ export default function AdminSuperPanel() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-semibold">Cars Management</h2>
                 <div className="flex items-center gap-3">
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search car..." className="bg-neutral-800 px-3 py-2 rounded-lg text-sm" />
-                  <button onClick={() => handleOpenAdd("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">Add Car</button>
+                  <input 
+                    value={search} 
+                    onChange={(e) => setSearch(e.target.value)} 
+                    placeholder="Search car..." 
+                    className="bg-neutral-800 px-3 py-2 rounded-lg text-sm" 
+                  />
+                  <button 
+                    onClick={() => handleOpenAdd("Admin")} 
+                    className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                  >
+                    Add Car
+                  </button>
                 </div>
               </div>
               <Card>
@@ -1186,8 +1199,9 @@ export default function AdminSuperPanel() {
                         <th className="py-3 px-3">Modéle</th>
                         <th className="py-3 px-3">Couleur</th>
                         <th className="py-3 px-3">Année</th>
-                        <th className="py-3 px-3">Price</th>
-                        <th className="py-3 px-3">Quantity</th>
+                        <th className="py-3 px-3">Prix (DZD)</th>
+                        <th className="py-3 px-3">Prix Gros (DZD)</th>
+                        <th className="py-3 px-3">Qtt</th>
                         <th className="py-3 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -1197,17 +1211,19 @@ export default function AdminSuperPanel() {
                           <td colSpan="8" className="py-4 text-center text-neutral-500">No cars found</td>
                         </tr>
                       ) : (
-                        filteredCars.map((car) => {
-                          const commercial = commercials.find(c => c.id === car.commercial_id);
+                        filteredCars.map((car, i) => {
+                          const currency = currencyList.find(c => c.id === car.currency_id);
+                          const rate = currency?.exchange_rate_to_dzd || 1;
+                          const priceDZD = (car.price || 0) * rate;
+                          const wholesaleDZD = (car.wholesale_price || 0) * rate;
                           return (
-                            <tr key={car.id} className="border-b border-neutral-800/40 hover:bg-white/5">
+                            <tr key={car.id ?? `car-${i}`} className="border-b border-neutral-800/40 hover:bg-white/5">
                               <td className="py-3 px-3 font-mono text-emerald-400">{car.id}</td>
                               <td className="py-3 px-3">{car.model}</td>
                               <td className="py-3 px-3">{car.color || '—'}</td>
                               <td className="py-3 px-3">{car.year || '—'}</td>
-                              <td className="py-3 px-3">
-                                {(car.price || 0).toLocaleString()} {currencyList.find(c => c.id === car.currency_id)?.code.toUpperCase() || 'DZD'}
-                              </td>
+                              <td className="py-3 px-3 text-emerald-400">{priceDZD.toLocaleString()}</td>
+                              <td className="py-3 px-3 text-purple-400">{wholesaleDZD.toLocaleString()}</td>
                               <td className="py-3 px-3">{car.quantity || 1}</td>
                               <td className="py-3 px-3 text-right">
                                 <button onClick={() => handleEdit(car)} className="text-blue-400 mr-2">
@@ -1228,66 +1244,48 @@ export default function AdminSuperPanel() {
             </motion.div>
           )}
 
-          {/* ✅ MAIN MODIFICATION: Fournisseurs Tab with Editable Payments & Prices */}
           {tab === "fournisseurs" && (
             <motion.div key="fournisseurs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-semibold">Fournisseurs & Finance</h2>
+                <button
+                  onClick={() => setShowAddFournisseur(true)}
+                  className="px-4 py-2 rounded-xl bg-purple-600/20 text-purple-400"
+                >
+                  Ajouter Fournisseur +
+                </button>
               </div>
               <div className="grid md:grid-cols-2 gap-6">
                 <Card>
                   <h3 className="text-lg font-semibold mb-4">Suppliers</h3>
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-2xl font-semibold">Fournisseurs</h2>
-                      <button
-                        onClick={() => setShowAddFournisseur(true)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
-                      >
-                        Ajouter Fournisseur
-                      </button>
-                    </div>
-                    {loadingFournisseurs ? (
-                      <p className="text-gray-400">Chargement des fournisseurs...</p>
-                    ) : fournisseurs.length === 0 ? (
-                      <p className="text-gray-400">Aucun fournisseur trouvé.</p>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {fournisseurs.map((f) => (
-                          <div
-                            key={f.id}
-                            className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-purple-500 transition"
-                          >
-                            <h3 className="text-lg font-semibold text-purple-400">
-                              {f.name || "Nom inconnu"}
-                            </h3>
-                            <p className="text-sm text-gray-400">Surname : {f.surname || "—"}</p>
-                            <p className="text-sm text-gray-400">Téléphone : {f.phone_number || "—"}</p>
-                            <p className="text-sm text-gray-400">Adresse : {f.address || "—"}</p>
-                            <div className="flex justify-end mt-3 space-x-2">
-                              <button
-                                onClick={() => handleEditFournisseur(f)}
-                                className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
-                              >
-                                Modifier
-                              </button>
-                              <button
-                                onClick={() => handleDeleteFournisseur(f.id)}
-                                className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
-                              >
-                                Supprimer
-                              </button>
-                            </div>
+                  {fournisseurs.length === 0 ? (
+                    <p className="text-gray-400">Aucun fournisseur trouvé.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {fournisseurs.map((f, i) => (
+                        <div key={f.id ?? `f-${i}`} className="bg-neutral-900 rounded-xl p-4 border border-neutral-800">
+                          <h3 className="text-lg font-semibold text-purple-400">
+                            {f.name} {f.surname}
+                          </h3>
+                          <p className="text-sm text-gray-400">📞 {f.phone_number || "—"}</p>
+                          <p className="text-sm text-gray-400">📍 {f.address || "—"}</p>
+                          <div className="flex justify-end mt-3 space-x-2">
+                            <button onClick={() => handleEditFournisseur(f)} className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-xs">
+                              Modifier
+                            </button>
+                            <button onClick={() => handleDeleteFournisseur(f.id)} className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs">
+                              Supprimer
+                            </button>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </Card>
                 <Card>
-                  <h3 className="text-lg font-semibold mb-4">Supplier Finance Details</h3>
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {fournisseurs.map((supplier) => {
+                  <h3 className="text-lg font-semibold mb-4">Supplier Finance</h3>
+                  <div className="space-y-4">
+                    {fournisseurs.map((supplier, i) => {
                       const items = supplierItems.filter(item => item.supplier_id === supplier.id);
                       const totalOwed = items.reduce((sum, item) => {
                         const currency = currencyList.find(c => c.id === item.currency_id);
@@ -1295,251 +1293,30 @@ export default function AdminSuperPanel() {
                         return sum + ((item.price || 0) * rate);
                       }, 0);
                       const totalPaid = items.reduce((sum, item) => sum + (item.payment_amount || 0), 0);
-                      const remaining = totalOwed - totalPaid;
                       return (
-                        <div key={supplier.id} className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-purple-500 transition">
+                        <div key={supplier.id ?? `sup-${i}`} className="bg-neutral-900 rounded-xl p-4">
                           <h3 className="text-lg font-semibold text-purple-400">
                             {supplier.name} {supplier.surname}
                           </h3>
-                          <p className="text-sm text-gray-400">📞 {supplier.phone_number || "—"} | 📍 {supplier.address || "—"}</p>
-                          <div className="mt-3 p-3 bg-neutral-800/40 rounded-lg">
-                            <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div className="text-center">
-                                <div className="text-emerald-400 font-medium">{totalOwed.toLocaleString()} DZD</div>
-                                <div className="text-neutral-400">Total Owed</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-blue-400 font-medium">{totalPaid.toLocaleString()} DZD</div>
-                                <div className="text-neutral-400">Paid</div>
-                              </div>
-                              <div className="text-center">
-                                <div className={`font-bold ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                  {remaining.toLocaleString()} DZD
-                                </div>
-                                <div className="text-neutral-400">Remaining</div>
-                              </div>
+                          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                            <div className="text-center">
+                              <div className="text-emerald-400">{totalOwed.toLocaleString()} DZD</div>
+                              <div>Total Owed</div>
                             </div>
-                          </div>
-                          {/* ✅ Editable Price & Paid */}
-                          {items.length > 0 && (
-                            <div className="mt-3">
-                              <h4 className="text-sm font-medium text-purple-300 mb-2">Car Purchases & Payments</h4>
-                              <div className="space-y-3">
-                                {items.map((item) => {
-                                  const car = cars.find(c => c.id === item.car_id) || {};
-                                  const currency = currencyList.find(c => c.id === item.currency_id);
-                                  const rate = currency?.exchange_rate_to_dzd || 1;
-                                  const editablePrice = editingSupplierItem[item.supplier_item_id]?.price ?? item.price ?? 0;
-                                  const editablePaid = editingSupplierItem[item.supplier_item_id]?.payment_amount ?? item.payment_amount ?? 0;
-                                  const costDZD = editablePrice * rate;
-                                  const remainingItem = costDZD - editablePaid;
-
-                                  return (
-                                    <div key={item.supplier_item_id} className="bg-neutral-800/30 p-3 rounded border border-neutral-700">
-                                      <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                          <span className="font-medium text-emerald-400">{car.model || 'Car'} #{car.id}</span>
-                                          <br />
-                                          <span className="text-xs text-neutral-500">
-                                            {currency?.code.toUpperCase() || '???'} / {rate.toFixed(2)} DZD
-                                          </span>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className="text-xs text-neutral-400">Total Owed</div>
-                                          <div className="font-bold text-emerald-400">{costDZD.toLocaleString()} DZD</div>
-                                        </div>
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-2 mt-2">
-                                        <div>
-                                          <label className="text-xs text-neutral-400 block mb-1">Price ({currency?.code.toUpperCase() || '???'}):</label>
-                                          <input
-                                            type="number"
-                                            step="1"
-                                            min="0"
-                                            value={editablePrice}
-                                            onChange={(e) => {
-                                              const val = parseFloat(e.target.value) || 0;
-                                              setEditingSupplierItem(prev => ({
-                                                ...prev,
-                                                [item.supplier_item_id]: {
-                                                  ...prev[item.supplier_item_id],
-                                                  price: val
-                                                }
-                                              }));
-                                            }}
-                                            className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className="text-xs text-neutral-400 block mb-1">Paid (DZD):</label>
-                                          <input
-                                            type="number"
-                                            step="100"
-                                            min="0"
-                                            max={costDZD}
-                                            value={editablePaid}
-                                            onChange={(e) => {
-                                              const val = parseFloat(e.target.value) || 0;
-                                              setEditingSupplierItem(prev => ({
-                                                ...prev,
-                                                [item.supplier_item_id]: {
-                                                  ...prev[item.supplier_item_id],
-                                                  payment_amount: val
-                                                }
-                                              }));
-                                            }}
-                                            className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="mt-2 pt-2 border-t border-neutral-700 flex justify-between">
-                                        <span className="text-xs text-neutral-400">Remaining:</span>
-                                        <span className={`font-bold ${remainingItem > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                          {remainingItem > 0 ? `${remainingItem.toLocaleString()} DZD` : '✅ Paid'}
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-end gap-2 mt-2">
-                                        {(editingSupplierItem[item.supplier_item_id]?.price !== item.price ||
-                                          editingSupplierItem[item.supplier_item_id]?.payment_amount !== item.payment_amount) && (
-                                          <button
-                                            onClick={() => saveSupplierItemEdit(item)}
-                                            className="text-xs px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500"
-                                          >
-                                            Save
-                                          </button>
-                                        )}
-                                        {editingSupplierItem[item.supplier_item_id] && (
-                                          <button
-                                            onClick={() => {
-                                              setEditingSupplierItem(prev => {
-                                                const copy = { ...prev };
-                                                delete copy[item.supplier_item_id];
-                                                return copy;
-                                              });
-                                            }}
-                                            className="text-xs px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded"
-                                          >
-                                            Cancel
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                            <div className="text-center">
+                              <div className="text-blue-400">{totalPaid.toLocaleString()} DZD</div>
+                              <div>Paid</div>
                             </div>
-                          )}
-                          <div className="flex justify-end mt-3 space-x-2">
-                            <button
-                              onClick={() => handleEditFournisseur(supplier)}
-                              className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-xs"
-                            >
-                              Modifier
-                            </button>
-                            <button
-                              onClick={() => handleDeleteFournisseur(supplier.id)}
-                              className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs"
-                            >
-                              Supprimer
-                            </button>
+                            <div className="text-center">
+                              <div className={`font-bold ${totalOwed > totalPaid ? 'text-red-400' : 'text-green-400'}`}>
+                                {(totalOwed - totalPaid).toLocaleString()} DZD
+                              </div>
+                              <div>Remaining</div>
+                            </div>
                           </div>
                         </div>
                       );
                     })}
-                  </div>
-                </Card>
-                <Card className="md:col-span-2">
-                  <h3 className="text-lg font-semibold mb-4">Monthly Expenses (Editable)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    {/* ... (existing expense UI remains unchanged) */}
-                    <div className="p-4 bg-neutral-900/40 rounded-lg">
-                      <div className="text-sm text-neutral-400">Purchases</div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={expenses.purchases}
-                        onChange={(e) => setExpenses(prev => ({ ...prev, purchases: parseFloat(e.target.value) || 0 }))}
-                        className="w-full bg-transparent border-b border-neutral-600 focus:outline-none text-xl font-bold text-emerald-400"
-                      />
-                    </div>
-                    <div className="p-4 bg-neutral-900/40 rounded-lg">
-                      <div className="text-sm text-neutral-400">Transport</div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={expenses.transport}
-                        onChange={(e) => setExpenses(prev => ({ ...prev, transport: parseFloat(e.target.value) || 0 }))}
-                        className="w-full bg-transparent border-b border-neutral-600 focus:outline-none text-xl font-bold text-blue-400"
-                      />
-                    </div>
-                    <div className="p-4 bg-neutral-900/40 rounded-lg">
-                      <div className="text-sm text-neutral-400">Other</div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={expenses.other}
-                        onChange={(e) => setExpenses(prev => ({ ...prev, other: parseFloat(e.target.value) || 0 }))}
-                        className="w-full bg-transparent border-b border-neutral-600 focus:outline-none text-xl font-bold text-purple-400"
-                      />
-                    </div>
-                    <div className="p-4 bg-neutral-900/40 rounded-lg">
-                      <div className="text-sm text-neutral-400">Total</div>
-                      <div className="text-xl font-bold text-red-400">
-                        {(expenses.purchases + expenses.transport + expenses.other).toLocaleString()} DZD
-                      </div>
-                    </div>
-                    <div className="p-4 bg-neutral-900/40 rounded-lg flex flex-col justify-end">
-                      <button
-                        onClick={async () => {
-                          const now = new Date();
-                          try {
-                            const res = await apiFetch(`${API_BASE}/expenses/`, {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                year: now.getFullYear(),
-                                month: now.getMonth() + 1,
-                                purchases: expenses.purchases,
-                                transport: expenses.transport,
-                                other: expenses.other
-                              })
-                            });
-                            if (res.ok) {
-                              alert('Monthly expenses updated successfully!');
-                            } else {
-                              alert('Failed to update expenses');
-                            }
-                          } catch (err) {
-                            console.error('Update error:', err);
-                            alert('Network error');
-                          }
-                        }}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded text-white"
-                      >
-                        Save Monthly
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-6 pt-4 border-t border-neutral-800">
-                    <h4 className="text-md font-medium mb-3">Yearly Summary (Read-only)</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="p-3 bg-neutral-900/30 rounded">
-                        <div className="text-sm text-neutral-400">Purchases</div>
-                        <div className="text-lg font-bold text-emerald-400">{yearlyExpenses.total_purchases.toLocaleString()} DZD</div>
-                      </div>
-                      <div className="p-3 bg-neutral-900/30 rounded">
-                        <div className="text-sm text-neutral-400">Transport</div>
-                        <div className="text-lg font-bold text-blue-400">{yearlyExpenses.total_transport.toLocaleString()} DZD</div>
-                      </div>
-                      <div className="p-3 bg-neutral-900/30 rounded">
-                        <div className="text-sm text-neutral-400">Other</div>
-                        <div className="text-lg font-bold text-purple-400">{yearlyExpenses.total_other.toLocaleString()} DZD</div>
-                      </div>
-                      <div className="p-3 bg-neutral-900/30 rounded">
-                        <div className="text-sm text-neutral-400">Total</div>
-                        <div className="text-lg font-bold text-red-400">{yearlyExpenses.total_expenses.toLocaleString()} DZD</div>
-                      </div>
-                    </div>
                   </div>
                 </Card>
               </div>
@@ -1550,7 +1327,10 @@ export default function AdminSuperPanel() {
             <motion.div key="commercials" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-semibold">Commercials Management</h2>
-                <button onClick={() => handleOpenAddCommercial("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                <button 
+                  onClick={() => handleOpenAddCommercial("Admin")} 
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                >
                   Ajouter un Commercial +
                 </button>
               </div>
@@ -1563,29 +1343,18 @@ export default function AdminSuperPanel() {
                         <th className="py-3 px-3">Name</th>
                         <th className="py-3 px-3">Phone</th>
                         <th className="py-3 px-3">Wilaya</th>
-                        <th className="py-3 px-3">Address</th>
-                        <th className="py-3 px-3">Cars Sold</th>
                         <th className="py-3 px-3">Created</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {commercials.map((cm) => {
+                      {commercials.map((cm, i) => {
                         const soldCars = cars.filter(car => car.commercial_id === cm.id).length;
                         return (
-                          <tr
-                            key={cm.id}
-                            className="border-b border-neutral-800/40 hover:bg-emerald-500/5 cursor-pointer"
-                            onClick={() => {
-                              setSelectedCommercial(cm);
-                              setShowCommercialCars(true);
-                            }}
-                          >
+                          <tr key={cm.id ?? `cm-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
                             <td className="py-3 px-3 font-mono text-emerald-400">{cm.id}</td>
                             <td className="py-3 px-3">{cm.name} {cm.surname}</td>
                             <td className="py-3 px-3">{cm.phone_number}</td>
-                            <td className="py-3 px-3">{cm.wilayas?.join(', ') || '—'}</td>
-                            <td className="py-3 px-3 text-sm text-neutral-400">{cm.address}</td>
-                            <td className="py-3 px-3">{soldCars}</td>
+                            <td className="py-3 px-3">{cm.wilayas?.join(', ')}</td>
                             <td className="py-3 px-3 text-sm text-neutral-400">
                               {new Date(cm.created_at).toLocaleDateString()}
                             </td>
@@ -1602,8 +1371,11 @@ export default function AdminSuperPanel() {
           {tab === "marketers" && (
             <motion.div key="marketers" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-semibold">Marketing Agents Management</h2>
-                <button onClick={() => { setMarketerForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddMarketer(true); }} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                <h2 className="text-3xl font-semibold">Marketing Agents</h2>
+                <button 
+                  onClick={() => { setMarketerForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddMarketer(true); }} 
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                >
                   Add Marketer +
                 </button>
               </div>
@@ -1615,22 +1387,22 @@ export default function AdminSuperPanel() {
                         <th className="py-3 px-3">ID</th>
                         <th className="py-3 px-3">Name</th>
                         <th className="py-3 px-3">Phone</th>
-                        <th className="py-3 px-3">Address</th>
                         <th className="py-3 px-3">Created</th>
                         <th className="py-3 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {marketers.map((marketer) => (
-                        <tr key={marketer.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
-                          <td className="py-3 px-3 font-mono text-emerald-400">{marketer.id}</td>
-                          <td className="py-3 px-3">{marketer.name} {marketer.surname}</td>
-                          <td className="py-3 px-3">{marketer.phone_number}</td>
-                          <td className="py-3 px-3 text-sm text-neutral-400">{marketer.address}</td>
-                          <td className="py-3 px-3 text-sm text-neutral-400">{new Date(marketer.created_at).toLocaleDateString()}</td>
+                      {marketers.map((m, i) => (
+                        <tr key={m.id ?? `mark-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                          <td className="py-3 px-3 font-mono text-emerald-400">{m.id}</td>
+                          <td className="py-3 px-3">{m.name} {m.surname}</td>
+                          <td className="py-3 px-3">{m.phone_number}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">
+                            {new Date(m.created_at).toLocaleDateString()}
+                          </td>
                           <td className="py-3 px-3 text-right space-x-2">
-                            <button onClick={() => { setMarketerForm(marketer); setShowAddMarketer(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
-                            <button onClick={() => handleDeleteMarketer(marketer.id)} className="text-red-400 hover:text-red-300">Delete</button>
+                            <button onClick={() => { setMarketerForm(m); setShowAddMarketer(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
+                            <button onClick={() => handleDeleteMarketer(m.id)} className="text-red-400 hover:text-red-300">Delete</button>
                           </td>
                         </tr>
                       ))}
@@ -1644,8 +1416,11 @@ export default function AdminSuperPanel() {
           {tab === "accountants" && (
             <motion.div key="accountants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-semibold">Accountants Management</h2>
-                <button onClick={() => { setAccountantForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddAccountant(true); }} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                <h2 className="text-3xl font-semibold">Accountants</h2>
+                <button 
+                  onClick={() => { setAccountantForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddAccountant(true); }} 
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                >
                   Add Accountant +
                 </button>
               </div>
@@ -1657,22 +1432,22 @@ export default function AdminSuperPanel() {
                         <th className="py-3 px-3">ID</th>
                         <th className="py-3 px-3">Name</th>
                         <th className="py-3 px-3">Phone</th>
-                        <th className="py-3 px-3">Address</th>
                         <th className="py-3 px-3">Created</th>
                         <th className="py-3 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {accountants.map((accountant) => (
-                        <tr key={accountant.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
-                          <td className="py-3 px-3 font-mono text-emerald-400">{accountant.id}</td>
-                          <td className="py-3 px-3">{accountant.name} {accountant.surname}</td>
-                          <td className="py-3 px-3">{accountant.phone_number}</td>
-                          <td className="py-3 px-3 text-sm text-neutral-400">{accountant.address}</td>
-                          <td className="py-3 px-3 text-sm text-neutral-400">{new Date(accountant.created_at).toLocaleDateString()}</td>
+                      {accountants.map((a, i) => (
+                        <tr key={a.id ?? `acc-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                          <td className="py-3 px-3 font-mono text-emerald-400">{a.id}</td>
+                          <td className="py-3 px-3">{a.name} {a.surname}</td>
+                          <td className="py-3 px-3">{a.phone_number}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">
+                            {new Date(a.created_at).toLocaleDateString()}
+                          </td>
                           <td className="py-3 px-3 text-right space-x-2">
-                            <button onClick={() => { setAccountantForm(accountant); setShowAddAccountant(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
-                            <button onClick={() => handleDeleteAccountant(accountant.id)} className="text-red-400 hover:text-red-300">Delete</button>
+                            <button onClick={() => { setAccountantForm(a); setShowAddAccountant(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
+                            <button onClick={() => handleDeleteAccountant(a.id)} className="text-red-400 hover:text-red-300">Delete</button>
                           </td>
                         </tr>
                       ))}
@@ -1682,207 +1457,692 @@ export default function AdminSuperPanel() {
               </Card>
             </motion.div>
           )}
+
+          {/* ✅ NEW: Wholesale Clients Tab */}
+          {tab === "wholesale_clients" && (
+            <motion.div key="wholesale_clients" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Wholesale Clients</h2>
+                <button 
+                  onClick={() => { 
+                    setWholesaleClientForm({ name: "", surname: "", phone_number: "", address: "", company_name: "" }); 
+                    setShowAddWholesaleClient(true); 
+                  }} 
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                >
+                  Add Wholesale Client +
+                </button>
+              </div>
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Name</th>
+                        <th className="py-3 px-3">Company</th>
+                        <th className="py-3 px-3">Phone</th>
+                        <th className="py-3 px-3">Address</th>
+                        <th className="py-3 px-3">Created</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {wholesaleClients.map((client, i) => (
+                        <tr key={client.id ?? `wclient-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                          <td className="py-3 px-3 font-mono text-emerald-400">{client.id}</td>
+                          <td className="py-3 px-3">{client.name} {client.surname}</td>
+                          <td className="py-3 px-3 text-sm font-medium text-purple-400">{client.company_name || '—'}</td>
+                          <td className="py-3 px-3">{client.phone_number}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">{client.address}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">
+                            {new Date(client.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-3 text-right space-x-2">
+                            <button 
+                              onClick={() => { 
+                                setWholesaleClientForm(client); 
+                                setShowAddWholesaleClient(true); 
+                              }} 
+                              className="text-blue-400 hover:text-blue-300"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteWholesaleClient(client.id)} 
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ✅ NEW: Wholesale Orders Tab */}
+          {tab === "wholesale_orders" && (
+            <motion.div key="wholesale_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Wholesale Orders</h2>
+                <button 
+                  onClick={() => { 
+                    setWholesaleOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" }); 
+                    setShowAddWholesaleOrder(true); 
+                  }} 
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                >
+                  Add Wholesale Order +
+                </button>
+              </div>
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Client</th>
+                        <th className="py-3 px-3">Car</th>
+                        <th className="py-3 px-3">Qty</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3">Value (DZD)</th>
+                        <th className="py-3 px-3">Created</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {wholesaleOrders.map((order, i) => {
+                        const client = wholesaleClients.find(c => c.id === order.client_id) || {};
+                        const car = cars.find(c => c.id === order.car_id) || {};
+                        const currency = currencyList.find(c => c.id === car.currency_id);
+                        const rate = currency?.exchange_rate_to_dzd || 1;
+                        const value = order.quantity * (car.wholesale_price || 0) * rate;
+                        return (
+                          <tr key={order.id ?? `worder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                            <td className="py-3 px-3 font-mono text-emerald-400">{order.id}</td>
+                            <td className="py-3 px-3">
+                              {client.name} {client.surname}
+                              <div className="text-xs text-purple-400">{client.company_name}</div>
+                            </td>
+                            <td className="py-3 px-3">
+                              {car.model || '—'} #{car.id}
+                              <div className="text-xs text-neutral-500">{car.color} · {car.year}</div>
+                            </td>
+                            <td className="py-3 px-3">{order.quantity}</td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                order.delivery_status === 'showroom' ? 'bg-green-500/20 text-green-400' :
+                                order.delivery_status === 'arrived' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {order.delivery_status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-purple-400">{value.toLocaleString()}</td>
+                            <td className="py-3 px-3 text-sm text-neutral-400">
+                              {new Date(order.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="py-3 px-3 text-right space-x-2">
+                              <button 
+                                onClick={() => { 
+                                  setWholesaleOrderForm({
+                                    order_id: order.id,
+                                    client_id: order.client_id,
+                                    car_id: order.car_id,
+                                    quantity: order.quantity,
+                                    delivery_status: order.delivery_status
+                                  }); 
+                                  setShowAddWholesaleOrder(true); 
+                                }} 
+                                className="text-blue-400 hover:text-blue-300"
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteWholesaleOrder(order.id)} 
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+          {tab === "clients_orders" && (
+            <motion.div key="clients_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Clients Orders</h2>
+                <button
+                  onClick={() => {
+                    setOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" });
+                    setShowAddOrder(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                >
+                  Add Order +
+                </button>
+              </div>
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Client</th>
+                        <th className="py-3 px-3">Phone</th>
+                        <th className="py-3 px-3">Address</th>
+                        <th className="py-3 px-3">Car</th>
+                        <th className="py-3 px-3">Unit Price (DZD)</th>
+                        <th className="py-3 px-3">Qty</th>
+                        <th className="py-3 px-3">Total (DZD)</th>
+                        <th className="py-3 px-3">Paid (DZD)</th>
+                        <th className="py-3 px-3">Delivery</th>
+                        <th className="py-3 px-3">Created</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map((order, i) => {
+                        const client = clients.find(c => c.id === order.client_id) || {};
+                        const car = cars.find(c => c.id === order.car_id) || {};
+                        const currency = currencyList.find(c => c.id === car.currency_id);
+                        const rate = currency?.exchange_rate_to_dzd || 1;
+                        const unitPrice = car.price ? (car.price * rate) : (order.price_dzd || 0);
+                        const totalValue = (order.quantity || 0) * unitPrice;
+                        const paid = order.payment_amount || 0;
+                        return (
+                          <tr key={(order.id || order.order_id) ?? `corder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                            <td className="py-3 px-3 font-mono text-emerald-400">{order.id || order.order_id}</td>
+                            <td className="py-3 px-3">
+                              {client.name} {client.surname}
+                              <div className="text-xs text-neutral-400">{client.company_name || ''}</div>
+                            </td>
+                            <td className="py-3 px-3 text-sm text-neutral-400">{client.phone_number || order.client_phone || '—'}</td>
+                            <td className="py-3 px-3 text-xs text-neutral-400">{client.address || '—'}</td>
+                            <td className="py-3 px-3">
+                              {car.model || '—'} #{car.id || order.car_id}
+                              <div className="text-xs text-neutral-500">{car.color} · {car.year}</div>
+                            </td>
+                            <td className="py-3 px-3 text-purple-400">{Number(unitPrice || 0).toLocaleString()}</td>
+                            <td className="py-3 px-3">{order.quantity}</td>
+                            <td className="py-3 px-3 text-purple-400">{Number(totalValue || 0).toLocaleString()}</td>
+                            <td className="py-3 px-3 text-blue-400">{Number(paid).toLocaleString()}</td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                order.delivery_status === 'showroom' ? 'bg-green-500/20 text-green-400' :
+                                order.delivery_status === 'arrived' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {order.delivery_status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-sm text-neutral-400">
+                              {order.created_at ? new Date(order.created_at).toLocaleString() : '—'}
+                            </td>
+                            <td className="py-3 px-3 text-right space-x-2">
+                              <button
+                                onClick={() => {
+                                  setOrderForm({
+                                    order_id: order.id || order.order_id,
+                                    client_id: order.client_id,
+                                    car_id: order.car_id,
+                                    quantity: order.quantity,
+                                    delivery_status: order.delivery_status,
+                                  });
+                                  setShowAddOrder(true);
+                                }}
+                                className="text-blue-400 hover:text-blue-300"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteOrder(order.id || order.order_id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
         </AnimatePresence>
+      </main>
 
-        {/* Modals */}
-        <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
-          <form onSubmit={handleSubmitCar} className="space-y-4">
-            {/* ... (car form unchanged — omit for brevity) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Modèle" className="bg-neutral-800 p-2 rounded" required />
-              <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Couleur" className="bg-neutral-800 p-2 rounded" />
-              <input type="number" value={carForm.year} onChange={(e) => setCarForm({ ...carForm, year: e.target.value })} placeholder="Année" className="bg-neutral-800 p-2 rounded" />
-              <input value={carForm.engine} onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })} placeholder="Moteur" className="bg-neutral-800 p-2 rounded" />
-              <input value={carForm.power} onChange={(e) => setCarForm({ ...carForm, power: e.target.value })} placeholder="Puissance" className="bg-neutral-800 p-2 rounded" />
-              <input value={carForm.fuelType} onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })} placeholder="Type de carburant" className="bg-neutral-800 p-2 rounded" />
-              <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Kilometrage" className="bg-neutral-800 p-2 rounded" />
-              <input type="text" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Prix" className="bg-neutral-800 p-2 rounded" />
-              <input type="text" value={carForm.commercial_comission} onChange={(e) => setCarForm({ ...carForm, commercial_comission: e.target.value })} placeholder="Commission %" className="bg-neutral-800 p-2 rounded" />
-              <input type="text" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="quantité" className="bg-neutral-800 p-2 rounded" />
-              <select value={carForm.currency_id} onChange={(e) => setCarForm({ ...carForm, currency_id: e.target.value })} className="bg-neutral-800 p-2 rounded" required>
-                <option value="">Selectionnez un devise</option>
-                {currencyList.map(curr => (
-                  <option key={curr.id} value={curr.id}>{curr.name} ({curr.code.toUpperCase()})</option>
-                ))}
-              </select>
-              <label className="flex flex-col gap-[.3vh]">Date d'achat
-                <input type="date" value={carForm.shippingDate} onChange={(e) => setCarForm({ ...carForm, shippingDate: e.target.value })} className="bg-neutral-800 p-2 rounded" />
-              </label>
-              <label className="flex flex-col gap-[.3vh]">Date d'arrivée
-                <input type="date" value={carForm.arrivingDate} onChange={(e) => setCarForm({ ...carForm, arrivingDate: e.target.value })} className="bg-neutral-800 p-2 rounded" />
-              </label>
-            </div>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer bg-neutral-800 px-3 py-2 rounded">
-                <input type="file" accept="image/*" multiple onChange={(e) => setCarForm({ ...carForm, imageFiles: e.target.files })} className="hidden" />
-                Upload Images
-              </label>
-              {carForm.imageFiles && carForm.imageFiles.length > 0 && (
-                <span className="text-sm text-neutral-400">{carForm.imageFiles.length} fichier(s) selectionnée</span>
-              )}
-            </div>
-            <div className="flex justify-end gap-3 z-30 cursor-pointer">
-              <button type="button" onClick={() => setShowAddCar(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400">
-                {editingCar ? 'Update Car' : 'Save Car'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        <Modal open={showAddCommercial} onClose={() => setShowAddCommercial(false)} title="Add Commercial">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" name="name" placeholder="Name" value={CommercialForm.name} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" name="surname" placeholder="Surname" value={CommercialForm.surname} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" name="phone_number" placeholder="Phone Number" value={CommercialForm.phone_number} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
-              {/* ✅ Wilayas as comma-separated input */}
+      {/* === MODALS === */}
+      <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
+        <form onSubmit={handleSubmitCar} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input autoFocus value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Modèle" className="bg-neutral-800 p-2 rounded" required />
+            <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Couleur" className="bg-neutral-800 p-2 rounded" />
+            <input type="number" value={carForm.year} onChange={(e) => setCarForm({ ...carForm, year: e.target.value })} placeholder="Année" className="bg-neutral-800 p-2 rounded" />
+            <input value={carForm.engine} onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })} placeholder="Moteur" className="bg-neutral-800 p-2 rounded" />
+            <input value={carForm.power} onChange={(e) => setCarForm({ ...carForm, power: e.target.value })} placeholder="Puissance" className="bg-neutral-800 p-2 rounded" />
+            <input value={carForm.fuelType} onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })} placeholder="Type de carburant" className="bg-neutral-800 p-2 rounded" />
+            <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Kilometrage" className="bg-neutral-800 p-2 rounded" />
+            <input type="number" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Prix" className="bg-neutral-800 p-2 rounded" />
+            <input type="number" value={carForm.wholesale_price} onChange={(e) => setCarForm({ ...carForm, wholesale_price: e.target.value })} placeholder="Prix Gros" className="bg-neutral-800 p-2 rounded" />
+            <input type="number" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="quantité" className="bg-neutral-800 p-2 rounded" />
+            <select value={carForm.currency_id} onChange={(e) => setCarForm({ ...carForm, currency_id: e.target.value })} className="bg-neutral-800 p-2 rounded" required>
+              <option value="">Selectionnez un devise</option>
+              {currencyList.map(curr => (
+                <option key={curr.id} value={curr.id}>{curr.name} ({curr.code.toUpperCase()})</option>
+              ))}
+            </select>
+            <label className="flex flex-col gap-[.3vh]">Date d'achat
+              <input type="date" value={carForm.shippingDate} onChange={(e) => setCarForm({ ...carForm, shippingDate: e.target.value })} className="bg-neutral-800 p-2 rounded" />
+            </label>
+            <label className="flex flex-col gap-[.3vh]">Date d'arrivée
+              <input type="date" value={carForm.arrivingDate} onChange={(e) => setCarForm({ ...carForm, arrivingDate: e.target.value })} className="bg-neutral-800 p-2 rounded" />
+            </label>
+          </div>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer bg-neutral-800 px-3 py-2 rounded">
               <input 
-                type="text" 
-                name="wilayas" 
-                placeholder="Wilayas (e.g. Algiers, Oran)" 
-                value={CommercialForm.wilayas.join(', ')} 
-                onChange={handleChange} 
-                className="bg-neutral-800 p-2 rounded" 
-                required 
+                type="file" 
+                accept="image/*" 
+                multiple 
+                onChange={(e) => setCarForm({ ...carForm, imageFiles: Array.from(e.target.files) })} 
+                className="hidden" 
               />
-              <input type="text" name="address" placeholder="Address" value={CommercialForm.address} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
-            </div>
-            {message && <p className={`text-sm ${message.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{message}</p>}
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setShowAddCommercial(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" disabled={commercialLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
-                {commercialLoading ? 'Saving...' : CommercialForm.commercial_id ? 'Update Commercial' : 'Add Commercial'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+              Upload Images
+            </label>
+            {carForm.imageFiles && carForm.imageFiles.length > 0 && (
+              <span className="text-sm text-neutral-400">{carForm.imageFiles.length} fichier(s) sélectionné(s)</span>
+            )}
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setShowAddCar(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
+            <button type="submit" className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400">
+              {editingCar ? 'Update Car' : 'Save Car'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
-        {/* Marketer Modal */}
-        <Modal open={showAddMarketer} onClose={() => setShowAddMarketer(false)} title={marketerForm.marketer_id ? "Edit Marketer" : "Add Marketer"}>
-          <form onSubmit={handleMarketerSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Name" value={marketerForm.name} onChange={(e) => setMarketerForm({ ...marketerForm, name: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Surname" value={marketerForm.surname} onChange={(e) => setMarketerForm({ ...marketerForm, surname: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Phone Number" value={marketerForm.phone_number} onChange={(e) => setMarketerForm({ ...marketerForm, phone_number: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Address" value={marketerForm.address} onChange={(e) => setMarketerForm({ ...marketerForm, address: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-            </div>
-            {marketerMessage && <p className={`text-sm ${marketerMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{marketerMessage}</p>}
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setShowAddMarketer(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" disabled={marketerLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
-                {marketerLoading ? 'Saving...' : marketerForm.marketer_id ? 'Update Marketer' : 'Add Marketer'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+      <Modal open={showAddCommercial} onClose={() => setShowAddCommercial(false)} title="Add Commercial">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input autoFocus type="text" name="name" placeholder="Name" value={CommercialForm.name} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
+            <input type="text" name="surname" placeholder="Surname" value={CommercialForm.surname} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
+            <input type="text" name="phone_number" placeholder="Phone Number" value={CommercialForm.phone_number} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
+            <input 
+              type="text" 
+              name="wilayas" 
+              placeholder="Wilayas (e.g. Algiers, Oran)" 
+              value={CommercialForm.wilayas.join(', ')} 
+              onChange={handleChange} 
+              className="bg-neutral-800 p-2 rounded" 
+              required 
+            />
+            <input type="text" name="address" placeholder="Address" value={CommercialForm.address} onChange={handleChange} className="bg-neutral-800 p-2 rounded" required />
+          </div>
+          {message && <p className={`text-sm ${message.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{message}</p>}
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setShowAddCommercial(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
+            <button type="submit" disabled={commercialLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
+              {commercialLoading ? 'Saving...' : CommercialForm.commercial_id ? 'Update Commercial' : 'Add Commercial'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
-        {/* Accountant Modal */}
-        <Modal open={showAddAccountant} onClose={() => setShowAddAccountant(false)} title={accountantForm.accountant_id ? "Edit Accountant" : "Add Accountant"}>
-          <form onSubmit={handleAccountantSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Name" value={accountantForm.name} onChange={(e) => setAccountantForm({ ...accountantForm, name: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Surname" value={accountantForm.surname} onChange={(e) => setAccountantForm({ ...accountantForm, surname: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Phone Number" value={accountantForm.phone_number} onChange={(e) => setAccountantForm({ ...accountantForm, phone_number: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-              <input type="text" placeholder="Address" value={accountantForm.address} onChange={(e) => setAccountantForm({ ...accountantForm, address: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
-            </div>
-            {accountantMessage && <p className={`text-sm ${accountantMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{accountantMessage}</p>}
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setShowAddAccountant(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" disabled={accountantLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
-                {accountantLoading ? 'Saving...' : accountantForm.accountant_id ? 'Update Accountant' : 'Add Accountant'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+      <Modal open={showAddMarketer} onClose={() => setShowAddMarketer(false)} title={marketerForm.marketer_id ? "Edit Marketer" : "Add Marketer"}>
+        <form onSubmit={handleMarketerSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input autoFocus type="text" placeholder="Name" value={marketerForm.name} onChange={(e) => setMarketerForm({ ...marketerForm, name: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
+            <input type="text" placeholder="Surname" value={marketerForm.surname} onChange={(e) => setMarketerForm({ ...marketerForm, surname: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
+            <input type="text" placeholder="Phone Number" value={marketerForm.phone_number} onChange={(e) => setMarketerForm({ ...marketerForm, phone_number: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
+            <input type="text" placeholder="Address" value={marketerForm.address} onChange={(e) => setMarketerForm({ ...marketerForm, address: e.target.value })} className="bg-neutral-800 p-2 rounded" required />
+          </div>
+          {marketerMessage && <p className={`text-sm ${marketerMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{marketerMessage}</p>}
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setShowAddMarketer(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
+            <button type="submit" disabled={marketerLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
+              {marketerLoading ? 'Saving...' : marketerForm.marketer_id ? 'Update Marketer' : 'Add Marketer'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
-        {/* Dynamic Password Modal */}
-        {showPasswordModal && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-neutral-800 rounded-2xl w-full max-w-md border border-neutral-700">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl font-bold text-white">
-                    {passwordModalType === "commercial" && "Identifiants du Commercial"}
-                    {passwordModalType === "marketer" && "Identifiants du Marketer"}
-                    {passwordModalType === "accountant" && "Identifiants du Accountant"}
-                  </h2>
-                  <button onClick={() => setShowPasswordModal(false)} className="text-neutral-400 hover:text-white text-2xl">&times;</button>
+      <Modal open={showAddAccountant} onClose={() => setShowAddAccountant(false)} title={accountantForm.accountant_id ? "Edit Accountant" : "Add Accountant"}>
+        <form onSubmit={handleAccountantSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input autoFocus type="text" placeholder="Name" value={accountantForm.name} onChange={(e) => setAccountantForm(prev => ({ ...prev, name: e.target.value }))} className="bg-neutral-800 p-2 rounded" required />
+            <input type="text" placeholder="Surname" value={accountantForm.surname} onChange={(e) => setAccountantForm(prev => ({ ...prev, surname: e.target.value }))} className="bg-neutral-800 p-2 rounded" required />
+            <input type="text" placeholder="Phone Number" value={accountantForm.phone_number} onChange={(e) => setAccountantForm(prev => ({ ...prev, phone_number: e.target.value }))} className="bg-neutral-800 p-2 rounded" required />
+            <input type="text" placeholder="Address" value={accountantForm.address} onChange={(e) => setAccountantForm(prev => ({ ...prev, address: e.target.value }))} className="bg-neutral-800 p-2 rounded" required />
+          </div>
+          {accountantMessage && <p className={`text-sm ${accountantMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{accountantMessage}</p>}
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setShowAddAccountant(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
+            <button type="submit" disabled={accountantLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
+              {accountantLoading ? 'Saving...' : accountantForm.accountant_id ? 'Update Accountant' : 'Add Accountant'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ✅ Wholesale Client Modal */}
+      <Modal 
+        open={showAddWholesaleClient} 
+        onClose={() => setShowAddWholesaleClient(false)} 
+        title={wholesaleClientForm.client_id ? "Edit Wholesale Client" : "Add Wholesale Client"}
+      >
+        <form onSubmit={handleWholesaleClientSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input 
+              autoFocus
+              type="text" 
+              placeholder="Name" 
+              value={wholesaleClientForm.name} 
+              onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, name: e.target.value })} 
+              className="bg-neutral-800 p-2 rounded" 
+              required 
+            />
+            <input 
+              type="text" 
+              placeholder="Surname" 
+              value={wholesaleClientForm.surname} 
+              onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, surname: e.target.value })} 
+              className="bg-neutral-800 p-2 rounded" 
+              required 
+            />
+            <input 
+              type="text" 
+              placeholder="Phone Number" 
+              value={wholesaleClientForm.phone_number} 
+              onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, phone_number: e.target.value })} 
+              className="bg-neutral-800 p-2 rounded" 
+              required 
+            />
+            <input 
+              type="text" 
+              placeholder="Company Name" 
+              value={wholesaleClientForm.company_name} 
+              onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, company_name: e.target.value })} 
+              className="bg-neutral-800 p-2 rounded" 
+              required 
+            />
+            <input 
+              type="text" 
+              placeholder="Address" 
+              value={wholesaleClientForm.address} 
+              onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, address: e.target.value })} 
+              className="bg-neutral-800 p-2 rounded" 
+              required 
+            />
+          </div>
+          {wholesaleClientMessage && (
+            <p className={`text-sm ${wholesaleClientMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>
+              {wholesaleClientMessage}
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <button 
+              type="button" 
+              onClick={() => setShowAddWholesaleClient(false)} 
+              className="px-4 py-2 rounded bg-neutral-800/60"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={wholesaleClientLoading} 
+              className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {wholesaleClientLoading 
+                ? 'Saving...' 
+                : wholesaleClientForm.client_id 
+                  ? 'Update Client' 
+                  : 'Add Client'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+      
+      {/* ✅ Client Order Modal */}
+      <Modal
+        open={showAddOrder}
+        onClose={() => setShowAddOrder(false)}
+        title={orderForm.order_id ? "Edit Order" : "Add Order"}
+      >
+        <form onSubmit={handleOrderSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <select
+              autoFocus
+              value={orderForm.client_id}
+              onChange={(e) => setOrderForm({ ...orderForm, client_id: e.target.value })}
+              className="bg-neutral-800 p-2 rounded"
+              required
+            >
+              <option value="">Select Client *</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.surname}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={orderForm.car_id}
+              onChange={(e) => setOrderForm({ ...orderForm, car_id: e.target.value })}
+              className="bg-neutral-800 p-2 rounded"
+              required
+            >
+              <option value="">Select Car *</option>
+              {cars.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.model} #{c.id} ({c.color}, {c.year}) — {c.price ? `${c.price} DZD` : '?'}
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="number"
+              placeholder="Quantity"
+              min="1"
+              value={orderForm.quantity}
+              onChange={(e) => setOrderForm({ ...orderForm, quantity: e.target.value })}
+              className="bg-neutral-800 p-2 rounded"
+              required
+            />
+
+            <select
+              value={orderForm.delivery_status}
+              onChange={(e) => setOrderForm({ ...orderForm, delivery_status: e.target.value })}
+              className="bg-neutral-800 p-2 rounded"
+            >
+              <option value="shipping">🚚 Shipping</option>
+              <option value="arrived">📦 Arrived</option>
+              <option value="showroom">🏬 In Showroom</option>
+            </select>
+          </div>
+          {orderMessage && (
+            <p className={`text-sm ${orderMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>{orderMessage}</p>
+          )}
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setShowAddOrder(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
+            <button type="submit" disabled={orderLoading} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
+              {orderLoading ? 'Saving...' : orderForm.order_id ? 'Update Order' : 'Add Order'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ✅ Wholesale Order Modal */}
+      <Modal 
+        open={showAddWholesaleOrder} 
+        onClose={() => setShowAddWholesaleOrder(false)} 
+        title={wholesaleOrderForm.order_id ? "Edit Wholesale Order" : "Add Wholesale Order"}
+      >
+        <form onSubmit={handleWholesaleOrderSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <select 
+              value={wholesaleOrderForm.client_id} 
+              onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, client_id: e.target.value })}
+              className="bg-neutral-800 p-2 rounded" 
+              required
+            >
+              <option value="">Select Client *</option>
+              {wholesaleClients.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.surname} ({c.company_name})
+                </option>
+              ))}
+            </select>
+            <select 
+              value={wholesaleOrderForm.car_id} 
+              onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, car_id: e.target.value })}
+              className="bg-neutral-800 p-2 rounded" 
+              required
+            >
+              <option value="">Select Car *</option>
+              {cars.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.model} #{c.id} ({c.color}, {c.year}) — {c.wholesale_price ? `${c.wholesale_price} DZD` : '?'} 
+                </option>
+              ))}
+            </select>
+            <input 
+              type="number" 
+              placeholder="Quantity" 
+              min="1"
+              value={wholesaleOrderForm.quantity} 
+              onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, quantity: e.target.value })}
+              className="bg-neutral-800 p-2 rounded" 
+              required 
+            />
+            <select 
+              value={wholesaleOrderForm.delivery_status} 
+              onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
+              className="bg-neutral-800 p-2 rounded"
+            >
+              <option value="shipping">🚚 Shipping</option>
+              <option value="arrived">📦 Arrived</option>
+              <option value="showroom">🏬 In Showroom</option>
+            </select>
+          </div>
+          {wholesaleOrderMessage && (
+            <p className={`text-sm ${wholesaleOrderMessage.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>
+              {wholesaleOrderMessage}
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <button 
+              type="button" 
+              onClick={() => setShowAddWholesaleOrder(false)} 
+              className="px-4 py-2 rounded bg-neutral-800/60"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={wholesaleOrderLoading} 
+              className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {wholesaleOrderLoading 
+                ? 'Saving...' 
+                : wholesaleOrderForm.order_id 
+                  ? 'Update Order' 
+                  : 'Add Order'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={showAddFournisseur}
+        onClose={() => setShowAddFournisseur(false)}
+        title={fournisseurForm.id ? "Modifier Fournisseur" : "Ajouter Fournisseur"}
+      >
+        <form onSubmit={handleAddFournisseur} className="space-y-4">
+          <input type="text" name="name" placeholder="Nom du fournisseur" value={fournisseurForm.name} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" required />
+          <input type="text" name="surname" placeholder="Surname" value={fournisseurForm.surname} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" />
+          <input type="text" name="phone_number" placeholder="Téléphone" value={fournisseurForm.phone_number} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" />
+          <input type="text" name="address" placeholder="Adresse" value={fournisseurForm.address} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" />
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setShowAddFournisseur(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
+            <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg">
+              {fournisseurForm.id ? "Modifier" : "Ajouter"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ✅ Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-neutral-800 rounded-2xl w-full max-w-md border border-neutral-700">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-xl font-bold text-white">
+                  {passwordModalType === "commercial" && "Identifiants du Commercial"}
+                  {passwordModalType === "marketer" && "Identifiants du Marketer"}
+                  {passwordModalType === "accountant" && "Identifiants de l'Accountant"}
+                  {passwordModalType === "wholesale_client" && "Identifiants du Client Gros"}
+                </h2>
+                <button onClick={() => setShowPasswordModal(false)} className="text-neutral-400 hover:text-white text-2xl">&times;</button>
+              </div>
+              <p className="text-neutral-300 text-sm mb-4">
+                {passwordModalType === "commercial" && "Le commercial peut se connecter avec ces identifiants :"}
+                {passwordModalType === "marketer" && "Le marketer peut se connecter avec ces identifiants :"}
+                {passwordModalType === "accountant" && "L'accountant peut se connecter avec ces identifiants :"}
+                {passwordModalType === "wholesale_client" && "Le client en gros peut se connecter avec ces identifiants :"}
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-neutral-400">Téléphone</label>
+                  <code className="block mt-1 bg-neutral-900 px-3 py-2.5 rounded font-mono text-emerald-400">
+                    {userPhoneForPassword}
+                  </code>
                 </div>
-                <p className="text-neutral-300 text-sm mb-4">
-                  {passwordModalType === "commercial" && "Le commercial peut se connecter avec ces identifiants :"}
-                  {passwordModalType === "marketer" && "Le marketer peut se connecter avec ces identifiants :"}
-                  {passwordModalType === "accountant" && "L'accountant peut se connecter avec ces identifiants :"}
-                </p>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs text-neutral-400">Téléphone</label>
-                    <code className="block mt-1 bg-neutral-900 px-3 py-2.5 rounded font-mono text-emerald-400">
-                      {userPhoneForPassword}
+                <div>
+                  <label className="text-xs text-neutral-400">Mot de passe temporaire</label>
+                  <div className="mt-1 flex">
+                    <code className="bg-neutral-900 px-3 py-2.5 rounded-l font-mono text-emerald-400 flex-1">
+                      {tempPassword}
                     </code>
+                    <button
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(tempPassword);
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-500 px-4 rounded-r font-medium"
+                      title="Copier"
+                    >
+                      📋
+                    </button>
                   </div>
-                  <div>
-                    <label className="text-xs text-neutral-400">Mot de passe temporaire</label>
-                    <div className="mt-1 flex">
-                      <code className="bg-neutral-900 px-3 py-2.5 rounded-l font-mono text-emerald-400 flex-1">
-                        {tempPassword}
-                      </code>
-                      <button
-                        onClick={async () => {
-                          await navigator.clipboard.writeText(tempPassword);
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-500 px-4 rounded-r font-medium"
-                        title="Copier"
-                      >
-                        📋
-                      </button>
-                    </div>
-                    <p className="text-xs text-yellow-400 mt-2">⚠️ Ce mot de passe ne sera plus affiché après fermeture.</p>
-                  </div>
+                  <p className="text-xs text-yellow-400 mt-2">⚠️ Ce mot de passe ne sera plus affiché après fermeture.</p>
                 </div>
-                <div className="mt-6 text-right">
-                  <button
-                    onClick={() => setShowPasswordModal(false)}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium"
-                  >
-                    J’ai copié le mot de passe
-                  </button>
-                </div>
+              </div>
+              <div className="mt-6 text-right">
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium"
+                >
+                  J’ai copié le mot de passe
+                </button>
               </div>
             </div>
           </div>
-        )}
-
-        <Modal
-          open={showAddFournisseur}
-          onClose={() => setShowAddFournisseur(false)}
-          title={fournisseurForm.id ? "Modifier Fournisseur" : "Ajouter Fournisseur"}
-        >
-          <form onSubmit={handleAddFournisseur} className="space-y-4">
-            <input type="text" name="name" placeholder="Nom du fournisseur" value={fournisseurForm.name} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" required />
-            <input type="text" name="surname" placeholder="Surname" value={fournisseurForm.surname} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" />
-            <input type="text" name="phone_number" placeholder="Téléphone" value={fournisseurForm.phone_number} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" />
-            <input type="text" name="address" placeholder="Adresse" value={fournisseurForm.address} onChange={handleChangeFournisseur} className="bg-neutral-800 p-2 w-full rounded" />
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setShowAddFournisseur(false)} className="px-4 py-2 rounded bg-neutral-800/60">Cancel</button>
-              <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg">
-                {fournisseurForm.id ? "Modifier" : "Ajouter"}
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* ✅ Pass supplierItems */}
-        <CommercialCarsModal
-          open={showCommercialCars}
-          onClose={() => setShowCommercialCars(false)}
-          commercial={selectedCommercial}
-          cars={cars}
-          suppliers={fournisseurs}
-          currencyList={currencyList}
-          supplierItems={supplierItems}
-        />
-      </main>
+        </div>
+      )}
     </div>
   );
 }

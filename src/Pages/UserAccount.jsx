@@ -1,3 +1,4 @@
+// src/Pages/UserAccount.jsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   Bell,
@@ -12,7 +13,9 @@ import {
   ArrowBigLeft,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
+// ✅ FIXED: Trimmed URL + consistent key
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 const Card = ({ children, className = "" }) => (
@@ -37,52 +40,23 @@ const StatCard = ({ label, value, color = "text-white" }) => (
 );
 
 const UserAccount = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef(null);
 
-  // Auth state
-  const [token, setToken] = useState(localStorage.getItem("token"));
+  // ✅ Use "authToken" consistently
+  const [token, setToken] = useState(localStorage.getItem("authToken"));
   const [loginForm, setLoginForm] = useState({ phone: "", password: "" });
   const [loginError, setLoginError] = useState("");
 
-  // Data state
   const [userProfile, setUserProfile] = useState(null);
   const [orders, setOrders] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Derived billing data
-  const billingDetails = orders.map((order) => {
-    const totalPrice = order.price_dzd || 0;
-    const amountPaid = order.payment_amount || 0;
-    const remaining = Math.max(0, totalPrice - amountPaid);
-    return {
-      orderId: `ORD-${order.order_id}`,
-      car: order.car_model,
-      totalPrice,
-      amountPaid,
-      remaining,
-      payments: [
-        {
-          method: "Payment",
-          date: order.purchase_date
-            ? new Date(order.purchase_date).toLocaleDateString("fr-FR")
-            : "N/A",
-          amount: amountPaid,
-          status: "Completed",
-        },
-      ],
-    };
-  });
-
-  const totalPaid = billingDetails.reduce((s, o) => s + o.amountPaid, 0);
-  const totalDue = billingDetails.reduce((s, o) => s + o.remaining, 0);
-  const totalPrice = billingDetails.reduce((s, o) => s + o.totalPrice, 0);
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  // Handle click outside notifications
+  // ✅ Handle click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
@@ -93,79 +67,68 @@ const UserAccount = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch data when token changes
+  // ✅ Auth-aware fetch helper
+  const apiFetch = async (url, options = {}) => {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem("authToken");
+      setToken(null);
+      navigate("/auth"); // ✅ Redirect to unified login
+      throw new Error("Unauthorized");
+    }
+
+    return res;
+  };
+
+  // ✅ Data loading
   useEffect(() => {
     if (!token) {
       setLoading(false);
       return;
     }
 
-    const fetchData = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
         setError("");
 
-        // Get user profile
-        const profileRes = await fetch(`${API_BASE_URL}/clients/client`, {
+        // ✅ Fetch client profile
+        const profileRes = await apiFetch(`${API_BASE_URL}/clients/client`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ client_id: null }), // ✅ `client_id: null` satisfies backend (or omit if optional)
         });
-
-        if (!profileRes.ok) throw new Error("Failed to load profile");
         const profile = await profileRes.json();
         setUserProfile(profile);
 
-        // Get orders
-        const ordersRes = await fetch(`${API_BASE_URL}/orders/client/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ client_id: profile.id }),
-        });
-
-        if (!ordersRes.ok) throw new Error("Failed to load orders");
+        // ✅ GET orders (no body)
+        const ordersRes = await apiFetch(`${API_BASE_URL}/orders/client/`);
         const ordersData = await ordersRes.json();
         setOrders(Array.isArray(ordersData) ? ordersData : []);
 
-        // Get notifications
-        const notifRes = await fetch(`${API_BASE_URL}/notifications/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            recipient_type: "client",
-            recipient_id: profile.id,
-          }),
-        });
-
-        if (!notifRes.ok) throw new Error("Failed to load notifications");
+        // ✅ GET notifications (no body)
+        const notifRes = await apiFetch(`${API_BASE_URL}/notifications/`);
         const notifs = await notifRes.json();
         setNotifications(Array.isArray(notifs) ? notifs : []);
-
       } catch (err) {
-        console.error("API Error:", err);
-        setError(err.message);
-        // Clear token on auth failure
-        if (err.message.includes("401") || err.message.includes("403")) {
-          localStorage.removeItem("token");
-          setToken(null);
-        }
+        console.error("UserAccount load error:", err);
+        setError(err.message || "Échec du chargement");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [token]);
+    loadData();
+  }, [token, navigate]);
 
+  // ✅ Unified login
   const handleLogin = async () => {
     if (!loginForm.phone || !loginForm.password) {
       setLoginError("Veuillez remplir tous les champs");
@@ -185,30 +148,31 @@ const UserAccount = () => {
       const data = await res.json();
 
       if (res.ok && data.access_token) {
+        localStorage.setItem("authToken", data.access_token);
+        localStorage.setItem("userRole", data.role); // ✅ store role
         setToken(data.access_token);
-        localStorage.setItem("token", data.access_token);
         setLoginError("");
       } else {
-        setLoginError("Numéro de téléphone ou mot de passe incorrect");
+        setLoginError(data.detail || "Identifiants incorrects");
       }
     } catch (err) {
       console.error("Login error:", err);
-      setLoginError("Erreur de connexion. Réessayez.");
+      setLoginError("Erreur réseau. Réessayez.");
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userRole");
     setToken(null);
     setUserProfile(null);
     setOrders([]);
     setNotifications([]);
+    navigate("/auth");
   };
 
-  const markNotificationAsRead = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const markAsRead = (id) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const getStatusColor = (status) => {
@@ -238,8 +202,30 @@ const UserAccount = () => {
     }
   };
 
+  // ✅ Derived stats
+  const billing = orders.map((order) => {
+    const total = order.price_dzd || 0;
+    const paid = order.payment_amount || 0;
+    const remaining = Math.max(0, total - paid);
+    return { order, total, paid, remaining };
+  });
+  const totalPaid = billing.reduce((s, o) => s + o.paid, 0);
+  const totalDue = billing.reduce((s, o) => s + o.remaining, 0);
+  const totalPrice = billing.reduce((s, o) => s + o.total, 0);
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Main dashboard
+  // ✅ Auto-refresh token/role if missing
+  useEffect(() => {
+    const savedToken = localStorage.getItem("authToken");
+    const savedRole = localStorage.getItem("userRole");
+    if (savedToken && !token) {
+      setToken(savedToken);
+    }
+    if (savedRole === "client" && !token) {
+      // Allow client to stay if token missing but role known (e.g., after page reload)
+    }
+  }, [token]);
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-black text-white">
       {/* Sidebar */}
@@ -247,7 +233,7 @@ const UserAccount = () => {
         <button
           onClick={handleLogout}
           className="p-2 rounded-xl text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-          title="Logout"
+          title="Déconnexion"
         >
           <ArrowBigLeft className="w-6 h-6" />
         </button>
@@ -289,7 +275,7 @@ const UserAccount = () => {
         </div>
       </aside>
 
-      {/* Notification Panel */}
+      {/* Notifications Panel */}
       <AnimatePresence>
         {showNotifications && (
           <motion.div
@@ -315,7 +301,7 @@ const UserAccount = () => {
                 notifications.map((notif) => (
                   <div
                     key={notif.id}
-                    onClick={() => markNotificationAsRead(notif.id)}
+                    onClick={() => markAsRead(notif.id)}
                     className={`p-4 border-b border-neutral-800 cursor-pointer hover:bg-white/5 ${
                       !notif.read ? "bg-emerald-500/5" : ""
                     }`}
@@ -334,253 +320,246 @@ const UserAccount = () => {
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
-      <main className="ml-20 md:ml-28 w-full py-10 px-6 md:px-10 space-y-10 max-w-screen overflow-hidden">
+      {/* Main */}
+      <main className="ml-20 md:ml-28 w-full py-10 px-6 md:px-10 space-y-10">
         {error && (
           <div className="bg-red-500/20 border border-red-500 text-red-200 px-4 py-3 rounded mb-4">
             {error}
           </div>
         )}
 
-        <AnimatePresence mode="wait">
-          {activeTab === "dashboard" && (
-            <motion.div
-              key="dashboard"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.4 }}
-            >
-              <h1 className="text-4xl font-main">
-                Bonjour, {userProfile?.name || "Client"} 👋
-              </h1>
-              <p className="text-gray-400 mb-8">
-                Gérez vos commandes, paiements et informations.
-              </p>
+        {/* Login fallback if no token */}
+        {!token && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-md mx-auto mt-20"
+          >
+            <Card>
+              <h2 className="text-2xl font-bold mb-4 text-center">Connexion Client</h2>
+              {loginError && <p className="text-red-400 text-sm mb-3">{loginError}</p>}
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Numéro de téléphone"
+                  value={loginForm.phone}
+                  onChange={(e) => setLoginForm({ ...loginForm, phone: e.target.value })}
+                  className="w-full bg-neutral-800 p-3 rounded-lg outline-none"
+                />
+                <input
+                  type="password"
+                  placeholder="Mot de passe"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                  className="w-full bg-neutral-800 p-3 rounded-lg outline-none"
+                />
+                <button
+                  onClick={handleLogin}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-lg font-medium transition"
+                >
+                  Se connecter
+                </button>
+              </div>
+            </Card>
+          </motion.div>
+        )}
 
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+        {token && (
+          <AnimatePresence mode="wait">
+            {activeTab === "dashboard" && (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4 }}
+              >
+                <h1 className="text-4xl font-main">
+                  Bonjour, {userProfile?.name || "Client"} 👋
+                </h1>
+                <p className="text-gray-400 mb-8">Gérez vos commandes, paiements et informations.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <StatCard label="Commandes" value={orders.length} />
+                  <StatCard label="Total payé" value={`${totalPaid.toLocaleString()} DZD`} color="text-emerald-400" />
+                  <StatCard label="Solde restant" value={`${totalDue.toLocaleString()} DZD`} color="text-amber-400" />
+                </div>
+
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
+                  className="mt-8"
                 >
-                  <Card className="max-w-full mx-auto flex flex-col justify-center items-center gap-8">
-                    <div className="h-24 w-24 md:h-32 md:w-32 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-main">
-                      {(userProfile?.name?.[0] || "U") + (userProfile?.surname?.[0] || "C")}
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 text-center w-full">
-                      <div>
-                        <span className="text-gray-400">Nom complet:</span>{" "}
-                        <span className="ml-2 font-medium">
-                          {userProfile?.name} {userProfile?.surname}
-                        </span>
+                  <Card>
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                      <div className="h-24 w-24 md:h-32 md:w-32 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-main">
+                        {(userProfile?.name?.[0] || "U") + (userProfile?.surname?.[0] || "C")}
                       </div>
-                      <div>
-                        <span className="text-gray-400">Téléphone:</span>{" "}
-                        <span className="ml-2 font-medium">{userProfile?.phone_number}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-400">Wilaya:</span>{" "}
-                        <span className="ml-2 font-medium">{userProfile?.wilaya}</span>
+                      <div className="grid grid-cols-1 gap-2 text-center md:text-left">
+                        <div>
+                          <span className="text-gray-400">Nom:</span>{" "}
+                          <span className="ml-2 font-medium">{userProfile?.name} {userProfile?.surname}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Téléphone:</span>{" "}
+                          <span className="ml-2 font-medium">{userProfile?.phone_number}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Wilaya:</span>{" "}
+                          <span className="ml-2 font-medium">{userProfile?.wilaya}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">NIN:</span>{" "}
+                          <span className="ml-2 font-medium">{userProfile?.nin}</span>
+                        </div>
                       </div>
                     </div>
                   </Card>
                 </motion.div>
-                <StatCard label="Voitures commandées" value={orders.length} />
-                <StatCard
-                  label="Total payé"
-                  value={`${totalPaid.toLocaleString()} DZD`}
-                  color="text-emerald-400"
-                />
-                <StatCard
-                  label="Solde restant"
-                  value={`${totalDue.toLocaleString()} DZD`}
-                  color="text-amber-400"
-                />
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
 
-          {activeTab === "orders" && (
-            <motion.div
-              key="orders"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-                <h1 className="text-3xl font-main">Vos Commandes</h1>
-                {orders.some(o => o.payment_amount < o.price_dzd) && (
-                  <div className="flex items-center gap-2 text-amber-400 bg-amber-500/10 px-3 py-2 rounded-lg">
-                    <AlertCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">
-                      Paiement partiel – solde restant
-                    </span>
-                  </div>
-                )}
-              </div>
+            {activeTab === "orders" && (
+              <motion.div
+                key="orders"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h1 className="text-3xl font-main">Vos Commandes</h1>
+                  {totalDue > 0 && (
+                    <div className="flex items-center gap-2 text-amber-400 bg-amber-500/10 px-3 py-2 rounded-lg">
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="text-sm font-medium">Solde restant: {totalDue.toLocaleString()} DZD</span>
+                    </div>
+                  )}
+                </div>
 
-              {loading ? (
-                <Card>
-                  <p className="text-center py-8 text-gray-500">Chargement...</p>
-                </Card>
-              ) : orders.length === 0 ? (
-                <Card>
-                  <p className="text-center py-8 text-gray-500">Aucune commande trouvée.</p>
-                </Card>
-              ) : (
-                <Card>
-                  <div className="max-w-screen overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-gray-400 border-b border-neutral-700">
-                          <th className="py-3 px-4 text-left">Commande</th>
-                          <th className="py-3 px-4 text-left">Véhicule</th>
-                          <th className="py-3 px-4 text-left">Prix</th>
-                          <th className="py-3 px-4 text-left">Statut</th>
-                          <th className="py-3 px-4 text-left">Date</th>
-                          <th className="py-3 px-4 text-left">Payé / Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {orders.map((order) => (
-                          <tr
-                            key={order.order_id}
-                            className="border-b border-neutral-800/50 hover:bg-white/5 transition"
-                          >
-                            <td className="py-4 px-4 font-mono text-emerald-400">
-                              ORD-{order.order_id}
-                            </td>
-                            <td className="py-4 px-4 font-medium">
-                              {order.car_model}
-                            </td>
-                            <td className="py-4 px-4 font-main text-white">
-                              {order.price_dzd?.toLocaleString() || "N/A"} DZD
-                            </td>
-                            <td className="py-4 px-4">
-                              <span
-                                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${getStatusColor(
-                                  order.delivery_status
-                                )}`}
-                              >
-                                {getStatusIcon(order.delivery_status)}
-                                {getStatusText(order.delivery_status)}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-gray-400">
-                              {order.purchase_date
-                                ? new Date(order.purchase_date).toLocaleDateString("fr-FR")
-                                : "N/A"}
-                            </td>
-                            <td className="py-4 px-4">
-                              <div className="font-medium text-emerald-400">
-                                {order.payment_amount?.toLocaleString() || 0} DZD
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                / {order.price_dzd?.toLocaleString() || 0} DZD
-                              </div>
-                            </td>
+                {loading ? (
+                  <Card><p className="text-center py-8 text-gray-500">Chargement...</p></Card>
+                ) : orders.length === 0 ? (
+                  <Card><p className="text-center py-8 text-gray-500">Aucune commande trouvée.</p></Card>
+                ) : (
+                  <Card>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-gray-400 border-b border-neutral-700">
+                            <th className="py-3 px-4 text-left">ID</th>
+                            <th className="py-3 px-4 text-left">Véhicule</th>
+                            <th className="py-3 px-4 text-left">Prix</th>
+                            <th className="py-3 px-4 text-left">Statut</th>
+                            <th className="py-3 px-4 text-left">Date</th>
+                            <th className="py-3 px-4 text-left">Payé / Total</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-              )}
-            </motion.div>
-          )}
-
-          {activeTab === "billing" && (
-            <motion.div
-              key="billing"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-                <h1 className="text-3xl font-main">Facturation</h1>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <StatCard label="Montant total" value={`${totalPrice.toLocaleString()} DZD`} />
-                <StatCard label="Montant payé" value={`${totalPaid.toLocaleString()} DZD`} color="text-emerald-400" />
-                <StatCard label="Solde restant" value={`${totalDue.toLocaleString()} DZD`} color="text-amber-400" />
-              </div>
-
-              {billingDetails.length === 0 ? (
-                <Card>
-                  <p className="text-center py-8 text-gray-500">Aucune facture disponible.</p>
-                </Card>
-              ) : (
-                billingDetails.map((order, i) => (
-                  <Card key={i}>
-                    <div className="flex flex-col md:flex-row justify-between mb-4">
-                      <div>
-                        <h3 className="font-main text-xl">{order.car}</h3>
-                        <p className="text-sm text-gray-500">{order.orderId}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-gray-400 text-sm">Total</p>
-                        <p className="text-2xl font-main">{order.totalPrice.toLocaleString()} DZD</p>
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="mb-6">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-400">Progression du paiement</span>
-                        <span>{Math.round((order.amountPaid / (order.totalPrice || 1)) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-neutral-800 h-2.5 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
-                          style={{
-                            width: `${(order.amountPaid / (order.totalPrice || 1)) * 100}%`,
-                          }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between mt-2 text-sm">
-                        <span className="text-emerald-400 font-medium">
-                          Payé: {order.amountPaid.toLocaleString()} DZD
-                        </span>
-                        <span
-                          className={`font-medium ${
-                            order.remaining > 0 ? "text-amber-400" : "text-emerald-400"
-                          }`}
-                        >
-                          Reste: {order.remaining.toLocaleString()} DZD
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Payment History */}
-                    <h4 className="font-medium mb-3">Historique des paiements</h4>
-                    <div className="space-y-3">
-                      {order.payments.map((p, j) => (
-                        <div
-                          key={j}
-                          className="flex justify-between text-sm bg-white/5 rounded-lg p-3"
-                        >
-                          <div>
-                            <p className="font-medium">{p.method}</p>
-                            <p className="text-xs text-gray-500">{p.date}</p>
-                          </div>
-                          <p
-                            className={`font-bold ${
-                              p.status === "Completed" ? "text-emerald-400" : "text-amber-400"
-                            }`}
-                          >
-                            {p.amount.toLocaleString()} DZD
-                          </p>
-                        </div>
-                      ))}
+                        </thead>
+                        <tbody>
+                          {orders.map((order) => (
+                            <tr key={order.order_id || order.id} className="border-b border-neutral-800/50 hover:bg-white/5">
+                              <td className="py-4 px-4 font-mono text-emerald-400">
+                                ORD-{order.order_id || order.id}
+                              </td>
+                              <td className="py-4 px-4 font-medium">{order.car_model}</td>
+                              <td className="py-4 px-4">{(order.price_dzd || 0).toLocaleString()} DZD</td>
+                              <td className="py-4 px-4">
+                                <span className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(order.delivery_status)}`}>
+                                  {getStatusIcon(order.delivery_status)} {getStatusText(order.delivery_status)}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4 text-gray-400">
+                                {order.created_at ? new Date(order.created_at).toLocaleDateString("fr-FR") : "—"}
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="font-medium text-emerald-400">
+                                  {(order.payment_amount || 0).toLocaleString()} DZD
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  / {(order.price_dzd || 0).toLocaleString()} DZD
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </Card>
-                ))
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === "billing" && (
+              <motion.div
+                key="billing"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <h1 className="text-3xl font-main mb-6">Facturation</h1>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <StatCard label="Total commandes" value={`${totalPrice.toLocaleString()} DZD`} />
+                  <StatCard label="Total payé" value={`${totalPaid.toLocaleString()} DZD`} color="text-emerald-400" />
+                  <StatCard label="Solde restant" value={`${totalDue.toLocaleString()} DZD`} color="text-amber-400" />
+                </div>
+
+                {billing.length === 0 ? (
+                  <Card><p className="text-center py-8 text-gray-500">Aucune facture disponible.</p></Card>
+                ) : (
+                  billing.map(({ order, total, paid, remaining }, i) => (
+                    <Card key={i} className="mb-4">
+                      <div className="flex flex-col md:flex-row justify-between mb-4">
+                        <div>
+                          <h3 className="font-main text-xl">{order.car_model}</h3>
+                          <p className="text-sm text-gray-500">ORD-{order.order_id || order.id}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-gray-400 text-sm">Montant total</p>
+                          <p className="text-2xl font-main">{total.toLocaleString()} DZD</p>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="mb-6">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-gray-400">Progression</span>
+                          <span>{total > 0 ? Math.round((paid / total) * 100) : 0}%</span>
+                        </div>
+                        <div className="w-full bg-neutral-800 h-2.5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+                            style={{ width: `${total > 0 ? (paid / total) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between mt-2 text-sm">
+                          <span className="text-emerald-400 font-medium">Payé: {paid.toLocaleString()} DZD</span>
+                          <span className={remaining > 0 ? "text-amber-400 font-medium" : "text-emerald-400 font-medium"}>
+                            Reste: {remaining.toLocaleString()} DZD
+                          </span>
+                        </div>
+                      </div>
+
+                      {paid > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-3">Paiement(s)</h4>
+                          <div className="bg-neutral-800/50 rounded-lg p-3 text-sm">
+                            <div className="flex justify-between">
+                              <span>Montant versé</span>
+                              <span className="text-emerald-400 font-medium">{paid.toLocaleString()} DZD</span>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Date: {order.created_at ? new Date(order.created_at).toLocaleDateString("fr-FR") : "—"}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  ))
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
       </main>
     </div>
   );

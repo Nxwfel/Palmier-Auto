@@ -1,29 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Car, Trash2, Edit, X } from "lucide-react";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com"; // Removed trailing space
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
-// ✅ Helper function to make authenticated API calls
+// ✅ Enhanced apiFetch: preserves redirect intent on 401
 const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem("authToken");
-  
-  // For FormData, don't set Content-Type; let browser auto-set with boundary
   const headers = {};
+  
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  // Only merge custom headers if NOT sending FormData
-  if (!(options.body instanceof FormData) && options.headers) {
-    Object.assign(headers, options.headers);
-  }
-  
-  const response = await fetch(url, { ...options, headers });
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...headers,
+      ...(options.headers || {}),
+    },
+  });
+
   if (response.status === 401) {
     localStorage.removeItem("authToken");
-    window.location.href = "/marketinglogin";
-    throw new Error("Unauthorized");
+    const currentPath = window.location.pathname;
+    const redirectParam = currentPath !== "/marketinglogin" ? `?redirect=${encodeURIComponent(currentPath)}` : "";
+    window.location.href = `/marketinglogin${redirectParam}`;
+    throw new Error("Session expired — please log in again");
   }
+
   return response;
 };
 
@@ -32,15 +37,15 @@ const MarketingAgent = () => {
   const [currencies, setCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Create a memoized map of currency id to currency object
-  const currencyMap = React.useMemo(() => {
+  const currencyMap = useMemo(() => {
     const map = {};
-    currencies.forEach(currency => {
-      map[currency.id] = currency; // Store by numeric id
+    currencies.forEach((currency) => {
+      map[currency.id] = currency;
     });
     return map;
   }, [currencies]);
 
+  // ✅ Added wholesale_price to initial state
   const [formData, setFormData] = useState({
     currency_id: "",
     model: "",
@@ -49,13 +54,15 @@ const MarketingAgent = () => {
     engine: "",
     power: "",
     fuel_type: "",
-    milage: "",
+    milage: "", // kept as "milage" to match your backend spelling
     country: "",
     commercial_comission: "",
     quantity: "",
     price: "",
+    wholesale_price: "", // ✅ ADDED
     shipping_date: "",
     arriving_date: "",
+    images: [],
   });
 
   const [filter, setFilter] = useState({
@@ -67,6 +74,8 @@ const MarketingAgent = () => {
   });
 
   const [selectedCar, setSelectedCar] = useState(null);
+  
+  // ✅ Added wholesale_price to edit state
   const [editForm, setEditForm] = useState({
     car_id: "",
     currency_id: "",
@@ -81,15 +90,16 @@ const MarketingAgent = () => {
     commercial_comission: "",
     quantity: "",
     price: "",
+    wholesale_price: "", // ✅ ADDED
     shipping_date: "",
     arriving_date: "",
+    images: [],
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("New");
   const [showFilter, setShowFilter] = useState(false);
 
-  // ✅ Check if field is empty (but accept 0)
   const isFieldEmpty = (value) => value === "" || value == null;
 
   useEffect(() => {
@@ -123,9 +133,7 @@ const MarketingAgent = () => {
 
   const fetchCurrencies = async () => {
     try {
-      const response = await apiFetch(`${API_BASE_URL}/currencies/`, {
-        headers: { "Content-Type": "application/json" },
-      });
+      const response = await apiFetch(`${API_BASE_URL}/currencies/`);
       const data = await response.json();
       setCurrencies(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -140,6 +148,8 @@ const MarketingAgent = () => {
   const handleAddCar = async (e) => {
     e.preventDefault();
 
+
+    // ✅ Added wholesale_price to required fields
     const requiredFields = [
       "currency_id",
       "model",
@@ -153,6 +163,7 @@ const MarketingAgent = () => {
       "commercial_comission",
       "quantity",
       "price",
+      "wholesale_price", // ✅ ADDED
       "shipping_date",
       "arriving_date",
     ];
@@ -179,12 +190,14 @@ const MarketingAgent = () => {
       formDataToSend.append("commercial_comission", parseFloat(formData.commercial_comission));
       formDataToSend.append("quantity", parseInt(formData.quantity));
       formDataToSend.append("price", parseFloat(formData.price));
+      formDataToSend.append("wholesale_price", parseFloat(formData.wholesale_price)); // ✅ ADDED
       formDataToSend.append("shipping_date", formData.shipping_date);
       formDataToSend.append("arriving_date", formData.arriving_date);
-
+      formData.images.forEach(file => {
+      formDataToSend.append("images", file);
+    });
       const response = await apiFetch(`${API_BASE_URL}/cars/`, {
         method: "POST",
-        headers: {}, // apiFetch will add Authorization header
         body: formDataToSend,
       });
 
@@ -203,6 +216,7 @@ const MarketingAgent = () => {
           commercial_comission: "",
           quantity: "",
           price: "",
+          wholesale_price: "", // ✅ Reset
           shipping_date: "",
           arriving_date: "",
         });
@@ -223,7 +237,6 @@ const MarketingAgent = () => {
     try {
       const response = await apiFetch(`${API_BASE_URL}/cars/?car_id=${carId}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
       });
 
       if (response.ok) {
@@ -271,71 +284,71 @@ const MarketingAgent = () => {
       commercial_comission: car.commercial_comission || "",
       quantity: car.quantity || "",
       price: car.price || "",
+      wholesale_price: car.wholesale_price || "", // ✅ ADDED
       shipping_date: car.shipping_date || "",
       arriving_date: car.arriving_date || "",
+      images: [],
     });
   };
 
   const handleEditChange = (e) => {
     setEditForm({ ...editForm, [e.target.name]: e.target.value });
   };
-const handleSaveEdit = async (e) => {
-  e.preventDefault();
 
-  try {
-    // Create FormData with all fields, including empty ones
-    const formDataToSend = new FormData();
-    
-    // Always include car_id as required
-    formDataToSend.append("car_id", editForm.car_id);
-    
-    // Include all fields, sending empty strings for empty values
-    // This ensures the server receives all expected fields
-    formDataToSend.append("currency_id", editForm.currency_id || "");
-    formDataToSend.append("model", editForm.model || "");
-    formDataToSend.append("color", editForm.color || "");
-    formDataToSend.append("year", editForm.year || "");
-    formDataToSend.append("engine", editForm.engine || "");
-    formDataToSend.append("power", editForm.power || "");
-    formDataToSend.append("fuel_type", editForm.fuel_type || "");
-    formDataToSend.append("milage", editForm.milage || "");
-    formDataToSend.append("country", editForm.country || "");
-    formDataToSend.append("commercial_comission", editForm.commercial_comission || "");
-    formDataToSend.append("quantity", editForm.quantity || "");
-    formDataToSend.append("price", editForm.price || "");
-    formDataToSend.append("shipping_date", editForm.shipping_date || "");
-    formDataToSend.append("arriving_date", editForm.arriving_date || "");
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
 
-    const response = await apiFetch(`${API_BASE_URL}/cars/`, {
-      method: "PUT",
-      headers: {}, // apiFetch will attach Authorization
-      body: formDataToSend,
-    });
+    try {
+      const formDataToSend = new FormData();
+      
+      formDataToSend.append("car_id", editForm.car_id);
+      formDataToSend.append("currency_id", editForm.currency_id || "");
+      formDataToSend.append("model", editForm.model || "");
+      formDataToSend.append("color", editForm.color || "");
+      formDataToSend.append("year", editForm.year || "");
+      formDataToSend.append("engine", editForm.engine || "");
+      formDataToSend.append("power", editForm.power || "");
+      formDataToSend.append("fuel_type", editForm.fuel_type || "");
+      formDataToSend.append("milage", editForm.milage || "");
+      formDataToSend.append("country", editForm.country || "");
+      formDataToSend.append("commercial_comission", editForm.commercial_comission || "");
+      formDataToSend.append("quantity", editForm.quantity || "");
+      formDataToSend.append("price", editForm.price || "");
+      formDataToSend.append("wholesale_price", editForm.wholesale_price || ""); // ✅ ADDED
+      formDataToSend.append("shipping_date", editForm.shipping_date || "");
+      formDataToSend.append("arriving_date", editForm.arriving_date || "");
+      editForm.images.forEach(file => {
+  formDataToSend.append("images", file);
+});
+      const response = await apiFetch(`${API_BASE_URL}/cars/`, {
+        method: "PUT",
+        body: formDataToSend,
+      });
 
-    if (response.ok) {
-      alert("Voiture modifiée !");
-      setSelectedCar(null);
-      fetchCars();
-    } else {
-      let errorDetails = "Échec de la modification";
-      try {
-        const error = await response.json();
-        errorDetails = error.detail || JSON.stringify(error);
-      } catch (jsonError) {
+      if (response.ok) {
+        alert("Voiture modifiée !");
+        setSelectedCar(null);
+        fetchCars();
+      } else {
+        let errorDetails = "Échec de la modification";
         try {
-          const errorText = await response.text();
-          errorDetails = errorText || errorDetails;
-        } catch (textError) {
-          errorDetails = response.statusText || errorDetails;
+          const error = await response.json();
+          errorDetails = error.detail || JSON.stringify(error);
+        } catch {
+          try {
+            const errorText = await response.text();
+            errorDetails = errorText || errorDetails;
+          } catch {
+            errorDetails = response.statusText || errorDetails;
+          }
         }
+        alert(`Erreur: ${errorDetails}`);
       }
-      alert(`Erreur: ${errorDetails}`);
+    } catch (error) {
+      console.error("Edit error:", error);
+      alert("Erreur réseau: " + error.message);
     }
-  } catch (error) {
-    console.error("Edit error:", error);
-    alert("Erreur réseau: " + error.message);
-  }
-};
+  };
 
   const handleCancelEdit = () => {
     setSelectedCar(null);
@@ -414,7 +427,7 @@ const handleSaveEdit = async (e) => {
         </motion.div>
       </motion.div>
 
-      {/* Main Content */}
+      {/* Main Content: New Tab */}
       {activeTab === "New" && (
         <div className="flex-1 px-[3vw] overflow-y-auto">
           <svg
@@ -556,6 +569,17 @@ const handleSaveEdit = async (e) => {
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                 required
               />
+              {/* ✅ ADDED wholesale_price */}
+              <input
+                name="wholesale_price"
+                value={formData.wholesale_price}
+                onChange={handleChange}
+                placeholder="Prix de gros *"
+                type="number"
+                step="0.01"
+                className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
+                required
+              />
               <input
                 name="shipping_date"
                 value={formData.shipping_date}
@@ -572,6 +596,56 @@ const handleSaveEdit = async (e) => {
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                 required
               />
+              {/* ✅ Photo Upload */}
+<div className="md:col-span-3">
+  <label className="block text-sm text-emerald-400 mb-2">Photos (facultatif)</label>
+  <input
+    type="file"
+    accept="image/*"
+    multiple
+    onChange={(e) => {
+      const files = Array.from(e.target.files);
+      setFormData(prev => ({ ...prev, images: files }));
+    }}
+    className="w-full bg-neutral-800 text-sm p-2 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
+  />
+  {/* Preview */}
+  {formData.images.length > 0 && (
+    <div className="mt-3">
+      <p className="text-xs text-neutral-400 mb-2">
+        {formData.images.length} image{formData.images.length > 1 ? 's' : ''} sélectionnée{formData.images.length > 1 ? 's' : ''}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {formData.images.slice(0, 4).map((file, i) => (
+          <div key={i} className="relative w-16 h-16">
+            <img
+              src={URL.createObjectURL(file)}
+              alt={`preview ${i}`}
+              className="w-full h-full object-cover rounded border border-neutral-700"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  images: prev.images.filter((_, idx) => idx !== i)
+                }));
+              }}
+              className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {formData.images.length > 4 && (
+          <div className="w-16 h-16 bg-neutral-800 rounded flex items-center justify-center text-xs">
+            +{formData.images.length - 4}
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+</div>
             </div>
 
             <button
@@ -603,22 +677,23 @@ const handleSaveEdit = async (e) => {
                       <th className="p-2">Année</th>
                       <th className="p-2">Pays</th>
                       <th className="p-2">Prix</th>
-                      <th className="p-2">Devise</th> {/* Changed header text */}
+                      <th className="p-2">Prix gros</th> {/* ✅ Added */}
+                      <th className="p-2">Devise</th>
                       <th className="p-2">Kilométrage</th>
                       <th className="p-2">Quantité</th>
                       <th className="p-2">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>{cars.map((car) => (
+                  <tbody>
+                    {cars.map((car) => (
                       <tr key={car.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
                         <td className="p-2">{car.model}</td>
                         <td className="p-2">{car.color}</td>
                         <td className="p-2">{car.year}</td>
                         <td className="p-2">{car.country}</td>
                         <td className="p-2">{car.price}</td>
-                        <td className="p-2">
-                          {currencyMap[car.currency_id]?.name || 'Unknown'}
-                        </td>
+                        <td className="p-2">{car.wholesale_price}</td> {/* ✅ Display */}
+                        <td className="p-2">{currencyMap[car.currency_id]?.name || "Unknown"}</td>
                         <td className="p-2">{car.milage}</td>
                         <td className="p-2">{car.quantity}</td>
                         <td className="p-2 flex gap-2">
@@ -857,6 +932,16 @@ const handleSaveEdit = async (e) => {
                         step="0.01"
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
+                      {/* ✅ ADDED wholesale_price in edit form */}
+                      <input
+                        name="wholesale_price"
+                        value={editForm.wholesale_price}
+                        onChange={handleEditChange}
+                        placeholder="Prix de gros"
+                        type="number"
+                        step="0.01"
+                        className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
                       <input
                         name="shipping_date"
                         value={editForm.shipping_date}
@@ -871,6 +956,57 @@ const handleSaveEdit = async (e) => {
                         type="date"
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
+                      
+{/* ✅ Photo Upload */}
+<div className="md:col-span-3">
+  <label className="block text-sm text-emerald-400 mb-2">Ajouter/Remplacer photos (facultatif)</label>
+  <input
+    type="file"
+    accept="image/*"
+    multiple
+    onChange={(e) => {
+      const files = Array.from(e.target.files);
+      setEditForm(prev => ({ ...prev, images: files }));
+    }}
+    className="w-full bg-neutral-800 text-sm p-2 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
+  />
+  
+  {editForm.images.length > 0 && (
+    <div className="mt-3">
+      <p className="text-xs text-neutral-400 mb-2">
+        {editForm.images.length} nouvelle{editForm.images.length > 1 ? 's' : ''} image{editForm.images.length > 1 ? 's' : ''}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {editForm.images.slice(0, 4).map((file, i) => (
+          <div key={i} className="relative w-16 h-16">
+            <img
+              src={URL.createObjectURL(file)}
+              alt={`preview ${i}`}
+              className="w-full h-full object-cover rounded border border-neutral-700"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setEditForm(prev => ({
+                  ...prev,
+                  images: prev.images.filter((_, idx) => idx !== i)
+                }));
+              }}
+              className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {editForm.images.length > 4 && (
+          <div className="w-16 h-16 bg-neutral-800 rounded flex items-center justify-center text-xs">
+            +{editForm.images.length - 4}
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+</div>
                     </div>
 
                     <div className="flex justify-end gap-3 mt-6">
@@ -909,22 +1045,23 @@ const handleSaveEdit = async (e) => {
                       <th className="p-2">Année</th>
                       <th className="p-2">Pays</th>
                       <th className="p-2">Prix</th>
-                      <th className="p-2">Devise</th> {/* Changed header text */}
+                      <th className="p-2">Prix gros</th> {/* ✅ Added */}
+                      <th className="p-2">Devise</th>
                       <th className="p-2">Kilométrage</th>
                       <th className="p-2">Quantité</th>
                       <th className="p-2">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>{filteredCars.map((car) => (
+                  <tbody>
+                    {filteredCars.map((car) => (
                       <tr key={car.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
                         <td className="p-2">{car.model}</td>
                         <td className="p-2">{car.color}</td>
                         <td className="p-2">{car.year}</td>
                         <td className="p-2">{car.country}</td>
                         <td className="p-2">{car.price}</td>
-                        <td className="p-2">
-                          {currencyMap[car.currency_id]?.name || 'Unknown'}
-                        </td>
+                        <td className="p-2">{car.wholesale_price}</td> {/* ✅ Display */}
+                        <td className="p-2">{currencyMap[car.currency_id]?.name || "Unknown"}</td>
                         <td className="p-2">{car.milage}</td>
                         <td className="p-2">{car.quantity}</td>
                         <td className="p-2 flex gap-2">

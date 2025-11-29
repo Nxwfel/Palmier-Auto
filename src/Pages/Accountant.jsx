@@ -1,291 +1,155 @@
 import React, { useState, useEffect } from "react";
-import { motion , AnimatePresence } from "framer-motion";
-import {
-  Car,
-  DollarSign,
-  TrendingUp,
-} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Car, DollarSign, TrendingUp, Users } from "lucide-react";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com"; // Replace with your actual API URL
+// ✅ FIXED: Trimmed URL
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 const Accountant = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activetab , setActivetab] = useState('Jour');
+  const [activeTab, setActiveTab] = useState("Jour");
   const [selectedCommercial, setSelectedCommercial] = useState(null);
-  const [commercial , setCommercial] = useState([]);
-  const [Clients , setClients] = useState([]);
+  const [commercials, setCommercials] = useState([]);
+  const [clients, setClients] = useState([]);
   const [orders, setOrders] = useState([]);
   const [cars, setCars] = useState([]);
-  const [expenses, setExpenses] = useState(null);
-  const [earnings, setEarnings] = useState(null);
+  const [expenses, setExpenses] = useState({ total_amount: 0, purchases: 0, transport: 0, other: 0 });
+  const [totalEarnings, setTotalEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(false);
 
-  // Fetch all data on component mount
-  useEffect(() => {
-    fetchAllData();
-  }, []);
+  // ✅ Auth-aware fetch
+  const apiFetch = async (url, options = {}) => {
+    const token = localStorage.getItem("authToken"); // ✅ correct key
+    if (!token) throw new Error("No auth token");
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+    if (res.status === 401) {
+      localStorage.removeItem("authToken");
+      throw new Error("Unauthorized");
+    }
+    return res;
+  };
 
   const fetchAllData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      setLoading(true);
+      const token = localStorage.getItem("authToken");
       if (!token) {
         setAuthError(true);
-        setLoading(false);
         return;
       }
-      
-      setLoading(true);
-      await Promise.all([
-        fetchCommercials(),
-        fetchClients(),
-        fetchOrders(),
-        fetchCars(),
-        fetchExpenses(),
-        fetchEarnings()
+
+      const [commsRes, clientsRes, ordersRes, carsRes, expRes, earnRes] = await Promise.all([
+        apiFetch(`${API_BASE_URL}/commercials/`),
+        apiFetch(`${API_BASE_URL}/clients/`),
+        apiFetch(`${API_BASE_URL}/orders/client/`), // ✅ client-accessible orders
+        apiFetch(`${API_BASE_URL}/cars/all`, { method: "POST", body: JSON.stringify({}) }),
+        apiFetch(`${API_BASE_URL}/expenses/monthly`),
+        apiFetch(`${API_BASE_URL}/earnings/monthly`),
       ]);
+
+      const commercialsData = await commsRes.json();
+      const clientsData = await clientsRes.json();
+      const ordersData = await ordersRes.json();
+      const carsData = await carsRes.json();
+      const expensesData = await expRes.json();
+      const earningsData = await earnRes.json();
+
+      setCommercials(Array.isArray(commercialsData) ? commercialsData : []);
+      setClients(Array.isArray(clientsData) ? clientsData : []);
+      setOrders(Array.isArray(ordersData) ? ordersData : []);
+      setCars(Array.isArray(carsData) ? carsData : []);
+      setExpenses({
+        total_amount: expensesData.total_amount || 0,
+        purchases: expensesData.purchases || 0,
+        transport: expensesData.transport || 0,
+        other: expensesData.other || 0,
+      });
+
+      // ✅ Sum monthly earnings (array of {commercial_id, year, month, amount})
+      const total = Array.isArray(earningsData)
+        ? earningsData.reduce((sum, e) => sum + (e.amount || 0), 0)
+        : 0;
+      setTotalEarnings(total);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Fetch error:", error);
+      setAuthError(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCommercials = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/commercials/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Transform data to match component structure
-      const transformedCommercials = data.map(c => ({
-        id: c.id,
-        nom: `${c.name} ${c.surname}`,
-        localisation: c.wilaya,
-        day_transactions: "0", // Will be calculated from orders
-        phone_number: c.phone_number,
-        activities: [] // Will be populated from orders
-      }));
-      
-      setCommercial(transformedCommercials);
-    } catch (error) {
-      console.error("Error fetching commercials:", error);
-      setCommercial([]);
-    }
-  };
+  useEffect(() => {
+    fetchAllData();
+  }, []);
 
-  const fetchClients = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/clients/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setClients(data.map(c => ({
-        id: c.id,
-        name: `${c.name} ${c.surname}`,
-        phone: c.phone_number,
-        wilaya: c.wilaya
-      })));
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-      setClients([]);
-    }
-  };
+  // ✅ Compute stats per commercial
+  const getCommercialStats = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  const fetchOrders = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/orders/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setOrders(data);
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      setOrders([]);
-    }
-  };
+    return commercials.map(commercial => {
+      // Clients assigned to this commercial
+      const assignedClients = clients.filter(c => c.commercial_id === commercial.id);
+      const clientIds = assignedClients.map(c => c.id);
 
-  const fetchCars = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/cars/all`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({})
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setCars(data);
-    } catch (error) {
-      console.error("Error fetching cars:", error);
-      setCars([]);
-    }
-  };
+      // Orders from those clients (today only)
+      const todayOrders = orders.filter(o =>
+        clientIds.includes(o.client_id) &&
+        o.created_at &&
+        new Date(o.created_at) >= today
+      );
 
-  const fetchExpenses = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/expenses/monthly`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setExpenses(data);
-    } catch (error) {
-      console.error("Error fetching expenses:", error);
-      setExpenses(null);
-    }
-  };
+      // Activities: all orders from this commercial’s clients
+      const activities = orders
+        .filter(o => clientIds.includes(o.client_id))
+        .map(o => {
+          const car = cars.find(c => c.id === o.car_id) || {};
+          return {
+            type: "Vente",
+            car: o.car_model || car.model || "—",
+            client: `${o.client_name || ""} ${o.client_surname || ""}`.trim() || "—",
+            amount: `${(o.price_dzd || 0).toLocaleString()} DZD`,
+            paid: `${(o.payment_amount || 0).toLocaleString()} DZD`,
+            date: o.created_at ? new Date(o.created_at).toLocaleDateString() : "—",
+            status: o.delivery_status === "showroom" ? "Complété" :
+                     o.delivery_status === "arrived" ? "Arrivé" : "En expédition"
+          };
+        });
 
-  const fetchEarnings = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE_URL}/earnings/monthly`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setEarnings(data);
-    } catch (error) {
-      console.error("Error fetching earnings:", error);
-      setEarnings(null);
-    }
-  };
-
-  const toggleMenu = () => setMenuOpen(!menuOpen);
-  const toggletab = (tab) => 
-    {setActivetab(tab)
-     setMenuOpen(!menuOpen)
-    }
-  ;
-
-  // Calculate statistics from real data
-  const getTodayOrders = () => {
-    const today = new Date().toISOString().split('T')[0];
-    return orders.filter(order => 
-      order.purchase_date && order.purchase_date.startsWith(today)
-    );
-  };
-
-  const todayOrders = getTodayOrders();
-  const totalCarsEntered = cars.length;
-  const totalCarsSold = orders.filter(o => o.status === "completed").length;
-  const totalRevenue = orders
-    .filter(o => o.status === "completed")
-    .reduce((sum, order) => sum + (order.payment_amount || 0), 0);
-
-  const stats = [
-    { title: "Voitures Entrées", value: totalCarsEntered, icon: <Car />, color: "bg-blue-600" },
-    { title: "Voitures Vendues", value: totalCarsSold, icon: <TrendingUp />, color: "bg-green-600" },
-    { title: "Chiffre Affaire", value: `${totalRevenue.toLocaleString()} DZD`, icon: <DollarSign />, color: "bg-emerald-600" },
-  ];
-
-  // Cars entered (all cars in inventory)
-  const carsEntered = cars.map(car => ({
-    id: car.id,
-    model: car.model,
-    distributor: car.country || "N/A",
-    color: car.color,
-    year: car.year
-  }));
-
-  // Cars sold (completed orders)
-  const carsSold = orders
-    .filter(o => o.status === "completed")
-    .map(order => {
-      const car = cars.find(c => c.id === order.car_id);
       return {
-        id: order.order_id,
-        model: order.car_model,
-        price: `${order.price_dzd?.toLocaleString()} DZD`,
-        commercial: order.client_name || "N/A",
-        profit: car ? `${(car.commercial_comission || 0).toLocaleString()} DZD` : "N/A"
+        ...commercial,
+        day_transactions: todayOrders.length,
+        total_revenue: todayOrders.reduce((sum, o) => sum + (o.price_dzd || 0), 0),
+        total_paid: todayOrders.reduce((sum, o) => sum + (o.payment_amount || 0), 0),
+        activities,
+        wilayas_display: Array.isArray(commercial.wilayas)
+          ? commercial.wilayas.join(", ")
+          : commercial.wilayas || "—"
       };
     });
+  };
 
-  // Calculate daily transactions per commercial
-  const commercialWithStats = commercial.map(c => {
-    const commercialOrders = todayOrders.filter(o => {
-      const car = cars.find(car => car.id === o.car_id);
-      return car && car.commercial_id === c.id;
-    });
-    
-    const activities = orders
-      .filter(o => {
-        const car = cars.find(car => car.id === o.car_id);
-        return car && car.commercial_id === c.id;
-      })
-      .map(o => ({
-        type: o.status === "completed" ? "Vente" : "En cours",
-        car: o.car_model,
-        client: `${o.client_name} ${o.client_surname}`,
-        amount: `${o.price_dzd?.toLocaleString()} DZD`,
-        date: o.purchase_date ? new Date(o.purchase_date).toLocaleDateString() : "N/A",
-        status: o.delivery_status === "showroom" ? "Complété" : "En cours"
-      }));
+  const commercialStats = getCommercialStats();
 
-    return {
-      ...c,
-      day_transactions: commercialOrders.length.toString(),
-      activities
-    };
-  });
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayOrders = orders.filter(o => o.created_at && new Date(o.created_at) >= today);
+  const totalCarsSold = todayOrders.length;
+  const totalRevenue = todayOrders.reduce((sum, o) => sum + (o.price_dzd || 0), 0);
 
-  // Get client purchases
-  const clientsWithPurchases = Clients.map(client => {
-    const clientOrders = orders.filter(o => o.client_id === client.id);
-    const lastOrder = clientOrders[clientOrders.length - 1];
-    
-    return {
-      ...client,
-      purchase: lastOrder?.car_model || "Aucun achat",
-      amount: lastOrder ? `${lastOrder.price_dzd?.toLocaleString()} DZD` : "0 DZD"
-    };
-  });
+  const stats = [
+    { title: "Voitures Vendues (Aujourd'hui)", value: totalCarsSold, icon: <Car />, color: "bg-blue-600" },
+    { title: "Chiffre d'Affaire (Aujourd'hui)", value: `${totalRevenue.toLocaleString()} DZD`, icon: <DollarSign />, color: "bg-emerald-600" },
+    { title: "Commercials", value: commercials.length, icon: <Users />, color: "bg-purple-600" },
+  ];
 
   if (loading) {
     return (
@@ -299,11 +163,14 @@ const Accountant = () => {
     return (
       <div className="min-h-screen w-screen bg-neutral-950 text-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl mb-4">Erreur d'authentification</h1>
-          <p className="text-neutral-400 mb-6">Veuillez vous connecter pour accéder à cette page</p>
-          <button 
-            onClick={() => window.location.href = '/login'} 
-            className="px-6 py-3 bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+          <h1 className="text-3xl mb-4">Session expirée</h1>
+          <p className="text-neutral-400 mb-6">Veuillez vous reconnecter</p>
+          <button
+            onClick={() => {
+              localStorage.removeItem("authToken");
+              window.location.href = "/accountantlogin";
+            }}
+            className="px-6 py-3 bg-emerald-600 rounded-lg hover:bg-emerald-700 transition"
           >
             Se connecter
           </button>
@@ -312,284 +179,271 @@ const Accountant = () => {
     );
   }
 
+  const toggleMenu = () => setMenuOpen(!menuOpen);
+  const setTab = (tab) => {
+    setActiveTab(tab);
+    setMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen w-screen font-main bg-neutral-950 text-white flex overflow-hidden">
       {/* Sidebar */}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" onClick={toggleMenu} strokeWidth={1.5} stroke="currentColor" className="size-[4vh] cursor-pointer absolute mt-5 ml-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
+
       <motion.div
-        initial={{ x: -250 }}
-        animate={{ x: 0  }}
-        className={`fixed z-20 h-screen w-[15vw] max-md:w-[40vw] ${menuOpen ? '' : 'ml-[-40vw]'} justify-between flex flex-col bg-neutral-900 border-r border-neutral-800 p-4 transition-all duration-300`}
+        className={`fixed z-20 h-screen w-[15vw] max-md:w-[40vw] ${menuOpen ? "" : "ml-[-40vw]"} flex flex-col justify-between bg-neutral-900 border-r border-neutral-800 p-4 transition-all duration-300`}
       >
-          
-        <ul className="flex flex-col gap-[2vh]">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="gray" onClick={toggleMenu} className="size-[3vh] cursor-pointer hover:scale-105 transition-all">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-          </svg>
-
-          <h2 className="text-xl mb-[4vh]">Palmier Auto</h2>
-                    <motion.li
-          initial={{scale:1}}
-          whileHover={{scale:1.05}}
-          whileTap={{scale:1}}
-          onClick={() => toggletab('Jour')}
-          className="w-[90%] p-[2vh] text-[2vh] cursor-pointer bg-emerald-600 rounded-lg text-center flex justify-start items-center gap-[0.2vw]">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
-          </svg>
-            <h1>Nouvelles du jour
-            </h1>
-          </motion.li>
-          <motion.li
-          initial={{scale:1}}
-          whileHover={{scale:1.05}}
-          whileTap={{scale:1}}
-          onClick={() => toggletab('Commercials')}
-          className="w-[90%] p-[2vh] text-[2vh] cursor-pointer bg-emerald-600 rounded-lg text-center flex justify-start items-center gap-[0.2vw]">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.3} stroke="currentColor" className="size-[3vh]">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+        <div>
+          <button onClick={toggleMenu} className="mb-6 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
             </svg>
-            <h1>Commercials</h1>
-          </motion.li>
-          <motion.li
-          initial={{scale:1}}
-          whileHover={{scale:1.05}}
-          whileTap={{scale:1}}
-          onClick={() => toggletab('Finance')}
-          className="w-[90%] p-[2vh] text-[2vh] cursor-pointer bg-emerald-600 rounded-lg text-center flex justify-start items-center gap-[0.2vw]">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.3} stroke="currentColor" className="size-[3vh]">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-            </svg>
-            <h1>Finance</h1>
-          </motion.li>
-        </ul>
-                  <motion.div
-          initial={{scale:1}}
-          whileHover={{scale:1.05}}
-          whileTap={{scale:1}}
-
-          className="w-[90%] p-[2vh] text-[2vh] cursor-pointer bg-red-600 rounded-lg text-center flex justify-start items-center gap-[0.2vw]">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-[3vh]">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+          </button>
+          <h2 className="text-xl mb-6">Palmier Auto</h2>
+          {[
+            { id: "Jour", label: "Nouvelles du jour", icon: "📅" },
+            { id: "Commercials", label: "Commercials", icon: "👥" },
+            { id: "Finance", label: "Finance", icon: "💰" },
+          ].map(({ id, label, icon }) => (
+            <motion.button
+              key={id}
+              initial={{ scale: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 1 }}
+              onClick={() => setTab(id)}
+              className={`w-full text-left p-3 rounded-lg mb-2 flex items-center gap-3 ${
+                activeTab === id ? "bg-emerald-600" : "text-gray-300 hover:bg-neutral-800"
+              }`}
+            >
+              <span>{icon}</span>
+              <span>{label}</span>
+            </motion.button>
+          ))}
+        </div>
+        <button
+          onClick={() => {
+            localStorage.removeItem("authToken");
+            window.location.href = "/";
+          }}
+          className="w-full p-3 bg-red-600 hover:bg-red-700 rounded-lg flex items-center justify-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
           </svg>
-
-            <h1>Logout</h1>
-          </motion.div>
-
+          Déconnexion
+        </button>
       </motion.div>
 
       {/* Main Content */}
-      {activetab === 'Jour' && (
-        <div className="flex-1 flex flex-col p-6 space-y-6">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.3} stroke="gray" onClick={toggleMenu} className="size-[5vh] cursor-pointer my-[2vh] hover:scale-110 transition-all">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
-          </svg>
-          <div className="flex flex-col justify-center items-center w-full h-fit">
-            <h1 className="text-[10vh] text-white mb-[5vh]">Nouvelles du jour</h1>
-            <div className="flex">
-              <div className="grid grid-cols-3 gap-[3vw] max-md:grid-cols-1">
-          {stats.map((s, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`px-[2vw] py-10 rounded-2xl ${s.color} bg-opacity-20 border border-neutral-800 flex flex-col gap-2`}
-            >
-              <div className="flex justify-between items-center gap-[2vw]">
-                <div className="text-[5vh] font-light">{s.title}</div>
-                <div className="text-3xl">{s.icon}</div>
-              </div>
-              <div className="text-[6vh] font-bold">{s.value}</div>
-            </motion.div>
-          ))}
-              </div>
+      <main className="flex-1 max-md:ml-0 p-6 mt-[4vh]">
+
+        {activeTab === "Jour" && (
+          <div className="space-y-8">
+            <h1 className="text-4xl font-bold">Nouvelles du Jour</h1>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {stats.map((s, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={`${s.color} bg-opacity-20 border border-neutral-800 rounded-2xl p-6`}
+                >
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">{s.title}</h3>
+                    <div className="text-2xl">{s.icon}</div>
+                  </div>
+                  <div className="text-3xl font-bold mt-2">{s.value}</div>
+                </motion.div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
-      {activetab === 'Finance' && (
-        <div className="flex-1 flex flex-col p-6 space-y-6 ">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.3} stroke="gray" onClick={toggleMenu} className="size-[5vh] cursor-pointer my-[2vh] hover:scale-110 transition-all">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
-        </svg>
+        )}
 
-        {/* Header */}
-          <h1 className="text-[10vh] font-semibold">Finance Générale</h1>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {stats.map((s, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`p-5 rounded-2xl ${s.color} bg-opacity-20 border border-neutral-800 flex flex-col gap-2`}
-            >
-              <div className="flex justify-between items-center">
-                <div className="text-lg font-semibold">{s.title}</div>
-                <div className="text-2xl">{s.icon}</div>
+        {activeTab === "Finance" && (
+          <div className="space-y-8">
+            <h1 className="text-4xl font-bold">Finance Générale</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6">
+                <h3 className="text-lg font-medium text-emerald-400">Chiffre d'Affaire (Ce mois)</h3>
+                <p className="text-3xl font-bold mt-2">{totalEarnings.toLocaleString()} DZD</p>
               </div>
-              <div className="text-2xl font-bold">{s.value}</div>
-            </motion.div>
-          ))}
-        </div>
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6">
+                <h3 className="text-lg font-medium text-blue-400">Bénéfice Net</h3>
+                <p className={`text-3xl font-bold mt-2 ${totalEarnings - expenses.total_amount >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {(totalEarnings - expenses.total_amount).toLocaleString()} DZD
+                </p>
+              </div>
+            </div>
 
-        {/* Cars Entered */}
-        <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
-          <h2 className="text-xl font-semibold mb-4">Voitures Entrées</h2>
-          <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="text-neutral-400 border-b border-neutral-800">
-              <tr>
-                <th className="p-2">Modèle</th>
-                <th className="p-2">Pays</th>
-                <th className="p-2">Couleur</th>
-                <th className="p-2">Année</th>
-              </tr>
-            </thead>
-            <tbody>
-              {carsEntered.slice(0, 10).map((c) => (
-                <tr key={c.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
-                  <td className="p-2">{c.model}</td>
-                  <td className="p-2">{c.distributor}</td>
-                  <td className="p-2">{c.color}</td>
-                  <td className="p-2">{c.year}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        </div>
-
-        {/* Cars Sold */}
-        <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
-          <h2 className="text-xl font-semibold mb-4">Voitures Vendues</h2>
-          <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="text-neutral-400 border-b border-neutral-800">
-              <tr>
-                <th className="p-2">Modèle</th>
-                <th className="p-2">Prix de Vente</th>
-                <th className="p-2">Client</th>
-                <th className="p-2">Commission</th>
-              </tr>
-            </thead>
-            <tbody>
-              {carsSold.map((c) => (
-                <tr key={c.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
-                  <td className="p-2">{c.model}</td>
-                  <td className="p-2">{c.price}</td>
-                  <td className="p-2">{c.commercial}</td>
-                  <td className="p-2 text-emerald-400">{c.profit}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        </div>
-      </div>
-      )}
-      {activetab === 'Commercials' && (
-        <div className="flex flex-col p-6 w-screen min-h-screen justify-center items-start">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.3} stroke="gray" onClick={toggleMenu} className="size-[5vh] cursor-pointer my-[2vh] hover:scale-110 transition-all">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
-          </svg>
-          <h1 className="text-[10vh] font-semibold mb-[5vh]">Commercials</h1>
-          {/* Context */}
-          <div className="flex gap-6 min-h-screen w-screen justify-center items-center">
-            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[5vw]">
-             {commercialWithStats.map((commercial , index) => (
-              <motion.div 
-              key={index}
-              initial={{opacity: 0, y: 10 ,scale:1 ,backgroundColor: '#171717'}}
-              whileHover={{scale:1.02 , backgroundColor: '#262626'}}
-              whileTap={{scale:1}}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              onClick={() => setSelectedCommercial(commercial)}
-              className="h-[45vw] w-[40vw] max-md:w-[90%] max-md:h-fit p-10 flex flex-col justify-start items-center cursor-pointer bg-neutral-900 border border-neutral-700 rounded-xl">
-                <h1 className="border-b border-b-neutral-700 text-[7vh]">{commercial.nom}</h1>
-                <div className="w-full h-fit justify-start mt-[10vh] pl-[5vw] pb-10 border-b border-b-neutral-600">
-                <h1 className="text-neutral-500 text-[3vh]">Localisation: <span className="text-white">{commercial.localisation}</span></h1>
-                <h1 className="text-neutral-500 text-[3vh]">Vente d'Aujourd'hui: <span className="text-white">{commercial.day_transactions}</span></h1>
-                </div>
-                <div className="w-full ">
-                  <h1 className="text-neutral-500 text-[3vh] mt-5 mb-2">Clients Récents:</h1>
-                  <div className="max-h-[15vh] overflow-y-scroll">
-                  {clientsWithPurchases.slice(0, 5).map((client , idx) => (
-                    <div key={idx} className="flex justify-between items-center mb-2 border-b border-b-neutral-600 hover:bg-neutral-800/30 p-2">
-                      <h1 className="text-white font-thin text-[2.5vh]">{client.name}</h1>
-                      <h1 className="text-neutral-400 text-[2vh]">{client.purchase} - {client.amount}</h1>
-                    </div>
-                  ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <h2 className="text-2xl font-bold mb-4">Dépenses Mensuelles</h2>
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-neutral-400">Achats:</span>
+                    <span className="ml-2 text-emerald-400">{expenses.purchases.toLocaleString()} DZD</span>
+                  </div>
+                  <div>
+                    <span className="text-neutral-400">Transport:</span>
+                    <span className="ml-2 text-blue-400">{expenses.transport.toLocaleString()} DZD</span>
+                  </div>
+                  <div>
+                    <span className="text-neutral-400">Autres:</span>
+                    <span className="ml-2 text-purple-400">{expenses.other.toLocaleString()} DZD</span>
                   </div>
                 </div>
-              </motion.div> 
-            ))}
-            {/* Activity Details Modal */}
-            <AnimatePresence>
-              {selectedCommercial && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-                  onClick={() => setSelectedCommercial(null)}
-                >
-                  <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.95, opacity: 0 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-neutral-900 p-8 rounded-xl border border-neutral-700 w-[80vw] max-h-[80vh] overflow-y-auto"
-                  >
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-[4vh] font-semibold">{selectedCommercial.nom} - Activités</h2>
-                      <svg onClick={() => setSelectedCommercial(null)} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-8 cursor-pointer hover:text-neutral-400 transition-colors">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                    <div className="space-y-4">
-                      {selectedCommercial.activities && selectedCommercial.activities.length > 0 ? (
-                        selectedCommercial.activities.map((activity, idx) => (
-                          <motion.div
-                            key={idx}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                            className="p-4 bg-neutral-800 rounded-lg border border-neutral-700"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <span className={`px-3 py-1 rounded-full text-sm ${
-                                  activity.status === 'Complété' ? 'bg-green-500/20 text-green-300' : 
-                                  'bg-yellow-500/20 text-yellow-300'
-                                }`}>
-                                  {activity.status}
-                                </span>
-                                <h3 className="text-xl font-medium mt-2">{activity.type}</h3>
-                                <p className="text-neutral-400">Client: {activity.client}</p>
-                                {activity.car && <p className="text-neutral-400">Voiture: {activity.car}</p>}
-                                {activity.amount && <p className="text-emerald-400">{activity.amount}</p>}
-                              </div>
-                              <span className="text-neutral-500 text-sm">{activity.date}</span>
-                            </div>
-                          </motion.div>
-                        ))
-                      ) : (
-                        <p className="text-neutral-400 text-center py-8">Aucune activité enregistrée</p>
+              </div>
+
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <h2 className="text-2xl font-bold mb-4">Ventes Aujourd'hui</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-neutral-400 border-b">
+                      <tr>
+                        <th className="py-2 text-left">Client</th>
+                        <th className="py-2 text-left">Voiture</th>
+                        <th className="py-2 text-right">Montant</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {todayOrders.slice(0, 5).map((order, i) => (
+                        <tr key={i} className="border-b border-neutral-800/30">
+                          <td>{order.client_name} {order.client_surname}</td>
+                          <td>{order.car_model}</td>
+                          <td className="text-right">{(order.price_dzd || 0).toLocaleString()} DZD</td>
+                        </tr>
+                      ))}
+                      {todayOrders.length === 0 && (
+                        <tr><td colSpan="3" className="py-4 text-center text-neutral-500">Aucune vente aujourd'hui</td></tr>
                       )}
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      
+        )}
+
+        {activeTab === "Commercials" && (
+          <div className="space-y-8">
+            <h1 className="text-4xl font-bold">Commercials</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {commercialStats.map((c, i) => (
+                <motion.div
+                  key={c.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  onClick={() => setSelectedCommercial(c)}
+                  className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 hover:bg-neutral-800/50 cursor-pointer"
+                >
+                  <h3 className="text-xl font-bold text-emerald-400">{c.name} {c.surname}</h3>
+                  <p className="text-neutral-400 text-sm mt-1">📍 {c.wilayas_display}</p>
+                  <div className="mt-4 space-y-2">
+                    <div>
+                      <span className="text-neutral-500">Ventes Aujourd'hui:</span>
+                      <span className="ml-2 font-medium">{c.day_transactions}</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">CA (Aujourd'hui):</span>
+                      <span className="ml-2 text-emerald-400 font-medium">{c.total_revenue.toLocaleString()} DZD</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">Payé:</span>
+                      <span className="ml-2 text-blue-400 font-medium">{c.total_paid.toLocaleString()} DZD</span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Commercial Detail Modal */}
+        <AnimatePresence>
+          {selectedCommercial && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+              onClick={() => setSelectedCommercial(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-neutral-900 w-full max-w-3xl rounded-2xl border border-neutral-800 p-6 max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">
+                    {selectedCommercial.name} {selectedCommercial.surname} — Activités
+                  </h2>
+                  <button
+                    onClick={() => setSelectedCommercial(null)}
+                    className="text-gray-400 hover:text-white text-2xl"
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                <div className="mb-4 p-4 bg-neutral-800/30 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <span className="text-neutral-500">Wilayas:</span>
+                      <p className="font-medium">{selectedCommercial.wilayas_display}</p>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">Ventes Aujourd'hui:</span>
+                      <p className="font-medium text-emerald-400">{selectedCommercial.day_transactions}</p>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">CA (Aujourd'hui):</span>
+                      <p className="font-bold text-2xl text-emerald-400">
+                        {selectedCommercial.total_revenue.toLocaleString()} DZD
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-bold mb-4">Historique des Activités</h3>
+                {selectedCommercial.activities.length === 0 ? (
+                  <p className="text-neutral-500 text-center py-4">Aucune activité récente</p>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {selectedCommercial.activities.map((act, i) => (
+                      <div key={i} className="bg-neutral-800/20 p-4 rounded-lg border-l-4 border-emerald-500">
+                        <div className="flex justify-between">
+                          <div>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              act.status === "Complété" ? "bg-green-500/20 text-green-400" :
+                              act.status === "Arrivé" ? "bg-blue-500/20 text-blue-400" :
+                              "bg-yellow-500/20 text-yellow-400"
+                            }`}>
+                              {act.status}
+                            </span>
+                            <h4 className="font-medium mt-1">{act.car}</h4>
+                            <p className="text-sm text-neutral-400">{act.client}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-emerald-400">{act.amount}</p>
+                            <p className="text-xs text-blue-400">Payé: {act.paid}</p>
+                            <p className="text-xs text-neutral-500">{act.date}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
     </div>
   );
 };
