@@ -15,8 +15,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
-// ✅ FIXED: Trimmed URL + consistent key
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim();
 
 const Card = ({ children, className = "" }) => (
   <div
@@ -45,10 +44,7 @@ const UserAccount = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef(null);
 
-  // ✅ Use "authToken" consistently
   const [token, setToken] = useState(localStorage.getItem("authToken"));
-  const [loginForm, setLoginForm] = useState({ phone: "", password: "" });
-  const [loginError, setLoginError] = useState("");
 
   const [userProfile, setUserProfile] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -56,7 +52,7 @@ const UserAccount = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // ✅ Handle click outside
+  // Handle click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
@@ -67,7 +63,7 @@ const UserAccount = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ✅ Auth-aware fetch helper
+  // Auth-aware fetch helper
   const apiFetch = async (url, options = {}) => {
     const res = await fetch(url, {
       ...options,
@@ -81,17 +77,18 @@ const UserAccount = () => {
     if (res.status === 401 || res.status === 403) {
       localStorage.removeItem("authToken");
       setToken(null);
-      navigate("/auth"); // ✅ Redirect to unified login
+      navigate("/auth");
       throw new Error("Unauthorized");
     }
 
     return res;
   };
 
-  // ✅ Data loading
+  // Data loading
   useEffect(() => {
     if (!token) {
       setLoading(false);
+      navigate("/auth");
       return;
     }
 
@@ -100,20 +97,20 @@ const UserAccount = () => {
         setLoading(true);
         setError("");
 
-        // ✅ Fetch client profile
+        // Fetch client profile
         const profileRes = await apiFetch(`${API_BASE_URL}/clients/client`, {
           method: "POST",
-          body: JSON.stringify({ client_id: null }), // ✅ `client_id: null` satisfies backend (or omit if optional)
+          body: JSON.stringify({ client_id: null }),
         });
         const profile = await profileRes.json();
         setUserProfile(profile);
 
-        // ✅ GET orders (no body)
+        // GET orders
         const ordersRes = await apiFetch(`${API_BASE_URL}/orders/client/`);
         const ordersData = await ordersRes.json();
         setOrders(Array.isArray(ordersData) ? ordersData : []);
 
-        // ✅ GET notifications (no body)
+        // GET notifications
         const notifRes = await apiFetch(`${API_BASE_URL}/notifications/`);
         const notifs = await notifRes.json();
         setNotifications(Array.isArray(notifs) ? notifs : []);
@@ -127,39 +124,6 @@ const UserAccount = () => {
 
     loadData();
   }, [token, navigate]);
-
-  // ✅ Unified login
-  const handleLogin = async () => {
-    if (!loginForm.phone || !loginForm.password) {
-      setLoginError("Veuillez remplir tous les champs");
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/users/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone_number: loginForm.phone,
-          password: loginForm.password,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.access_token) {
-        localStorage.setItem("authToken", data.access_token);
-        localStorage.setItem("userRole", data.role); // ✅ store role
-        setToken(data.access_token);
-        setLoginError("");
-      } else {
-        setLoginError(data.detail || "Identifiants incorrects");
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      setLoginError("Erreur réseau. Réessayez.");
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -202,7 +166,7 @@ const UserAccount = () => {
     }
   };
 
-  // ✅ Derived stats
+  // Derived stats
   const billing = orders.map((order) => {
     const total = order.price_dzd || 0;
     const paid = order.payment_amount || 0;
@@ -213,18 +177,6 @@ const UserAccount = () => {
   const totalDue = billing.reduce((s, o) => s + o.remaining, 0);
   const totalPrice = billing.reduce((s, o) => s + o.total, 0);
   const unreadCount = notifications.filter((n) => !n.read).length;
-
-  // ✅ Auto-refresh token/role if missing
-  useEffect(() => {
-    const savedToken = localStorage.getItem("authToken");
-    const savedRole = localStorage.getItem("userRole");
-    if (savedToken && !token) {
-      setToken(savedToken);
-    }
-    if (savedRole === "client" && !token) {
-      // Allow client to stay if token missing but role known (e.g., after page reload)
-    }
-  }, [token]);
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-black text-white">
@@ -328,42 +280,7 @@ const UserAccount = () => {
           </div>
         )}
 
-        {/* Login fallback if no token */}
-        {!token && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="max-w-md mx-auto mt-20"
-          >
-            <Card>
-              <h2 className="text-2xl font-bold mb-4 text-center">Connexion Client</h2>
-              {loginError && <p className="text-red-400 text-sm mb-3">{loginError}</p>}
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Numéro de téléphone"
-                  value={loginForm.phone}
-                  onChange={(e) => setLoginForm({ ...loginForm, phone: e.target.value })}
-                  className="w-full bg-neutral-800 p-3 rounded-lg outline-none"
-                />
-                <input
-                  type="password"
-                  placeholder="Mot de passe"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                  className="w-full bg-neutral-800 p-3 rounded-lg outline-none"
-                />
-                <button
-                  onClick={handleLogin}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-lg font-medium transition"
-                >
-                  Se connecter
-                </button>
-              </div>
-            </Card>
-          </motion.div>
-        )}
-
+        {/* Show content only if authenticated */}
         {token && (
           <AnimatePresence mode="wait">
             {activeTab === "dashboard" && (
@@ -566,3 +483,4 @@ const UserAccount = () => {
 };
 
 export default UserAccount;
+

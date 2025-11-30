@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
@@ -10,7 +11,7 @@ const Inventory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  
+  const navigate = useNavigate();
   // Filter states
   const [filters, setFilters] = useState({
     model: "",
@@ -156,7 +157,6 @@ const Inventory = () => {
     return "/placeholder-car.jpg";
   };
 
-  // Get unique values for filter dropdowns
   const getUniqueValues = (key) => {
     const values = [...new Set(cars.map(car => car[key]).filter(Boolean))];
     return values.sort();
@@ -437,6 +437,7 @@ const Inventory = () => {
                   initial={{ scale: 1 }}
                   whileHover={{ scale: 1.05, y: -5 }}
                   whileTap={{ scale: 1 }}
+                  onClick={() => navigate(`/car/${car.id}`)} 
                   className="cursor-pointer h-[50vh] max-md:h-[60vh] w-[20vw] max-md:w-[60vw] bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col"
                 >
                   <div className="h-[60%] bg-neutral-300 relative">

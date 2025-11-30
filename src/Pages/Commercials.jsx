@@ -643,7 +643,10 @@ const [newOrder, setNewOrder] = useState({
                     className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800 hover:scale-105 cursor-pointer transition"
                   >
                     <h3 className="text-xl font-bold mb-2">{g.model}</h3>
-                    <p className="text-emerald-400 font-medium mb-4">{g.quantity} unité{g.quantity > 1 ? 's' : ''}</p>
+                    {g.quantity && (
+                     <p className="text-emerald-400 font-medium mb-4">{g.quantity} unité{g.quantity > 1 ? 's' : ''}</p>
+                    )}
+
                     <div className="flex flex-wrap gap-2">
                       {g.colors.map(c => <span key={c} className="bg-neutral-800 px-3 py-1 rounded-full text-xs">{c}</span>)}
                     </div>

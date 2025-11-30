@@ -464,11 +464,250 @@ export default function AdminSuperPanel() {
 
   const [showAddWholesaleClient, setShowAddWholesaleClient] = useState(false);
   const [showAddWholesaleOrder, setShowAddWholesaleOrder] = useState(false);
+  const [clientForm, setClientForm] = useState({
+  id: null,
+  name: "", surname: "", nin: "", phone_number: "", password: "", wilaya: "", address: ""
+});
+const [showEditClient, setShowEditClient] = useState(false);
   const pushLog = (actor, action) => {
     setLogs((p) => [{ id: Date.now(), actor, action, date: new Date().toISOString() }, ...p]);
   };
+  const [orderForm, setOrderForm] = useState({
+  id: null,
+  client_id: "",
+  car_id: "",
+  car_color: "",
+  delivery_status: "shipping",
+  payment_amount: 0,
+  status: true,
+});
 
-  // --- Data Fetchers ---
+// ✅ Delete
+const handleDeleteOrder = async (id) => {
+  if (!confirm("Delete order?")) return;
+  try {
+    await apiFetch(`${API_BASE}/orders/?order_id=${id}`, { method: "DELETE" });
+    setOrders(prev => prev.filter(o => o.id !== id));
+  } catch (err) { alert("Delete failed"); }
+};
+
+// ✅ Submit (add/update)
+const handleOrderSubmit = async (e) => {
+  e.preventDefault();
+  const { id, client_id, car_id, car_color, delivery_status, payment_amount, status } = orderForm;
+  if (!client_id || !car_id || !car_color) {
+    alert("Required fields missing");
+    return;
+  }
+  try {
+    const isUpdate = !!id;
+    const payload = {
+      client_id: Number(client_id),
+      car_id: Number(car_id),
+      car_color,
+      delivery_status,
+    };
+    if (isUpdate) {
+      payload.order_id = id;
+      if (payment_amount !== undefined) payload.payment_amount = Number(payment_amount);
+      if (status !== undefined) payload.status = status;
+    }
+    const res = await apiFetch(`${API_BASE}/orders/`, {
+      method: isUpdate ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      alert(`${isUpdate ? "Updated" : "Added"} order`);
+      setShowAddOrder(false);
+      const fresh = await apiFetch(`${API_BASE}/orders/`).then(r => r.json());
+      setOrders(Array.isArray(fresh) ? fresh : []);
+    } else throw new Error();
+  } catch (err) { alert("Order save failed"); }
+};
+const [carRequests, setCarRequests] = useState([]);
+useEffect(() => {
+  const fetchCarRequests = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/cars_requests/`);
+      const data = await res.json();
+      setCarRequests(Array.isArray(data) ? data : []);
+    } catch (err) { console.error("Car requests fetch error:", err); }
+  };
+  fetchCarRequests();
+}, []);
+  useEffect(() => {
+  const fetchWholesaleClients = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/wholesale_clients/`);
+      const data = await res.json();
+      setWholesaleClients(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error fetching wholesale clients:", err);
+      setWholesaleClients([]);
+    }
+  };
+  fetchWholesaleClients();
+}, []);
+
+// Fetch Wholesale Orders
+useEffect(() => {
+  const fetchWholesaleOrders = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/wholesale_orders/`);
+      const data = await res.json();
+      setWholesaleOrders(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error fetching wholesale orders:", err);
+      setWholesaleOrders([]);
+    }
+  };
+  fetchWholesaleOrders();
+}, []);
+// ✅ Handle Wholesale Client Submit
+// ✅ Updated wholesale client submit — supports password display like commercial/accountant
+const handleWholesaleClientSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const isUpdate = !!wholesaleClientForm.id;
+    const url = `${API_BASE}/wholesale_clients/`;
+    const payload = {
+      name: wholesaleClientForm.name,
+      surname: wholesaleClientForm.surname,
+      phone_number: wholesaleClientForm.phone_number,
+      address: wholesaleClientForm.address,
+      company_name: wholesaleClientForm.company_name,
+    };
+
+    if (isUpdate) {
+      payload.id = wholesaleClientForm.id;
+    }
+
+    const res = await apiFetch(url, {
+      method: isUpdate ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const responseData = await res.json();
+
+    if (!res.ok) {
+      throw new Error(responseData.detail || "Failed to save wholesale client");
+    }
+
+    // ✅ Refresh list
+    const fresh = await apiFetch(`${API_BASE}/wholesale_clients/`).then(r => r.json());
+    setWholesaleClients(Array.isArray(fresh) ? fresh : []);
+
+    // ✅ Handle password display on CREATE only (like commercial/accountant)
+    if (!isUpdate) {
+      let password = "";
+      // 🔑 Try direct password field first
+      if (responseData.password) {
+        password = responseData.password;
+      } 
+      // 🔑 Fallback: parse from detail (e.g., "password: abc123")
+      else if (responseData.detail?.includes("password:")) {
+        password = responseData.detail.split("password:")[1]?.trim();
+      }
+
+      if (password) {
+        setTempPassword(password);
+        setUserPhoneForPassword(wholesaleClientForm.phone_number);
+        setPasswordModalType("wholesale_client");
+        setShowPasswordModal(true);
+      } else {
+        console.warn("Password not found in response for wholesale client", responseData);
+        // Optionally alert, but don’t block — may be intentional update
+      }
+    }
+
+    // ✅ Reset & close
+    setWholesaleClientForm({ name: "", surname: "", phone_number: "", address: "", company_name: "" });
+    setShowAddWholesaleClient(false);
+    alert(`${isUpdate ? "Updated" : "Added"} wholesale client ✅`);
+
+  } catch (err) {
+    console.error("Wholesale client error:", err);
+    alert("❌ " + (err.message || "Unknown error"));
+  }
+};
+// ✅ Handle Wholesale Order Submit
+const handleWholesaleOrderSubmit = async (e) => {
+  e.preventDefault();
+  const { client_id, car_id, quantity, delivery_status } = wholesaleOrderForm;
+
+  if (!client_id || !car_id || !quantity || !delivery_status) {
+    alert("⚠️ All fields are required");
+    return;
+  }
+
+  try {
+    const isUpdate = !!wholesaleOrderForm.id;
+    const url = `${API_BASE}/wholesale_orders/`;
+    const payload = {
+      client_id: Number(client_id),
+      car_id: Number(car_id),
+      quantity: Number(quantity),
+      delivery_status,
+    };
+
+    if (isUpdate) {
+      payload.order_id = Number(wholesaleOrderForm.id); // ← required
+      // optional update fields:
+      if (wholesaleOrderForm.payment_amount !== undefined) {
+        payload.payment_amount = Number(wholesaleOrderForm.payment_amount);
+      }
+      if (wholesaleOrderForm.status !== undefined) {
+        payload.status = wholesaleOrderForm.status;
+      }
+    }
+    const res = await apiFetch(url, {
+      method: isUpdate ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || "Failed to save wholesale order");
+    }
+
+    // Refresh
+    const fresh = await apiFetch(`${API_BASE}/wholesale_orders/`).then(r => r.json());
+    setWholesaleOrders(Array.isArray(fresh) ? fresh : []);
+    setWholesaleOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" });
+    setShowAddWholesaleOrder(false);
+    alert(`${isUpdate ? "Updated" : "Added"} wholesale order ✅`);
+  } catch (err) {
+    console.error("Wholesale order error:", err);
+    alert("❌ " + err.message);
+  }
+};
+
+// ✅ Delete Wholesale Client
+const handleDeleteWholesaleClient = async (id) => {
+  if (!confirm("Delete this wholesale client?")) return;
+  try {
+    await apiFetch(`${API_BASE}/wholesale_clients/?client_id=${id}`, { method: "DELETE" });
+    setWholesaleClients(prev => prev.filter(c => c.id !== id));
+  } catch (err) {
+    console.error("Error deleting wholesale client:", err);
+    alert("❌ Failed to delete");
+  }
+};
+
+// ✅ Delete Wholesale Order
+const handleDeleteWholesaleOrder = async (id) => {
+  if (!confirm("Delete this wholesale order?")) return;
+  try {
+    await apiFetch(`${API_BASE}/wholesale_orders/?order_id=${id}`, { method: "DELETE" });
+    setWholesaleOrders(prev => prev.filter(o => o.id !== id));
+  } catch (err) {
+    console.error("Error deleting wholesale order:", err);
+    alert("❌ Failed to delete");
+  }
+};
   useEffect(() => {
     const fetchEarnings = async () => {
       try {
@@ -813,6 +1052,50 @@ export default function AdminSuperPanel() {
       });
     }
   };
+  const handleClientSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const isUpdate = !!clientForm.id;
+    const url = `${API_BASE}/clients/`;
+    const payload = {
+      name: clientForm.name || null,
+      surname: clientForm.surname || null,
+      nin: clientForm.nin ? Number(clientForm.nin) : null,
+      phone_number: clientForm.phone_number || null,
+      wilaya: clientForm.wilaya || null,
+      address: clientForm.address || null,
+    };
+    if (isUpdate) {
+      payload.id = clientForm.id;
+      // optional: update commercial assignment
+      if (clientForm.commercial_id !== undefined) {
+        payload.commercial_id = clientForm.commercial_id;
+      }
+      if (clientForm.password) {
+        payload.password = clientForm.password; // reset password
+      }
+    }
+    const res = await apiFetch(url, {
+      method: isUpdate ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      alert(`${isUpdate ? 'Updated' : 'Added'} client`);
+      setShowEditClient(false);
+      // refetch
+      const fresh = await apiFetch(`${API_BASE}/clients/`).then(r => r.json());
+      setClients(Array.isArray(fresh) ? fresh : []);
+    } else throw new Error("Failed");
+  } catch (err) { alert("Error"); }
+};
+const handleDeleteClient = async (id) => {
+  if (!confirm("Delete client?")) return;
+  try {
+    await apiFetch(`${API_BASE}/clients/?client_id=${id}`, { method: "DELETE" });
+    setClients(prev => prev.filter(c => c.id !== id));
+  } catch (err) { alert("Delete failed"); }
+};
 
   const handleOpenAdd = (agent = "Admin") => {
     setCarForm(initialCarForm);
@@ -1309,6 +1592,7 @@ export default function AdminSuperPanel() {
           { id: "wholesale_orders", icon: FilePlus, label: "Wholesale Orders" },
           { id: "clients_orders", icon: FilePlus, label: "Clients Orders" },
           { id: "currency", icon: DollarSign, label: "Currency" },
+          { id: "car_requests", icon: FilePlus, label: "Car Requests" },
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
@@ -2172,21 +2456,10 @@ export default function AdminSuperPanel() {
                                         {order.created_at ? new Date(order.created_at).toLocaleString() : '—'}
                                       </td>
                                       <td className="py-3 px-3 text-right space-x-2">
-                                        <button
-                                          onClick={() => {
-                                            setOrderForm({
-                                              order_id: order.id || order.order_id,
-                                              client_id: order.client_id,
-                                              car_id: order.car_id,
-                                              quantity: order.quantity,
-                                              delivery_status: order.delivery_status,
-                                            });
-                                            setShowAddOrder(true);
-                                          }}
-                                          className="text-blue-400 hover:text-blue-300"
-                                        >
-                                          Edit
-                                        </button>
+                                        <button onClick={() => {
+                                            setClientForm(clients.find(c => c.id === client.id) || {});
+                                            setShowEditClient(true);
+                                          }} className="text-blue-400">Edit</button>
                                         <button
                                           onClick={() => handleDeleteOrder(order.id || order.order_id)}
                                           className="text-red-400 hover:text-red-300"
@@ -2203,7 +2476,44 @@ export default function AdminSuperPanel() {
                         </Card>
                       </motion.div>
                     )}
-          
+          {tab === "car_requests" && (
+  <motion.div>
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-3xl">Car Requests</h2>
+      {/* Optional: Add button to create request */}
+    </div>
+    <Card>
+      <table className="w-full">
+        <thead>...</thead>
+        <tbody>
+          {carRequests.map(req => {
+            const client = clients.find(c => c.id === req.client_id) || {};
+            return (
+              <tr key={req.id}>
+                <td>{req.id}</td>
+                <td>{client.name} {client.surname}</td>
+                <td>{req.model} ({req.color})</td>
+                <td>{req.year}</td>
+                <td>{req.country}</td>
+                <td>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    req.status ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {req.status ? 'Accepted' : 'Pending'}
+                  </span>
+                </td>
+                <td>
+                  <button onClick={() => handleUpdateCarRequest(req.id, true)} className="text-green-400 mr-2">✔️ Accept</button>
+                  <button onClick={() => handleUpdateCarRequest(req.id, false)} className="text-red-400">✖️ Reject</button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
+  </motion.div>
+)}
         </AnimatePresence>
 
         {/* Modals */}
@@ -2356,7 +2666,8 @@ export default function AdminSuperPanel() {
                   <h2 className="text-xl font-bold text-white">
                     {passwordModalType === "commercial" && "Identifiants du Commercial"}
                     {passwordModalType === "marketer" && "Identifiants du Marketer"}
-                    {passwordModalType === "accountant" && "Identifiants du Accountant"}
+                    {passwordModalType === "accountant" && "Identifiants de l'Accountant"}
+                    {passwordModalType === "wholesale_client" && "Identifiants du Client Grossiste"}
                   </h2>
                   <button onClick={() => setShowPasswordModal(false)} className="text-neutral-400 hover:text-white text-2xl">&times;</button>
                 </div>
@@ -2364,6 +2675,7 @@ export default function AdminSuperPanel() {
                   {passwordModalType === "commercial" && "Le commercial peut se connecter avec ces identifiants :"}
                   {passwordModalType === "marketer" && "Le marketer peut se connecter avec ces identifiants :"}
                   {passwordModalType === "accountant" && "L'accountant peut se connecter avec ces identifiants :"}
+                  {passwordModalType === "wholesale_client" && "Le client grossiste peut se connecter avec ces identifiants :"}
                 </p>
                 <div className="space-y-4">
                   <div>
@@ -2425,6 +2737,142 @@ export default function AdminSuperPanel() {
           </form>
         </Modal>
 
+        {/* ✅ Wholesale Client Modal */}
+<Modal 
+  open={showAddWholesaleClient} 
+  onClose={() => setShowAddWholesaleClient(false)} 
+  title={wholesaleClientForm.id ? "Edit Wholesale Client" : "Add Wholesale Client"}
+>
+  <form onSubmit={handleWholesaleClientSubmit} className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <input
+        type="text"
+        placeholder="Name"
+        value={wholesaleClientForm.name}
+        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, name: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      />
+      <input
+        type="text"
+        placeholder="Surname"
+        value={wholesaleClientForm.surname}
+        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, surname: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      />
+      <input
+        type="text"
+        placeholder="Phone Number"
+        value={wholesaleClientForm.phone_number}
+        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, phone_number: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      />
+      <input
+        type="text"
+        placeholder="Address"
+        value={wholesaleClientForm.address}
+        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, address: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+      />
+      <input
+        type="text"
+        placeholder="Company Name"
+        value={wholesaleClientForm.company_name}
+        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, company_name: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      />
+    </div>
+    <div className="flex justify-end gap-3">
+      <button
+        type="button"
+        onClick={() => setShowAddWholesaleClient(false)}
+        className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
+      >
+        {wholesaleClientForm.id ? "✏️ Update Client" : "➕ Add Client"}
+      </button>
+    </div>
+  </form>
+</Modal>
+{/* ✅ Wholesale Order Modal */}
+<Modal 
+  open={showAddWholesaleOrder} 
+  onClose={() => setShowAddWholesaleOrder(false)} 
+  title={wholesaleOrderForm.id ? "Edit Wholesale Order" : "Add Wholesale Order"}
+>
+  <form onSubmit={handleWholesaleOrderSubmit} className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <select
+        value={wholesaleOrderForm.client_id}
+        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, client_id: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      >
+        <option value="">Select Wholesale Client</option>
+        {wholesaleClients.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name} {c.surname} ({c.company_name})
+          </option>
+        ))}
+      </select>
+      <select
+        value={wholesaleOrderForm.car_id}
+        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, car_id: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      >
+        <option value="">Select Car</option>
+        {cars.map((car) => (
+          <option key={car.id} value={car.id}>
+            {car.model} #{car.id} — {car.color} · {car.year}
+          </option>
+        ))}
+      </select>
+      <input
+        type="number"
+        min="1"
+        placeholder="Quantity"
+        value={wholesaleOrderForm.quantity}
+        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, quantity: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      />
+      <select
+        value={wholesaleOrderForm.delivery_status}
+        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+      >
+        <option value="shipping">Shipping</option>
+        <option value="arrived">Arrived</option>
+        <option value="showroom">Showroom</option>
+      </select>
+    </div>
+    <div className="flex justify-end gap-3">
+      <button
+        type="button"
+        onClick={() => setShowAddWholesaleOrder(false)}
+        className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
+      >
+        {wholesaleOrderForm.id ? "✏️ Update Order" : "➕ Add Order"}
+      </button>
+    </div>
+  </form>
+</Modal>
+
         {/* ✅ Pass supplierItems + callbacks for edit/delete */}
         <CommercialCarsModal
           open={showCommercialCars}
@@ -2483,6 +2931,7 @@ export default function AdminSuperPanel() {
             };
             handleDelete(carId);
           }}
+          
         />
       </main>
     </div>

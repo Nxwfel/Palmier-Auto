@@ -1,3 +1,4 @@
+// src/main.jsx
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
@@ -19,6 +20,7 @@ import ProtectedRoute from './Components/ProtectedRoute.jsx'
 import CommercialsProtectedRoute from './Components/CommercialsProtectedRoute.jsx'
 import AccountantProtectedRoute from './Components/AccountantProtectedRoute.jsx'
 import MarketingProtectedRoute from './Components/MarketingProtectedRoute.jsx'
+import OrderForm from './Pages/OrderForm.jsx' // Import the OrderForm component
 import './index.css'
 
 createRoot(document.getElementById('root')).render(
@@ -31,7 +33,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/admin" element={<AdminSuperPanel />} />
         </Route>
         <Route path='/inventory' element={<Inventory/>} />
-        <Route path='/car' element={<CarDetails/>} />
+        <Route path='/car/:id' element={<CarDetails/>} />
         <Route path='/account' element={<UserAccount/>} />
         <Route path='/adminlogin' element={<SuperAdminLogin/>} />
         <Route path='*' element={<h1 className='text-center mt-20 text-3xl'>404 - Page Not Found</h1>} />
@@ -50,6 +52,9 @@ createRoot(document.getElementById('root')).render(
         <Route element={<MarketingProtectedRoute />}>
           <Route path='/marketing' element={<MarketingAgent/>} />
         </Route>
+
+        {/* Add the new OrderForm route */}
+        <Route path='/order' element={<OrderForm />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>

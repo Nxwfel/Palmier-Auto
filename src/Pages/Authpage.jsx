@@ -4,8 +4,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, Phone, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// ✅ FIXED: Trim trailing spaces
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim();
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,7 +13,7 @@ const AuthPage = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [nin, setNin] = useState(""); // ✅ Required for signup
+  const [nin, setNin] = useState("");
   const [wilaya, setWilaya] = useState("");
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
@@ -44,7 +43,7 @@ const AuthPage = () => {
       let response;
 
       if (isLogin) {
-        // ✅ Login
+        // Login
         response = await fetch(`${API_BASE_URL}/users/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -52,7 +51,7 @@ const AuthPage = () => {
         });
 
       } else {
-        // ✅ Signup — split full name
+        // Signup
         const [name, ...surnameParts] = fullName.trim().split(" ");
         const surname = surnameParts.join(" ") || name;
 
@@ -87,7 +86,14 @@ const AuthPage = () => {
         setLoading(false);
         return;
       }
+
+      // Store token and role in localStorage
       const token = data.access_token;
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("userRole", "client");
+
+      // Redirect to user account page
+      navigate("/account");
       
     } catch (err) {
       console.error("Auth error:", err);
@@ -251,7 +257,7 @@ const AuthPage = () => {
             <>
               Pas encore de compte ?{" "}
               <button onClick={() => setIsLogin(false)} className="text-emerald-400 hover:text-emerald-300 font-medium">
-                S’inscrire
+                S'inscrire
               </button>
             </>
           ) : (
