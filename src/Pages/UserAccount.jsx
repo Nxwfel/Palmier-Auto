@@ -76,6 +76,7 @@ const UserAccount = () => {
 
     if (res.status === 401 || res.status === 403) {
       localStorage.removeItem("authToken");
+      localStorage.removeItem("userRole");
       setToken(null);
       navigate("/auth");
       throw new Error("Unauthorized");
@@ -83,6 +84,9 @@ const UserAccount = () => {
 
     return res;
   };
+
+  // Normalize notification read status (support both `read` and `is_read`)
+  const isRead = (notif) => notif.read || notif.is_read || false;
 
   // Data loading
   useEffect(() => {
@@ -135,8 +139,45 @@ const UserAccount = () => {
     navigate("/auth");
   };
 
-  const markAsRead = (id) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  // ✅ FULLY FUNCTIONAL: mark notification as read (server + local)
+  const markAsRead = async (id) => {
+    try {
+      // Optimistic update
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true, is_read: true } : n))
+      );
+
+      // Call API to persist
+      await apiFetch(`${API_BASE_URL}/notifications/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ read: true }), // or { is_read: true }
+      });
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+      // Revert on failure
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: false, is_read: false } : n))
+      );
+    }
+  };
+
+  // ✅ Mark all as read
+  const markAllAsRead = async () => {
+    try {
+      // Optimistic update
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, is_read: true })));
+
+      // Call API to mark all as read
+      await apiFetch(`${API_BASE_URL}/notifications/mark-all-read`, {
+        method: "POST",
+      });
+    } catch (err) {
+      console.error("Failed to mark all notifications as read", err);
+      // Revert on failure
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, read: n.read || n.is_read || false }))
+      );
+    }
   };
 
   const getStatusColor = (status) => {
@@ -176,7 +217,7 @@ const UserAccount = () => {
   const totalPaid = billing.reduce((s, o) => s + o.paid, 0);
   const totalDue = billing.reduce((s, o) => s + o.remaining, 0);
   const totalPrice = billing.reduce((s, o) => s + o.total, 0);
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !isRead(n)).length;
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-black text-white">
@@ -211,7 +252,7 @@ const UserAccount = () => {
           </button>
         ))}
 
-        {/* Notifications */}
+        {/* Notifications Bell */}
         <div className="mt-auto relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
@@ -220,7 +261,7 @@ const UserAccount = () => {
             <Bell className="w-6 h-6" />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-[10px] rounded-full flex items-center justify-center font-main">
-                {unreadCount}
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
           </button>
@@ -239,6 +280,14 @@ const UserAccount = () => {
           >
             <div className="p-4 border-b border-neutral-700 flex justify-between items-center">
               <h3 className="font-main text-lg">Notifications</h3>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-xs text-emerald-400 hover:underline mr-2"
+                >
+                  Tout marquer comme lu
+                </button>
+              )}
               <button
                 onClick={() => setShowNotifications(false)}
                 className="text-gray-500 hover:text-white"
@@ -253,15 +302,20 @@ const UserAccount = () => {
                 notifications.map((notif) => (
                   <div
                     key={notif.id}
-                    onClick={() => markAsRead(notif.id)}
-                    className={`p-4 border-b border-neutral-800 cursor-pointer hover:bg-white/5 ${
-                      !notif.read ? "bg-emerald-500/5" : ""
+                    onClick={() => !isRead(notif) && markAsRead(notif.id)}
+                    className={`p-4 border-b border-neutral-800 cursor-pointer hover:bg-white/5 transition-colors ${
+                      !isRead(notif) ? "bg-emerald-500/5 font-medium" : "text-gray-300"
                     }`}
                   >
-                    <p className="text-white">{notif.message}</p>
+                    <p className="text-white whitespace-pre-wrap">{notif.message}</p>
                     <p className="text-xs text-gray-500 mt-1">
                       {notif.created_at
-                        ? new Date(notif.created_at).toLocaleDateString("fr-FR")
+                        ? new Date(notif.created_at).toLocaleDateString("fr-FR", {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                         : "Récemment"}
                     </p>
                   </div>
@@ -483,4 +537,3 @@ const UserAccount = () => {
 };
 
 export default UserAccount;
-
