@@ -65,7 +65,7 @@ const AuthPage = () => {
           address,
         };
 
-        response = await fetch(`${API_BASE_URL}/users/signup`, {
+        response = await fetch(`${API_BASE_URL}/clients`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -92,8 +92,9 @@ const AuthPage = () => {
       localStorage.setItem("authToken", token);
       localStorage.setItem("userRole", "client");
 
-      // Redirect to user account page
-      navigate("/account");
+      // ✅ Auto-redirect to saved "from" route if exists, else to /account
+      const from = location.state?.from || "/account";
+      navigate(from);
       
     } catch (err) {
       console.error("Auth error:", err);

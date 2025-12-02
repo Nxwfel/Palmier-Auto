@@ -5,7 +5,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import gsap from "gsap";
 
 // ✅ CRITICAL: No trailing spaces!
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com"; // Removed trailing spaces
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim(); // Removed trailing spaces
 
 const CarDetails = () => {
   const { id } = useParams(); // ✅ Get car ID from URL
@@ -136,20 +136,16 @@ const CarDetails = () => {
     setCurrentImageIndex((prev) => (prev - 1 + filteredImages.length) % filteredImages.length);
   };
 
-  // 🛒 Buy handler
+  // 🛒 Buy handler - now just navigates to order page without checking auth
   const handleBuy = () => {
     if (!car) return;
     if (!selectedColor) {
       alert("Veuillez sélectionner une couleur.");
       return;
     }
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/auth", { state: { from: location.pathname, car, selectedColor } });
-    } else {
-      // Navigate to the new /order route
-      navigate("/order", { state: { car, selectedColor } });
-    }
+    // ✅ Removed token check - let OrderForm handle it
+    // Navigate to the new /order route
+    navigate("/order", { state: { car, selectedColor } });
   };
 
   if (loading) {
@@ -396,22 +392,24 @@ const CarDetails = () => {
             <div className="mt-8">
               <h4 className="text-lg font-semibold text-gray-800 mb-3">Caractéristiques</h4>
               <div className="space-y-2">
-                {[
-                  ["Année", car.year],
-                  ["Kilométrage", `${car.milage?.toLocaleString()} km`],
-                  ["Puissance", car.power || "—"],
-                  ["Moteur", car.engine || "—"],
-                  ["Carburant", car.fuel_type || "—"],
-                  ["Quantité", car.quantity != null ? car.quantity : 0],
-                  ["Pays d'origine", car.country || "—"],
-                ]
+                {
+                  [
+                    ["Année", car.year],
+                    ["Kilométrage", `${car.milage?.toLocaleString()} km`],
+                    ["Puissance", car.power || "—"],
+                    ["Moteur", car.engine || "—"],
+                    ["Carburant", car.fuel_type || "—"],
+                    ["Quantité", car.quantity != null ? car.quantity : 0],
+                    ["Pays d'origine", car.country || "—"],
+                  ]
                   .filter(([, v]) => v && v !== "—")
                   .map(([label, value], i) => (
                     <div key={i} className="flex justify-between py-1">
                       <span className="text-gray-600">{label}</span>
                       <span className="font-medium">{value}</span>
                     </div>
-                  ))}
+                  ))
+                }
               </div>
             </div>
           </div>

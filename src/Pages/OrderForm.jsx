@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim();
 
 const OrderForm = () => {
   const navigate = useNavigate();
@@ -17,20 +17,8 @@ const OrderForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Check authentication on component mount
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      // Redirect to auth if not logged in, passing the car data
-      navigate('/auth', { state: { from: location.pathname, car, selectedColor } });
-    }
-    // If no car data was passed, redirect back
-    if (!car || !selectedColor) {
-      setError('Informations sur la voiture manquantes.');
-      // Optionally navigate back or to a default page
-      // navigate(-1); // Go back
-    }
-  }, []); // Only run once on mount
+  // ✅ Removed the useEffect that checks auth on mount
+  // User can access the page without being logged in
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,9 +27,10 @@ const OrderForm = () => {
       return;
     }
 
-    const token = localStorage.getItem('token');
+    // ✅ Check authentication ONLY when submitting the order
+    const token = localStorage.getItem('authToken');
     if (!token) {
-      // Shouldn't happen if useEffect worked correctly, but good safety check
+      // Redirect to auth if not logged in, passing the car data
       navigate('/auth', { state: { from: location.pathname, car, selectedColor } });
       return;
     }
@@ -50,38 +39,107 @@ const OrderForm = () => {
     setError('');
 
     try {
-      // Prepare the order data
-      // delivery_status is now hardcoded to "shipping" as per requirement
+      // ✅ Safely extract client_id from the JWT token payload
+      let clientId;
+      try {
+        console.log("Attempting to decode token..."); // ✅ Debug log
+        console.log("Raw token (first 50 chars):", token.substring(0, 50)); // ✅ Debug log
+
+        const tokenParts = token.split('.');
+        console.log("Token parts length:", tokenParts.length); // ✅ Debug log
+
+        if (tokenParts.length !== 3) {
+          console.error("Token structure invalide: wrong number of parts");
+          throw new Error('Token structure invalide');
+        }
+
+        // Safely decode the payload
+        const payloadString = atob(tokenParts[1]);
+        console.log("Decoded payload string:", payloadString); // ✅ Debug log
+
+        const payload = JSON.parse(payloadString);
+        console.log("Decoded token payload:", payload); // ✅ Debug log - This should print the object
+
+        // ✅ The user_id is nested inside the 'subject' object, not at the root level
+        clientId = payload.subject?.user_id;
+
+        console.log("Found user_id in payload.subject:", clientId, "Type:", typeof clientId); // ✅ Debug log
+
+        if (clientId === undefined || clientId === null) {
+          console.error("user_id manquant dans le token payload.subject");
+          throw new Error('ID utilisateur manquant dans le token');
+        }
+
+        // Ensure client ID is a number if it's expected by the backend
+        if (typeof clientId === 'string' && !isNaN(clientId)) {
+          clientId = parseInt(clientId, 10);
+          console.log("Parsed user_id to number:", clientId); // ✅ Debug log
+        }
+
+        if (typeof clientId !== 'number' || isNaN(clientId)) {
+          console.error("user_id invalide dans le token (not a number):", clientId);
+          throw new Error('ID utilisateur invalide dans le token');
+        }
+
+        console.log("Final extracted client ID:", clientId); // ✅ Debug log
+      } catch (decodeErr) {
+        console.error('Erreur de décodage du token (inner):', decodeErr);
+        console.error('Raw token (inner, first 50 chars):', token.substring(0, 50)); // ✅ Debug log
+        throw new Error('Token d\'authentification invalide');
+      }
+
+      // ✅ Prepare the order data with the correct client_id
       const orderData = {
-        client_id: JSON.parse(atob(token.split('.')[1])).user_id, // Decode token to get user ID
+        client_id: clientId, // ✅ Use the extracted client ID from the token
         car_id: car.id,
         car_color: selectedColor.name,
         delivery_status: "shipping" // Default status, hardcoded as requested
       };
 
+      console.log("Sending order ", orderData); // ✅ Debug log
+
       const response = await fetch(`${API_BASE_URL}/orders/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Include the JWT token
+          'Authorization': `Bearer ${token}` // Include the JWT token for authentication
         },
         body: JSON.stringify(orderData)
       });
 
+      console.log("Response status:", response.status); // ✅ Debug log
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erreur lors de la création de la commande');
+        console.log("Error response:", errorData); // ✅ Debug log
+        
+        // ✅ Improved error handling to extract message properly
+        let errorMessage = 'Erreur lors de la création de la commande';
+        if (errorData && typeof errorData === 'object') {
+          if (Array.isArray(errorData)) {
+            // Handle validation errors array
+            errorMessage = errorData.map(err => err.msg).join(', ');
+          } else if (errorData.detail) {
+            errorMessage = typeof errorData.detail === 'string' 
+              ? errorData.detail 
+              : JSON.stringify(errorData.detail);
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else {
+            errorMessage = JSON.stringify(errorData);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       console.log('Commande créée avec succès:', result);
       
-      // Optionally navigate to a success page or show a success message
-      alert(`Commande pour la ${car.model} (${selectedColor.name}) créée avec succès!`);
-      navigate('/'); // Redirect to home or a confirmation page
+      // ✅ Navigate to account page and add a query parameter to trigger refresh
+      navigate('/account?refresh=true'); // Redirect to account page after success
 
     } catch (err) {
-      console.error('Erreur lors de la soumission de la commande:', err);
+      console.error('Erreur lors de la soumission de la commande (outer):', err);
       setError(err.message || 'Une erreur est survenue lors de la création de la commande.');
     } finally {
       setLoading(false);
@@ -140,11 +198,7 @@ const OrderForm = () => {
           </div>
         )}
 
-        {/* Removed the delivery_status select field */}
-        
         <form onSubmit={handleSubmit}>
-          {/* Removed the delivery_status field */}
-          
           <div className="mb-6">
             <label htmlFor="notes" className="block text-gray-700 font-medium mb-2">
               Notes (Optionnel)

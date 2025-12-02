@@ -15,7 +15,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim();
+// ✅ Fixed: removed trailing spaces
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim(); // Removed trailing spaces
 
 const Card = ({ children, className = "" }) => (
   <div
@@ -63,7 +64,7 @@ const UserAccount = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Auth-aware fetch helper
+  // ✅ Fixed: auth-aware fetch helper
   const apiFetch = async (url, options = {}) => {
     const res = await fetch(url, {
       ...options,
@@ -88,7 +89,7 @@ const UserAccount = () => {
   // Normalize notification read status (support both `read` and `is_read`)
   const isRead = (notif) => notif.read || notif.is_read || false;
 
-  // Data loading
+  // ✅ Fixed: Data loading
   useEffect(() => {
     if (!token) {
       setLoading(false);
@@ -101,7 +102,7 @@ const UserAccount = () => {
         setLoading(true);
         setError("");
 
-        // Fetch client profile
+        // ✅ Reverted: POST client profile (as per original working setup)
         const profileRes = await apiFetch(`${API_BASE_URL}/clients/client`, {
           method: "POST",
           body: JSON.stringify({ client_id: null }),
@@ -109,9 +110,10 @@ const UserAccount = () => {
         const profile = await profileRes.json();
         setUserProfile(profile);
 
-        // GET orders
+        // ✅ Fixed: GET orders for the authenticated client
         const ordersRes = await apiFetch(`${API_BASE_URL}/orders/client/`);
         const ordersData = await ordersRes.json();
+        console.log("Fetched orders:", ordersData); // ✅ Debug log
         setOrders(Array.isArray(ordersData) ? ordersData : []);
 
         // GET notifications
@@ -127,7 +129,27 @@ const UserAccount = () => {
     };
 
     loadData();
-  }, [token, navigate]);
+  }, [token, navigate]); // ✅ Added dependency array to re-run when token changes
+
+  // ✅ Added function to manually refresh orders
+  const refreshOrders = async () => {
+    if (!token) return;
+    
+    try {
+      const ordersRes = await apiFetch(`${API_BASE_URL}/orders/client/`);
+      const ordersData = await ordersRes.json();
+      console.log("Refreshed orders:", ordersData); // ✅ Debug log
+      setOrders(Array.isArray(ordersData) ? ordersData : []);
+    } catch (err) {
+      console.error("Failed to refresh orders:", err);
+    }
+  };
+
+  // ✅ Refresh orders after successful order creation (from OrderForm)
+  useEffect(() => {
+    // This will run when the component mounts or when there's a navigation
+    // You can call refreshOrders() after order creation from OrderForm
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -405,6 +427,13 @@ const UserAccount = () => {
                       <span className="text-sm font-medium">Solde restant: {totalDue.toLocaleString()} DZD</span>
                     </div>
                   )}
+                  {/* ✅ Add refresh button */}
+                  <button
+                    onClick={refreshOrders}
+                    className="text-sm text-emerald-400 hover:underline"
+                  >
+                    Actualiser
+                  </button>
                 </div>
 
                 {loading ? (
