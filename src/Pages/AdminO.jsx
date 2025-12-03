@@ -12,6 +12,7 @@ import {
   TrendingDown,
   Clock,
   X,
+  Package,
   ImageIcon,
   DollarSign,
   LogOut,
@@ -464,6 +465,7 @@ export default function AdminSuperPanel() {
 
   const [showAddWholesaleClient, setShowAddWholesaleClient] = useState(false);
   const [showAddWholesaleOrder, setShowAddWholesaleOrder] = useState(false);
+  const [showEditWholesaleOrder, setShowEditWholesaleOrder] = useState(false);
   const [clientForm, setClientForm] = useState({
   id: null,
   name: "", surname: "", nin: "", phone_number: "", password: "", wilaya: "", address: ""
@@ -482,15 +484,167 @@ const [showEditClient, setShowEditClient] = useState(false);
   status: true,
 });
 
+// Add new state for supplier item form
+const [supplierItemForm, setSupplierItemForm] = useState({
+  car_id: "",
+  supplier_id: "",
+  currency_id: "",
+  price: 0
+});
+  const getSupplierName = (supplierId) => {
+    const supplier = fournisseurs.find(s => s.id === supplierId);
+    return supplier ? `${supplier.name} ${supplier.surname}` : 'Unknown';
+  };
+
+// Add new handler for adding supplier items
+const handleAddSupplierItem = async (e) => {
+  e.preventDefault();
+  const { car_id, supplier_id, currency_id, price } = supplierItemForm;
+
+  if (!car_id || !supplier_id || !currency_id || price === null || price === undefined) {
+    alert("⚠️ All fields are required for adding a supplier item");
+    return;
+  }
+
+  console.log("📦 Adding supplier item:", { car_id, supplier_id, currency_id, price });
+
+  try {
+    const response = await apiFetch(`${API_BASE}/suppliers_items/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        car_id: Number(car_id),
+        supplier_id: Number(supplier_id),
+        currency_id: Number(currency_id),
+        price: Number(price)
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("❌ API Error:", errorData);
+      throw new Error(errorData.detail || "Failed to add supplier item");
+    }
+
+    await fetchSupplierItems(); // Refresh the list
+    setShowAddSupplierItem(false); // Close the modal
+    setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 }); // Reset form
+    pushLog("Admin", `Added new supplier item for car #${car_id} from supplier #${supplier_id}`);
+    alert("✅ Supplier item added successfully!");
+  } catch (err) {
+    console.error("Add supplier item error:", err);
+    alert(`❌ Error: ${err.message}`);
+  }
+};
+
+// Add new state for showing the supplier item modal
+const [showAddSupplierItem, setShowAddSupplierItem] = useState(false);
+
+// Add new handler to open the modal and pre-fill if editing
+const handleEditOrAddSupplierItem = (item = null) => {
+  if (item) {
+    // Editing existing item (handled by editingSupplierItem state)
+    setEditingSupplierItem(prev => ({
+      ...prev,
+      [item.supplier_item_id]: { price: item.price, payment_amount: item.payment_amount }
+    }));
+  } else {
+    // Adding new item
+    setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 });
+    setShowAddSupplierItem(true);
+  }
+};
+
+// Add new handler for deleting supplier items
+const handleDeleteSupplierItem = async (id) => {
+  if (!window.confirm("Supprimer cet élément fournisseur ?")) return;
+  try {
+    const url = `${API_BASE}/suppliers_items/?supplier_item_id=${id}`;
+    await apiFetch(url, { method: "DELETE" });
+    await fetchSupplierItems(); // Refresh the list
+    pushLog("Admin", `Deleted supplier item #${id}`);
+    alert("Deleted supplier item successfully ✅");
+  } catch (err) {
+    console.error("Erreur de suppression élément fournisseur:", err);
+    alert(`❌ Error deleting supplier item: ${err.message}`);
+  }
+};
+
+
 // ✅ Delete
 const handleDeleteOrder = async (id) => {
   if (!confirm("Delete order?")) return;
   try {
     await apiFetch(`${API_BASE}/orders/?order_id=${id}`, { method: "DELETE" });
-    setOrders(prev => prev.filter(o => o.id !== id));
+    setOrders(prev => prev.filter(o => o.order_id !== order_id));
   } catch (err) { alert("Delete failed"); }
 };
 
+// Inside handleWholesaleOrderSubmit function in the admin page
+const handleWholesaleOrderSubmit = async (e) => {
+  e.preventDefault();
+  const { client_id, car_id, quantity, delivery_status } = wholesaleOrderForm;
+
+  const isUpdate = wholesaleOrderForm.id !== null && wholesaleOrderForm.id !== undefined && wholesaleOrderForm.id !== "";
+  const url = `${API_BASE}/wholesale_orders/`;
+
+  console.log("📋 Wholesale Order Submit:", { isUpdate, form: wholesaleOrderForm, method: isUpdate ? "PUT" : "POST" });
+
+  // Build payload based on whether it's an update or creation
+  let payload;
+  if (isUpdate) {
+    // For update, only send the ID and the fields that might have changed
+    payload = {
+      order_id: Number(wholesaleOrderForm.id), // Required for update
+      delivery_status: wholesaleOrderForm.delivery_status,
+    };
+    // Add optional fields only if they are defined in the form
+    if (wholesaleOrderForm.payment_amount !== undefined && wholesaleOrderForm.payment_amount !== null) {
+      payload.payment_amount = Number(wholesaleOrderForm.payment_amount);
+    }
+    if (wholesaleOrderForm.status !== undefined && wholesaleOrderForm.status !== null) {
+      payload.status = wholesaleOrderForm.status;
+    }
+    console.log("🔄 UPDATE payload:", payload);
+  } else {
+    // For creation, send all required fields
+    payload = {
+      client_id: Number(client_id),
+      car_id: Number(car_id),
+      quantity: Number(quantity),
+      delivery_status,
+    };
+    console.log("✨ CREATE payload:", payload);
+  }
+
+  try {
+    const res = await apiFetch(url, {
+      method: isUpdate ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to ${isUpdate ? 'update' : 'create'} wholesale order`);
+    }
+    // Close the appropriate modal based on operation type
+    if (isUpdate) {
+      setShowEditWholesaleOrder(false);
+    } else {
+      setShowAddWholesaleOrder(false);
+    }
+    // Reset form
+    setWholesaleOrderForm({ id: null, client_id: "", car_id: "", quantity: 1, delivery_status: "shipping", payment_amount: 0, status: true });
+    alert(`${isUpdate ? "Updated" : "Created"} wholesale order successfully ✅`);
+    // Refresh the list
+    const fresh = await apiFetch(`${API_BASE}/wholesale_orders/`).then(r => r.json());
+    setWholesaleOrders(Array.isArray(fresh) ? fresh : []);
+  } catch (err) {
+    console.error("Wholesale order error:", err);
+    alert(`❌ Error: ${err.message}`);
+  }
+};
 // ✅ Submit (add/update)
 const handleOrderSubmit = async (e) => {
   e.preventDefault();
@@ -633,58 +787,6 @@ const handleWholesaleClientSubmit = async (e) => {
   }
 };
 // ✅ Handle Wholesale Order Submit
-const handleWholesaleOrderSubmit = async (e) => {
-  e.preventDefault();
-  const { client_id, car_id, quantity, delivery_status } = wholesaleOrderForm;
-
-  if (!client_id || !car_id || !quantity || !delivery_status) {
-    alert("⚠️ All fields are required");
-    return;
-  }
-
-  try {
-    const isUpdate = !!wholesaleOrderForm.id;
-    const url = `${API_BASE}/wholesale_orders/`;
-    const payload = {
-      client_id: Number(client_id),
-      car_id: Number(car_id),
-      quantity: Number(quantity),
-      delivery_status,
-    };
-
-    if (isUpdate) {
-      payload.order_id = Number(wholesaleOrderForm.id); // ← required
-      // optional update fields:
-      if (wholesaleOrderForm.payment_amount !== undefined) {
-        payload.payment_amount = Number(wholesaleOrderForm.payment_amount);
-      }
-      if (wholesaleOrderForm.status !== undefined) {
-        payload.status = wholesaleOrderForm.status;
-      }
-    }
-    const res = await apiFetch(url, {
-      method: isUpdate ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.detail || "Failed to save wholesale order");
-    }
-
-    // Refresh
-    const fresh = await apiFetch(`${API_BASE}/wholesale_orders/`).then(r => r.json());
-    setWholesaleOrders(Array.isArray(fresh) ? fresh : []);
-    setWholesaleOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" });
-    setShowAddWholesaleOrder(false);
-    alert(`${isUpdate ? "Updated" : "Added"} wholesale order ✅`);
-  } catch (err) {
-    console.error("Wholesale order error:", err);
-    alert("❌ " + err.message);
-  }
-};
-
 // ✅ Delete Wholesale Client
 const handleDeleteWholesaleClient = async (id) => {
   if (!confirm("Delete this wholesale client?")) return;
@@ -696,6 +798,7 @@ const handleDeleteWholesaleClient = async (id) => {
     alert("❌ Failed to delete");
   }
 };
+
 
 // ✅ Delete Wholesale Order
 const handleDeleteWholesaleOrder = async (id) => {
@@ -1088,6 +1191,19 @@ const handleDeleteWholesaleOrder = async (id) => {
       setClients(Array.isArray(fresh) ? fresh : []);
     } else throw new Error("Failed");
   } catch (err) { alert("Error"); }
+};
+
+const handleEditWholesaleOrder = (order) => {
+  setWholesaleOrderForm({
+    id: order.id,
+    client_id: order.client_id,
+    car_id: order.car_id,
+    quantity: order.quantity || 1,
+    delivery_status: order.delivery_status || "shipping",
+    payment_amount: order.payment_amount || 0,
+    status: order.status !== undefined ? order.status : true,
+  });
+  setShowEditWholesaleOrder(true);
 };
 const handleDeleteClient = async (id) => {
   if (!confirm("Delete client?")) return;
@@ -1593,6 +1709,7 @@ const handleDeleteClient = async (id) => {
           { id: "clients_orders", icon: FilePlus, label: "Clients Orders" },
           { id: "currency", icon: DollarSign, label: "Currency" },
           { id: "car_requests", icon: FilePlus, label: "Car Requests" },
+          { id: "supplierItems", icon: Package, label: "Éléments Fournisseurs" },
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
@@ -2297,7 +2414,7 @@ const handleDeleteClient = async (id) => {
                           <h2 className="text-3xl font-semibold">Wholesale Orders</h2>
                           <button 
                             onClick={() => { 
-                              setWholesaleOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" }); 
+                              setWholesaleOrderForm({ id: null, client_id: "", car_id: "", quantity: 1, delivery_status: "shipping", payment_amount: 0, status: true }); 
                               setShowAddWholesaleOrder(true); 
                             }} 
                             className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
@@ -2310,14 +2427,14 @@ const handleDeleteClient = async (id) => {
                             <table className="w-full">
                               <thead>
                                 <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
-                                  <th className="py-3 px-3">ID</th>
-                                  <th className="py-3 px-3">Client</th>
-                                  <th className="py-3 px-3">Car</th>
-                                  <th className="py-3 px-3">Qty</th>
-                                  <th className="py-3 px-3">Status</th>
-                                  <th className="py-3 px-3">Value (DZD)</th>
-                                  <th className="py-3 px-3">Created</th>
-                                  <th className="py-3 px-3 text-right">Actions</th>
+                                  <th className="py-3 px-4 text-left">ID Commande</th>
+                                  <th className="py-3 px-4 text-left">ID Client</th>
+                                  <th className="py-3 px-4 text-left">ID Voiture</th>
+                                  <th className="py-3 px-4 text-left">Qté</th>
+                                  <th className="py-3 px-4 text-left">Statut</th>
+                                  <th className="py-3 px-4 text-left">Statut Livraison</th>
+                                  <th className="py-3 px-4 text-left">Payé</th>
+                                  <th className="py-3 px-4 text-left">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2353,27 +2470,8 @@ const handleDeleteClient = async (id) => {
                                         {new Date(order.created_at).toLocaleDateString()}
                                       </td>
                                       <td className="py-3 px-3 text-right space-x-2">
-                                        <button 
-                                          onClick={() => { 
-                                            setWholesaleOrderForm({
-                                              order_id: order.id,
-                                              client_id: order.client_id,
-                                              car_id: order.car_id,
-                                              quantity: order.quantity,
-                                              delivery_status: order.delivery_status
-                                            }); 
-                                            setShowAddWholesaleOrder(true); 
-                                          }} 
-                                          className="text-blue-400 hover:text-blue-300"
-                                        >
-                                          Edit
-                                        </button>
-                                        <button 
-                                          onClick={() => handleDeleteWholesaleOrder(order.id)} 
-                                          className="text-red-400 hover:text-red-300"
-                                        >
-                                          Delete
-                                        </button>
+                                        <button onClick={() => handleEditWholesaleOrder(order)} className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded mr-1">✏️</button>
+                                        <button onClick={() => handleDeleteWholesaleOrder(order.id)} className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded">🗑️</button>
                                       </td>
                                     </tr>
                                   );
@@ -2502,10 +2600,6 @@ const handleDeleteClient = async (id) => {
                     {req.status ? 'Accepted' : 'Pending'}
                   </span>
                 </td>
-                <td>
-                  <button onClick={() => handleUpdateCarRequest(req.id, true)} className="text-green-400 mr-2">✔️ Accept</button>
-                  <button onClick={() => handleUpdateCarRequest(req.id, false)} className="text-red-400">✖️ Reject</button>
-                </td>
               </tr>
             );
           })}
@@ -2514,7 +2608,193 @@ const handleDeleteClient = async (id) => {
     </Card>
   </motion.div>
 )}
+{tab === "supplierItems" && (
+  <motion.div
+    key="supplierItems"
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    transition={{ duration: 0.4 }}
+  >
+    <h1 className="text-3xl font-main mb-6">Éléments Fournisseurs</h1>
+    <button
+      onClick={() => handleEditOrAddSupplierItem()}
+      className="mb-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded"
+    >
+      ➕ Ajouter Élément
+    </button>
+    <Card>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-gray-400 border-b border-neutral-700">
+              <th className="py-3 px-4 text-left">ID Élément</th>
+              <th className="py-3 px-4 text-left">ID Voiture</th>
+              <th className="py-3 px-4 text-left">ID Fournisseur</th>
+              <th className="py-3 px-4 text-left">Prix (Devise)</th>
+              <th className="py-3 px-4 text-left">Prix (DZD)</th>
+              <th className="py-3 px-4 text-left">Payé (DZD)</th>
+              <th className="py-3 px-4 text-left">Reste (DZD)</th>
+              <th className="py-3 px-4 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {supplierItems.map((item) => {
+              const currency = currencyList.find(c => c.id === item.currency_id);
+              const rate = currency?.exchange_rate_to_dzd || 1;
+              const priceDZD = (item.price || 0) * rate;
+              const paid = item.payment_amount || 0;
+              const remaining = priceDZD - paid;
+
+              const editablePrice = editingSupplierItem[item.supplier_item_id]?.price ?? item.price ?? 0;
+              const editablePaid = editingSupplierItem[item.supplier_item_id]?.payment_amount ?? item.payment_amount ?? 0;
+              const editablePriceDZD = editablePrice * rate;
+              const editableRemaining = editablePriceDZD - editablePaid;
+
+              return (
+                <tr key={item.supplier_item_id} className="border-b border-neutral-800/50 hover:bg-white/5">
+                  <td className="py-4 px-4">{item.supplier_item_id}</td>
+                  <td className="py-4 px-4">{item.car_id}</td>
+                  <td className="py-4 px-4">{getSupplierName(item.supplier_id)}</td>
+                  <td className="py-4 px-4">{(item.price || 0).toLocaleString()} {currency?.code.toUpperCase() || 'N/A'}</td>
+                  <td className="py-4 px-4">{priceDZD.toLocaleString()} DZD</td>
+                  <td className="py-4 px-4">{paid.toLocaleString()} DZD</td>
+                  <td className={`py-4 px-4 font-medium ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    {remaining > 0 ? `${remaining.toLocaleString()} DZD` : '✅ Payé'}
+                  </td>
+                  <td className="py-4 px-4">
+                    {editingSupplierItem[item.supplier_item_id] ? (
+                      <>
+                        <button
+                          onClick={() => saveSupplierItemEdit(item)}
+                          className="text-xs px-2 py-1 bg-emerald-600 hover:bg-emerald-500 rounded mr-1"
+                        >
+                          ✅ Sauvegarder
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingSupplierItem(prev => {
+                              const copy = { ...prev };
+                              delete copy[item.supplier_item_id];
+                              return copy;
+                            });
+                          }}
+                          className="text-xs px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded"
+                        >
+                          Annuler
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleEditOrAddSupplierItem(item)}
+                          className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded mr-1"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSupplierItem(item.supplier_item_id)}
+                          className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded"
+                        >
+                          🗑️
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  </motion.div>
+)}
+
         </AnimatePresence>
+
+      
+<Modal
+  open={showAddSupplierItem}
+  onClose={() => {
+    setShowAddSupplierItem(false);
+    setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 }); // Reset on close
+  }}
+  title="Ajouter un Élément Fournisseur"
+>
+  <form onSubmit={handleAddSupplierItem} className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label className="text-sm text-neutral-400 block mb-1">Voiture</label>
+        <select
+          name="car_id"
+          value={supplierItemForm.car_id}
+          onChange={(e) => setSupplierItemForm({ ...supplierItemForm, car_id: e.target.value })}
+          className="w-full bg-neutral-800 p-2 rounded text-sm"
+          required
+        >
+          <option value="">Select Car</option>
+          {cars.map((car) => (
+            <option key={car.id} value={car.id}>
+              {car.model} #{car.id} — {car.color} · {car.year}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-sm text-neutral-400 block mb-1">Fournisseur</label>
+        <select
+          name="supplier_id"
+          value={supplierItemForm.supplier_id}
+          onChange={(e) => setSupplierItemForm({ ...supplierItemForm, supplier_id: e.target.value })}
+          className="w-full bg-neutral-800 p-2 rounded text-sm"
+          required
+        >
+          <option value="">Select Supplier</option>
+          {fournisseurs.map((supplier) => (
+            <option key={supplier.id} value={supplier.id}>
+              {supplier.name} {supplier.surname}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-sm text-neutral-400 block mb-1">Devise</label>
+        <select
+          name="currency_id"
+          value={supplierItemForm.currency_id}
+          onChange={(e) => setSupplierItemForm({ ...supplierItemForm, currency_id: e.target.value })}
+          className="w-full bg-neutral-800 p-2 rounded text-sm"
+          required
+        >
+          <option value="">Select Currency</option>
+          {currencyList.map((currency) => (
+            <option key={currency.id} value={currency.id}>
+              {currency.name} ({currency.code.toUpperCase()})
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-sm text-neutral-400 block mb-1">Prix</label>
+        <input
+          type="number"
+          step="0.01"
+          name="price"
+          placeholder="Prix"
+          value={supplierItemForm.price}
+          onChange={(e) => setSupplierItemForm({ ...supplierItemForm, price: e.target.value })}
+          className="w-full bg-neutral-800 p-2 rounded text-sm"
+          required
+        />
+      </div>
+    </div>
+    <div className="flex justify-end gap-2 pt-4">
+      <button type="button" onClick={() => setShowAddSupplierItem(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Annuler</button>
+      <button type="submit" className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white text-sm">➕ Ajouter Élément</button>
+    </div>
+  </form>
+</Modal>
 
         {/* Modals */}
       <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
@@ -2868,6 +3148,75 @@ const handleDeleteClient = async (id) => {
         className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
       >
         {wholesaleOrderForm.id ? "✏️ Update Order" : "➕ Add Order"}
+      </button>
+    </div>
+  </form>
+</Modal>
+<Modal 
+  open={showEditWholesaleOrder} 
+  onClose={() => setShowEditWholesaleOrder(false)} 
+  title={wholesaleOrderForm.id ? "Edit Wholesale Order" : "Add Wholesale Order"}
+>
+  <form onSubmit={handleWholesaleOrderSubmit} className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <select
+        value={wholesaleOrderForm.client_id}
+        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, client_id: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      >
+        <option value="">Select Wholesale Client</option>
+        {wholesaleClients.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name} {c.surname} ({c.company_name})
+          </option>
+        ))}
+      </select>
+      <select
+        value={wholesaleOrderForm.car_id}
+        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, car_id: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      >
+        <option value="">Select Car</option>
+        {cars.map((car) => (
+          <option key={car.id} value={car.id}>
+            {car.model} #{car.id} — {car.color} · {car.year}
+          </option>
+        ))}
+      </select>
+      <input
+        type="number"
+        min="1"
+        placeholder="Quantity"
+        value={wholesaleOrderForm.quantity}
+        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, quantity: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+        required
+      />
+      <select
+        value={wholesaleOrderForm.delivery_status}
+        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
+        className="bg-neutral-800 p-2 rounded text-sm"
+      >
+        <option value="shipping">Shipping</option>
+        <option value="arrived">Arrived</option>
+        <option value="showroom">Showroom</option>
+      </select>
+    </div>
+    <div className="flex justify-end gap-3">
+      <button
+        type="button"
+        onClick={() => setShowEditWholesaleOrder(false)}
+        className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
+      >
+        ✏️ Update Order
       </button>
     </div>
   </form>
