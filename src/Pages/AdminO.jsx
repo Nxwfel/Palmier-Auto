@@ -528,7 +528,6 @@ const handleAddSupplierItem = async (e) => {
       throw new Error(errorData.detail || "Failed to add supplier item");
     }
 
-    await fetchSupplierItems(); // Refresh the list
     setShowAddSupplierItem(false); // Close the modal
     setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 }); // Reset form
     pushLog("Admin", `Added new supplier item for car #${car_id} from supplier #${supplier_id}`);
@@ -623,7 +622,6 @@ const handleDeleteSupplierItem = async (id) => {
   try {
     const url = `${API_BASE}/suppliers_items/?supplier_item_id=${id}`;
     await apiFetch(url, { method: "DELETE" });
-    await fetchSupplierItems(); // Refresh the list
     pushLog("Admin", `Deleted supplier item #${id}`);
     alert("Deleted supplier item successfully ✅");
   } catch (err) {
@@ -2797,7 +2795,6 @@ const handleDeleteClient = async (id) => {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 border-b border-neutral-700">
-              <th className="py-3 px-4 text-left">ID Élément</th>
               <th className="py-3 px-4 text-left">ID Voiture</th>
               <th className="py-3 px-4 text-left">ID Fournisseur</th>
               <th className="py-3 px-4 text-left">Prix (Devise)</th>
@@ -2822,7 +2819,6 @@ const handleDeleteClient = async (id) => {
 
               return (
                 <tr key={item.supplier_item_id} className="border-b border-neutral-800/50 hover:bg-white/5">
-                  <td className="py-4 px-4">{item.supplier_item_id}</td>
                   <td className="py-4 px-4">{item.car_id}</td>
                   <td className="py-4 px-4">{getSupplierName(item.supplier_id)}</td>
                   <td className="py-4 px-4">{(item.price || 0).toLocaleString()} {currency?.code.toUpperCase() || 'N/A'}</td>
@@ -2832,43 +2828,13 @@ const handleDeleteClient = async (id) => {
                     {remaining > 0 ? `${remaining.toLocaleString()} DZD` : '✅ Payé'}
                   </td>
                   <td className="py-4 px-4">
-                    {editingSupplierItem[item.supplier_item_id] ? (
-                      <>
-                        <button
-                          onClick={() => saveSupplierItemEdit(item)}
-                          className="text-xs px-2 py-1 bg-emerald-600 hover:bg-emerald-500 rounded mr-1"
-                        >
-                          ✅ Sauvegarder
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingSupplierItem(prev => {
-                              const copy = { ...prev };
-                              delete copy[item.supplier_item_id];
-                              return copy;
-                            });
-                          }}
-                          className="text-xs px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded"
-                        >
-                          Annuler
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleEditOrAddSupplierItem(item)}
-                          className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded mr-1 max-md:mb-2"
-                        >
-                          ✏️
-                        </button>
+
                         <button
                           onClick={() => handleDeleteSupplierItem(item.supplier_item_id)}
                           className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded"
                         >
                           🗑️
                         </button>
-                      </>
-                    )}
                   </td>
                 </tr>
               );
