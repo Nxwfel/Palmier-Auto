@@ -1,7 +1,7 @@
 // src/Pages/Commercials.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search , Plus , File , Car , LetterTextIcon } from "lucide-react";
 
 // ✅ FIXED: Trimmed trailing spaces
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
@@ -13,7 +13,7 @@ const Commercials = () => {
   const [cars, setCars] = useState([]);
   const [currencies, setCurrencies] = useState([]);
 
-  // ✅ Added `nin`
+
   const [newClient, setNewClient] = useState({
     name: "", 
     surname: "", 
@@ -24,7 +24,7 @@ const Commercials = () => {
     nin: ""
   });
 
-  // ✅ Initialize as null (not "")
+
 const [newOrder, setNewOrder] = useState({
   client_id: null,
   car_id: null,
@@ -387,19 +387,21 @@ const [newOrder, setNewOrder] = useState({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h2 className="text-2xl font-bold mb-8">Palmier Auto</h2>
+            <h2 className="text-2xl mb-8">Palmier Auto</h2>
             {[
-              { id: "addClient", label: "Ajouter Client" },
-              { id: "orders", label: "Commandes" },
-              { id: "cars", label: "Voitures" },
-              { id: "requests", label: "Demande Admin" }
-            ].map(tab => (
+              { id: "addClient",icon:Plus , label: "Ajouter Client" },
+              { id: "orders",icon:File, label: "Commandes" },
+              { id: "cars",icon:Car , label: "Voitures" },
+              { id: "requests",icon:LetterTextIcon, label: "Demande Admin" }
+            ].map(({label, id, icon:Icon}) => (
               <button
-                key={tab.id}
-                onClick={() => { setActiveTab(tab.id); setMenuOpen(false); }}
-                className={`w-full text-left p-3 rounded-lg transition ${activeTab === tab.id ? 'bg-emerald-600' : 'hover:bg-neutral-800'}`}
+                key={id}
+                onClick={() => { setActiveTab(id); setMenuOpen(false); }}
+                className={`w-full flex gap-2 text-left p-3 rounded-lg transition ${activeTab === id ? 'bg-emerald-600' : 'hover:bg-neutral-800'}`}
               >
-                {tab.label}
+                <Icon className="h-6 w-6"/>
+                
+                {label}
               </button>
             ))}
           </div>

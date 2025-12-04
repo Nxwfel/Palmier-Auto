@@ -53,7 +53,6 @@ createRoot(document.getElementById('root')).render(
           <Route path='/marketing' element={<MarketingAgent/>} />
         </Route>
 
-        {/* Add the new OrderForm route */}
         <Route path='/order' element={<OrderForm />} />
       </Routes>
     </BrowserRouter>

@@ -1030,6 +1030,17 @@ const handleDeleteWholesaleOrder = async (id) => {
     fetchCommercials();
   }, []);
 
+  const handledeleteCommercial = async (id) => {
+    if (!window.confirm("Delete this commercial?")) return;
+    try {
+      await apiFetch(`${API_BASE}/commercials/?commercial_id=${id}`, { method: "DELETE" });
+      setCommercials(prev => prev.filter(c => c.id !== id));
+    } catch (err) {
+      console.error("Error deleting commercial:", err);
+      alert("❌ Failed to delete");
+    }
+  }
+
   // ✅ Fetch Marketers
   useEffect(() => {
     const fetchMarketers = async () => {
@@ -2121,164 +2132,196 @@ const handleDeleteClient = async (id) => {
                   <h3 className="text-lg font-semibold mb-4">Supplier Finance Details</h3>
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {fournisseurs.map((supplier) => {
-                      const items = supplierItems.filter(item => item.supplier_id === supplier.id);
-                      const totalOwed = items.reduce((sum, item) => {
-                        const currency = currencyList.find(c => c.id === item.currency_id);
-                        const rate = currency?.exchange_rate_to_dzd || 1;
-                        return sum + ((item.price || 0) * rate);
-                      }, 0);
-                      const totalPaid = items.reduce((sum, item) => sum + (item.payment_amount || 0), 0);
-                      const remaining = totalOwed - totalPaid;
-                      return (
-                        <div key={supplier.id} className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-purple-500 transition">
-                          <h3 className="text-lg font-semibold text-purple-400">
-                            {supplier.name} {supplier.surname}
-                          </h3>
-                          <p className="text-sm text-gray-400">📞 {supplier.phone_number || "—"} | 📍 {supplier.address || "—"}</p>
-                          <div className="mt-3 p-3 bg-neutral-800/40 rounded-lg">
-                            <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div className="text-center">
-                                <div className="text-emerald-400 font-medium">{totalOwed.toLocaleString()} DZD</div>
-                                <div className="text-neutral-400">Total Owed</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-blue-400 font-medium">{totalPaid.toLocaleString()} DZD</div>
-                                <div className="text-neutral-400">Paid</div>
-                              </div>
-                              <div className="text-center">
-                                <div className={`font-bold ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                  {remaining.toLocaleString()} DZD
+                        const items = supplierItems.filter(item => item.supplier_id === supplier.id);
+
+                        // 🔥 All totals now calculated in ORIGINAL CURRENCY
+                        const totalOwed = items.reduce((sum, item) => sum + (item.price || 0), 0);
+                        const totalPaid = items.reduce((sum, item) => sum + (item.payment_amount || 0), 0);
+                        const remaining = totalOwed - totalPaid;
+
+                        return (
+                          <div key={supplier.id} className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-purple-500 transition">
+                            <h3 className="text-lg font-semibold text-purple-400">
+                              {supplier.name} {supplier.surname}
+                            </h3>
+                            <p className="text-sm text-gray-400">📞 {supplier.phone_number || "—"} | 📍 {supplier.address || "—"}</p>
+
+                            <div className="mt-3 p-3 bg-neutral-800/40 rounded-lg">
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                <div className="text-center">
+                                  <div className="text-emerald-400 font-medium">
+                                    {totalOwed.toLocaleString()} {items[0]?.currency_code || ""}
+                                  </div>
+                                  <div className="text-neutral-400">Total Owed</div>
                                 </div>
-                                <div className="text-neutral-400">Remaining</div>
+                                <div className="text-center">
+                                  <div className="text-blue-400 font-medium">
+                                    {totalPaid.toLocaleString()} {items[0]?.currency_code || ""}
+                                  </div>
+                                  <div className="text-neutral-400">Paid</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className={`font-bold ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                    {remaining.toLocaleString()} {items[0]?.currency_code || ""}
+                                  </div>
+                                  <div className="text-neutral-400">Remaining</div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          {/* ✅ Editable Price & Paid */}
-                          {items.length > 0 && (
-                            <div className="mt-3">
-                              <h4 className="text-sm font-medium text-purple-300 mb-2">Car Purchases & Payments</h4>
-                              <div className="space-y-3">
-                                {items.map((item) => {
-                                  const car = cars.find(c => c.id === item.car_id) || {};
-                                  const currency = currencyList.find(c => c.id === item.currency_id);
-                                  const rate = currency?.exchange_rate_to_dzd || 1;
-                                  const editablePrice = editingSupplierItem[item.supplier_item_id]?.price ?? item.price ?? 0;
-                                  const editablePaid = editingSupplierItem[item.supplier_item_id]?.payment_amount ?? item.payment_amount ?? 0;
-                                  const costDZD = editablePrice * rate;
-                                  const remainingItem = costDZD - editablePaid;
 
-                                  return (
-                                    <div key={item.supplier_item_id} className="bg-neutral-800/30 p-3 rounded border border-neutral-700">
-                                      <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                          <span className="font-medium text-emerald-400">{car.model || 'Car'} #{car.id}</span>
-                                          <br />
-                                          <span className="text-xs text-neutral-500">
-                                            {currency?.code.toUpperCase() || '???'} / {rate.toFixed(2)} DZD
+                            {/* Editable Items */}
+                            {items.length > 0 && (
+                              <div className="mt-3">
+                                <h4 className="text-sm font-medium text-purple-300 mb-2">Car Purchases & Payments</h4>
+
+                                <div className="space-y-3">
+                                  {items.map((item) => {
+                                    const car = cars.find(c => c.id === item.car_id) || {};
+                                    const currency = currencyList.find(c => c.id === item.currency_id);
+
+                                    const editablePrice =
+                                      editingSupplierItem[item.supplier_item_id]?.price ??
+                                      item.price ??
+                                      0;
+
+                                    const editablePaid =
+                                      editingSupplierItem[item.supplier_item_id]?.payment_amount ??
+                                      item.payment_amount ??
+                                      0;
+
+                                    const remainingItem = editablePrice - editablePaid;
+
+                                    return (
+                                      <div key={item.supplier_item_id} className="bg-neutral-800/30 p-3 rounded border border-neutral-700">
+                                        <div className="flex justify-between items-start mb-2">
+                                          <div>
+                                            <span className="font-medium text-emerald-400">{car.model || 'Car'} #{car.id}</span>
+                                            <br />
+                                            <span className="text-xs text-neutral-500">
+                                              {currency?.code.toUpperCase()}
+                                            </span>
+                                          </div>
+
+                                          <div className="text-right">
+                                            <div className="text-xs text-neutral-400">Total Owed</div>
+                                            <div className="font-bold text-emerald-400">
+                                              {editablePrice.toLocaleString()} {currency?.code.toUpperCase()}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* Inputs */}
+                                        <div className="grid grid-cols-2 gap-2 mt-2">
+                                          <div>
+                                            <label className="text-xs text-neutral-400 block mb-1">
+                                              Price ({currency?.code.toUpperCase()}):
+                                            </label>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              value={editablePrice}
+                                              onChange={(e) => {
+                                                const val = parseFloat(e.target.value) || 0;
+                                                setEditingSupplierItem(prev => ({
+                                                  ...prev,
+                                                  [item.supplier_item_id]: {
+                                                    ...prev[item.supplier_item_id],
+                                                    price: val
+                                                  }
+                                                }));
+                                              }}
+                                              className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
+                                            />
+                                          </div>
+
+                                          <div>
+                                            <label className="text-xs text-neutral-400 block mb-1">
+                                              Paid ({currency?.code.toUpperCase()}):
+                                            </label>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max={editablePrice}
+                                              value={editablePaid}
+                                              onChange={(e) => {
+                                                const val = parseFloat(e.target.value) || 0;
+                                                setEditingSupplierItem(prev => ({
+                                                  ...prev,
+                                                  [item.supplier_item_id]: {
+                                                    ...prev[item.supplier_item_id],
+                                                    payment_amount: val
+                                                  }
+                                                }));
+                                              }}
+                                              className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        {/* Remaining */}
+                                        <div className="mt-2 pt-2 border-t border-neutral-700 flex justify-between">
+                                          <span className="text-xs text-neutral-400">Remaining:</span>
+                                          <span className={`font-bold ${remainingItem > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                            {remainingItem > 0
+                                              ? `${remainingItem.toLocaleString()} ${currency?.code.toUpperCase()}`
+                                              : '✅ Paid'}
                                           </span>
                                         </div>
-                                        <div className="text-right">
-                                          <div className="text-xs text-neutral-400">Total Owed</div>
-                                          <div className="font-bold text-emerald-400">{costDZD.toLocaleString()} DZD</div>
+
+                                        {/* Save / Cancel */}
+                                        <div className="flex justify-end gap-2 mt-2">
+                                          {(editingSupplierItem[item.supplier_item_id]?.price !== item.price ||
+                                            editingSupplierItem[item.supplier_item_id]?.payment_amount !== item.payment_amount) && (
+                                            <button
+                                              onClick={() => saveSupplierItemEdit(item)}
+                                              className="text-xs px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500"
+                                            >
+                                              Save
+                                            </button>
+                                          )}
+
+                                          {editingSupplierItem[item.supplier_item_id] && (
+                                            <button
+                                              onClick={() => {
+                                                setEditingSupplierItem(prev => {
+                                                  const updated = { ...prev };
+                                                  delete updated[item.supplier_item_id];
+                                                  return updated;
+                                                });
+                                              }}
+                                              className="text-xs px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded"
+                                            >
+                                              Cancel
+                                            </button>
+                                          )}
                                         </div>
                                       </div>
-                                      <div className="grid grid-cols-2 gap-2 mt-2">
-                                        <div>
-                                          <label className="text-xs text-neutral-400 block mb-1">Price ({currency?.code.toUpperCase() || '???'}):</label>
-                                          <input
-                                            type="number"
-                                            step="1"
-                                            min="0"
-                                            value={editablePrice}
-                                            onChange={(e) => {
-                                              const val = parseFloat(e.target.value) || 0;
-                                              setEditingSupplierItem(prev => ({
-                                                ...prev,
-                                                [item.supplier_item_id]: {
-                                                  ...prev[item.supplier_item_id],
-                                                  price: val
-                                                }
-                                              }));
-                                            }}
-                                            className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className="text-xs text-neutral-400 block mb-1">Paid (DZD):</label>
-                                          <input
-                                            type="number"
-                                            step="100"
-                                            min="0"
-                                            max={costDZD}
-                                            value={editablePaid}
-                                            onChange={(e) => {
-                                              const val = parseFloat(e.target.value) || 0;
-                                              setEditingSupplierItem(prev => ({
-                                                ...prev,
-                                                [item.supplier_item_id]: {
-                                                  ...prev[item.supplier_item_id],
-                                                  payment_amount: val
-                                                }
-                                              }));
-                                            }}
-                                            className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="mt-2 pt-2 border-t border-neutral-700 flex justify-between">
-                                        <span className="text-xs text-neutral-400">Remaining:</span>
-                                        <span className={`font-bold ${remainingItem > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                          {remainingItem > 0 ? `${remainingItem.toLocaleString()} DZD` : '✅ Paid'}
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-end gap-2 mt-2">
-                                        {(editingSupplierItem[item.supplier_item_id]?.price !== item.price ||
-                                          editingSupplierItem[item.supplier_item_id]?.payment_amount !== item.payment_amount) && (
-                                          <button
-                                            onClick={() => saveSupplierItemEdit(item)}
-                                            className="text-xs px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500"
-                                          >
-                                            Save
-                                          </button>
-                                        )}
-                                        {editingSupplierItem[item.supplier_item_id] && (
-                                          <button
-                                            onClick={() => {
-                                              setEditingSupplierItem(prev => {
-                                                const copy = { ...prev };
-                                                delete copy[item.supplier_item_id];
-                                                return copy;
-                                              });
-                                            }}
-                                            className="text-xs px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded"
-                                          >
-                                            Cancel
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                                    );
+                                  })}
+                                </div>
                               </div>
+                            )}
+
+                            {/* Buttons */}
+                            <div className="flex justify-end mt-3 space-x-2">
+                              <button
+                                onClick={() => handleEditFournisseur(supplier)}
+                                className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-xs"
+                              >
+                                Modifier
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteFournisseur(supplier.id)}
+                                className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs"
+                              >
+                                Supprimer
+                              </button>
                             </div>
-                          )}
-                          <div className="flex justify-end mt-3 space-x-2">
-                            <button
-                              onClick={() => handleEditFournisseur(supplier)}
-                              className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-xs"
-                            >
-                              Modifier
-                            </button>
-                            <button
-                              onClick={() => handleDeleteFournisseur(supplier.id)}
-                              className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs"
-                            >
-                              Supprimer
-                            </button>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+
                   </div>
                 </Card>
                 <Card className="md:col-span-2">
@@ -2399,6 +2442,7 @@ const handleDeleteClient = async (id) => {
                         <th className="py-3 px-3">Address</th>
                         <th className="py-3 px-3">Cars Sold</th>
                         <th className="py-3 px-3">Created</th>
+                        <th className="py-3 px-3">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2421,6 +2465,14 @@ const handleDeleteClient = async (id) => {
                             <td className="py-3 px-3">{soldCars}</td>
                             <td className="py-3 px-3 text-sm text-neutral-400">
                               {new Date(cm.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="py-3 px-3 text-sm text-neutral-400">
+                              <button 
+                              onClick={() => {handledeleteCommercial(cm.id)}}
+                              className="text-red-500 hover:text-red-300"
+                              >
+                               Delete
+                              </button>
                             </td>
                           </tr>
                         );
