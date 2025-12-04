@@ -390,6 +390,7 @@ const apiFetch = async (url, options = {}) => {
 
 export default function AdminSuperPanel() {
   const API_BASE = 'https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com';
+  const [showEditOrder, setShowEditOrder] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
   const [passwordModalType, setPasswordModalType] = useState(null); // "commercial", "marketer", "accountant"
   const [userPhoneForPassword, setUserPhoneForPassword] = useState("");
@@ -466,6 +467,7 @@ export default function AdminSuperPanel() {
   const [showAddWholesaleClient, setShowAddWholesaleClient] = useState(false);
   const [showAddWholesaleOrder, setShowAddWholesaleOrder] = useState(false);
   const [showEditWholesaleOrder, setShowEditWholesaleOrder] = useState(false);
+  const [showAddOrder , setShowAddOrder] = useState (false);
   const [clientForm, setClientForm] = useState({
   id: null,
   name: "", surname: "", nin: "", phone_number: "", password: "", wilaya: "", address: ""
@@ -534,6 +536,66 @@ const handleAddSupplierItem = async (e) => {
   } catch (err) {
     console.error("Add supplier item error:", err);
     alert(`❌ Error: ${err.message}`);
+  }
+};
+
+const handleOrderSubmit = async (e) => {
+  e.preventDefault();
+  
+  try {
+    const isUpdate = !!orderForm.id;
+    const url = `${API_BASE}/orders/`;
+    
+    const payload = {
+      client_id: Number(orderForm.client_id),
+      car_id: Number(orderForm.car_id),
+      car_color: orderForm.car_color || null,
+      delivery_status: orderForm.delivery_status,
+      payment_amount: Number(orderForm.payment_amount),
+      status: orderForm.status,
+    };
+
+    if (isUpdate) {
+      payload.id = orderForm.id;
+    }
+
+    // Utilisez apiFetch au lieu de fetch
+    const response = await apiFetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Erreur lors de l'ajout de la commande");
+    }
+
+    const data = await response.json();
+    
+    // Log the action
+    pushLog("Admin", `Ajout d'une nouvelle commande pour le client ${orderForm.client_id}`);
+    
+    // Close modal and reset form
+    setShowAddOrder(false);
+    setOrderForm({
+      id: null,
+      client_id: "",
+      car_id: "",
+      car_color: "",
+      delivery_status: "shipping",
+      payment_amount: 0,
+      status: true,
+    });
+    
+    // Optional: Show success message
+    alert("Commande ajoutée avec succès!");
+    
+  } catch (error) {
+    console.error("Erreur:", error);
+    alert(error.message || "Erreur lors de l'ajout de la commande");
   }
 };
 
@@ -644,40 +706,6 @@ const handleWholesaleOrderSubmit = async (e) => {
     console.error("Wholesale order error:", err);
     alert(`❌ Error: ${err.message}`);
   }
-};
-// ✅ Submit (add/update)
-const handleOrderSubmit = async (e) => {
-  e.preventDefault();
-  const { id, client_id, car_id, car_color, delivery_status, payment_amount, status } = orderForm;
-  if (!client_id || !car_id || !car_color) {
-    alert("Required fields missing");
-    return;
-  }
-  try {
-    const isUpdate = !!id;
-    const payload = {
-      client_id: Number(client_id),
-      car_id: Number(car_id),
-      car_color,
-      delivery_status,
-    };
-    if (isUpdate) {
-      payload.order_id = id;
-      if (payment_amount !== undefined) payload.payment_amount = Number(payment_amount);
-      if (status !== undefined) payload.status = status;
-    }
-    const res = await apiFetch(`${API_BASE}/orders/`, {
-      method: isUpdate ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      alert(`${isUpdate ? "Updated" : "Added"} order`);
-      setShowAddOrder(false);
-      const fresh = await apiFetch(`${API_BASE}/orders/`).then(r => r.json());
-      setOrders(Array.isArray(fresh) ? fresh : []);
-    } else throw new Error();
-  } catch (err) { alert("Order save failed"); }
 };
 const [carRequests, setCarRequests] = useState([]);
 useEffect(() => {
@@ -1155,44 +1183,146 @@ const handleDeleteWholesaleOrder = async (id) => {
       });
     }
   };
-  const handleClientSubmit = async (e) => {
+  const convertToDZD = (price, currency) => {
+  if (!currency || currency.toLowerCase() === 'dzd') {
+    return price;
+  }
+  const rate = currencies[currency.toLowerCase()];
+  if (!rate) {
+    console.warn(`Exchange rate not found for ${currency}`);
+    return price;
+  }
+  return price * rate;
+};
+const handleEditOrder = (order) => {
+  console.log("Structure complète de l'order:", order);
+  console.log("Clés disponibles:", Object.keys(order));
+  
+  // Vérifier si c'est 'id' ou 'order_id'
+  const orderId = order.id || order.order_id;
+  
+  if (!orderId) {
+    console.error("Aucun ID trouvé dans:", order);
+    alert("Impossible de charger la commande - ID manquant");
+    return;
+  }
+  
+  setOrderForm({
+    id: Number(orderId),  // Utiliser orderId au lieu de order.id
+    client_id: Number(order.client_id) || "",
+    car_id: Number(order.car_id) || "",
+    car_color: order.car_color || "",
+    delivery_status: order.delivery_status || "shipping",
+    payment_amount: Number(order.payment_amount) || 0,
+    status: order.status !== undefined ? Boolean(order.status) : true,
+  });
+  
+  console.log("OrderForm configuré avec ID:", orderId);
+  
+  setShowEditOrder(true);
+};
+const handleEditOrderSubmit = async (e) => {
   e.preventDefault();
+  
+  console.log("OrderForm avant validation:", orderForm);
+  
   try {
-    const isUpdate = !!clientForm.id;
-    const url = `${API_BASE}/clients/`;
-    const payload = {
-      name: clientForm.name || null,
-      surname: clientForm.surname || null,
-      nin: clientForm.nin ? Number(clientForm.nin) : null,
-      phone_number: clientForm.phone_number || null,
-      wilaya: clientForm.wilaya || null,
-      address: clientForm.address || null,
-    };
-    if (isUpdate) {
-      payload.id = clientForm.id;
-      // optional: update commercial assignment
-      if (clientForm.commercial_id !== undefined) {
-        payload.commercial_id = clientForm.commercial_id;
-      }
-      if (clientForm.password) {
-        payload.password = clientForm.password; // reset password
-      }
+    // Validation détaillée
+    if (!orderForm.id) {
+      console.error("orderForm.id est:", orderForm.id);
+      throw new Error("ID de commande manquant");
     }
-    const res = await apiFetch(url, {
-      method: isUpdate ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
+    
+    if (!orderForm.client_id) {
+      throw new Error("Client non sélectionné");
+    }
+    
+    if (!orderForm.car_id) {
+      throw new Error("Voiture non sélectionnée");
+    }
+    
+    const url = `${API_BASE}/orders/`;
+    
+    const payload = {
+      order_id: Number(orderForm.id),
+      client_id: Number(orderForm.client_id),
+      car_id: Number(orderForm.car_id),
+      car_color: String(orderForm.car_color || ""),
+      delivery_status: String(orderForm.delivery_status),
+      payment_amount: Number(orderForm.payment_amount),
+      status: Boolean(orderForm.status),
+    };
+
+    // Validation des valeurs converties
+    if (!payload.order_id || isNaN(payload.order_id)) {
+      console.error("order_id invalide:", payload.order_id, "depuis:", orderForm.id);
+      throw new Error("ID de commande invalide");
+    }
+    
+    if (!payload.client_id || isNaN(payload.client_id)) {
+      console.error("client_id invalide:", payload.client_id);
+      throw new Error("ID client invalide");
+    }
+    
+    if (!payload.car_id || isNaN(payload.car_id)) {
+      console.error("car_id invalide:", payload.car_id);
+      throw new Error("ID voiture invalide");
+    }
+    
+    if (!['shipping', 'arrived', 'showroom'].includes(payload.delivery_status)) {
+      console.error("delivery_status invalide:", payload.delivery_status);
+      throw new Error("Statut de livraison invalide. Doit être: shipping, arrived ou showroom");
+    }
+
+    console.log("Payload final à envoyer:", payload);
+
+    const response = await apiFetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(payload),
     });
-    if (res.ok) {
-      alert(`${isUpdate ? 'Updated' : 'Added'} client`);
-      setShowEditClient(false);
-      // refetch
-      const fresh = await apiFetch(`${API_BASE}/clients/`).then(r => r.json());
-      setClients(Array.isArray(fresh) ? fresh : []);
-    } else throw new Error("Failed");
-  } catch (err) { alert("Error"); }
-};
 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Réponse d'erreur du serveur:", errorData);
+      
+      let errorMessage = "Erreur lors de la modification de la commande";
+      if (errorData.detail && Array.isArray(errorData.detail)) {
+        errorMessage = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join("\n");
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log("Succès:", data);
+    
+    // Log the action
+    pushLog("Admin", `Modification de la commande #${orderForm.id}`);
+    
+    // Close modal and reset form
+    setShowEditOrder(false);
+    setOrderForm({
+      id: null,
+      client_id: "",
+      car_id: "",
+      car_color: "",
+      delivery_status: "shipping",
+      payment_amount: 0,
+      status: true,
+    });
+    
+    alert("Commande modifiée avec succès!");
+    
+  } catch (error) {
+    console.error("Erreur complète:", error);
+    alert(error.message || "Erreur lors de la modification de la commande");
+  }
+};
 const handleEditWholesaleOrder = (order) => {
   setWholesaleOrderForm({
     id: order.id,
@@ -1613,59 +1743,104 @@ const handleDeleteClient = async (id) => {
   };
 
   // ✅ NEW: Save editable supplier item (price + paid)
-  const saveSupplierItemEdit = async (item) => {
-    const editState = editingSupplierItem[item.supplier_item_id];
-    if (!editState) return;
+ const saveSupplierItemEdit = async (item) => {
+  try {
+    // 🐛 DEBUG - Voir la structure complète de l'item
+    console.log("🔍 Item complet reçu:", item);
+    console.log("🔍 Clés disponibles:", Object.keys(item));
+    console.log("🔍 supplier_item_id:", item.supplier_item_id);
+    console.log("🔍 id:", item.id);
+    
+    const editedData = editingSupplierItem[item.supplier_item_id];
+    
+    if (!editedData) {
+      console.error("Aucune donnée éditée trouvée");
+      return;
+    }
 
-    const newPrice = editState.price ?? item.price;
-    const newPaid = editState.payment_amount ?? item.payment_amount;
+    const url = `${API_BASE}/suppliers_items/`;
+    
+    // Essayer différents noms possibles pour l'ID
+    const itemId = item.supplier_item_id || item.id || item.item_id;
+    
+    console.log("🔍 itemId détecté:", itemId);
+    
+    const payload = {
+      supplier_item_id: Number(itemId),
+      supplier_id: Number(item.supplier_id),
+      price: Number(editedData.price ?? item.price),
+      payment_amount: Number(editedData.payment_amount ?? item.payment_amount),
+    };
 
-    // Skip if no change
-    const priceChanged = newPrice !== item.price;
-    const paidChanged = newPaid !== item.payment_amount;
-    if (!priceChanged && !paidChanged) return;
+    console.log("📤 Payload à envoyer:", payload);
 
-    // Optimistic update
-    const originalItem = { ...item };
-    setSupplierItems(prev => 
-      prev.map(i => 
-        i.supplier_item_id === item.supplier_item_id 
-          ? { ...i, price: newPrice, payment_amount: newPaid } 
-          : i
-      )
-    );
+    // Validation
+    if (!payload.supplier_item_id || isNaN(payload.supplier_item_id)) {
+      console.error("❌ supplier_item_id invalide:", payload.supplier_item_id);
+      console.error("Item original:", item);
+      throw new Error("ID de l'item invalide");
+    }
+    if (!payload.supplier_id || isNaN(payload.supplier_id)) {
+      throw new Error("ID du fournisseur invalide");
+    }
+    if (isNaN(payload.price) || payload.price < 0) {
+      throw new Error("Prix invalide");
+    }
+    if (isNaN(payload.payment_amount) || payload.payment_amount < 0) {
+      throw new Error("Montant payé invalide");
+    }
+
+    const response = await apiFetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Erreur du serveur:", errorData);
+      
+      let errorMessage = "Erreur lors de la mise à jour";
+      if (errorData.detail && Array.isArray(errorData.detail)) {
+        errorMessage = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join("\n");
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log("✅ Mise à jour réussie:", data);
+    // Retirer de l'état d'édition - utiliser le bon ID
     setEditingSupplierItem(prev => {
       const copy = { ...prev };
-      delete copy[item.supplier_item_id];
+      delete copy[itemId];
       return copy;
     });
 
-    try {
-      const response = await apiFetch(`${API_BASE}/suppliers_items/`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          supplier_item_id: item.supplier_item_id,
-          ...(priceChanged && { price: newPrice }),
-          ...(paidChanged && { payment_amount: newPaid })
-        })
-      });
-      if (!response.ok) throw new Error('Update failed');
-      pushLog("Admin", `Updated supplier item #${item.supplier_item_id}`);
-    } catch (err) {
-      console.error("Update failed — reverting:", err);
-      setSupplierItems(prev => 
-        prev.map(i => 
-          i.supplier_item_id === item.supplier_item_id 
-            ? originalItem 
-            : i
-        )
-      );
-      alert("❌ Failed to save changes. Reverted.");
-    }
-  };
+    // Log
+    pushLog("Admin", `Mise à jour de l'item fournisseur #${itemId}: Prix ${payload.price}, Payé ${payload.payment_amount} DZD`);
+    
+    alert("✅ Mise à jour réussie!");
+
+  } catch (error) {
+    console.error("❌ Update failed — reverting:", error);
+    alert("❌ " + (error.message || "Échec de la mise à jour"));
+    
+    // Rollback
+    const itemId = item.supplier_item_id || item.id || item.item_id;
+    setEditingSupplierItem(prev => {
+      const copy = { ...prev };
+      delete copy[itemId];
+      return copy;
+    });
+  }
+};
 
   const filteredCars = cars.filter((c) =>
     (c.model && c.model.toLowerCase().includes(search.toLowerCase())) ||
@@ -1694,13 +1869,14 @@ const handleDeleteClient = async (id) => {
   }
 
   return (
-    <div className="min-h-screen font-main bg-gradient-to-br from-neutral-950 via-black to-neutral-950 text-white flex">
+    <div className="min-h-screen min-w-fit font-main bg-gradient-to-br from-neutral-950 via-black to-neutral-950 text-white flex">
       {/* Sidebar */}
-      <aside className="w-20 md:w-28 flex flex-col items-center py-6 space-y-6 border-r border-neutral-800 bg-neutral-900/70 backdrop-blur-md fixed left-0 top-0 h-full">
+      <aside className="w-20 md:w-28 z-30 min-h-screen overflow-scroll flex flex-col items-center py-6 space-y-6 border-r border-neutral-800 bg-neutral-900/70 backdrop-blur-md fixed left-0 top-0 h-full">
         {[
           { id: "overview", icon: BarChart3, label: "Overview" },
           { id: "cars", icon: Car, label: "Cars" },
           { id: "fournisseurs", icon: CreditCard, label: "Fournisseurs" },
+          { id: "supplierItems", icon: Package, label: "Éléments Fournisseurs" },
           { id: "commercials", icon: Users, label: "Commercials" },
           { id: "marketers", icon: Users, label: "Marketers" },
           { id: "accountants", icon: Users, label: "Accountants" },
@@ -1709,7 +1885,6 @@ const handleDeleteClient = async (id) => {
           { id: "clients_orders", icon: FilePlus, label: "Clients Orders" },
           { id: "currency", icon: DollarSign, label: "Currency" },
           { id: "car_requests", icon: FilePlus, label: "Car Requests" },
-          { id: "supplierItems", icon: Package, label: "Éléments Fournisseurs" },
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
@@ -1732,7 +1907,7 @@ const handleDeleteClient = async (id) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-20 md:ml-28 p-8 space-y-8">
+      <main className="flex-1 ml-20 md:ml-28 p-8 space-y-8 min-w-fit overflow-scroll">
         <AnimatePresence mode="wait">
           {tab === "overview" && (
             <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
@@ -1751,7 +1926,7 @@ const handleDeleteClient = async (id) => {
                 <Stat label="Total Suppliers" value={fournisseurs.length} icon={Users} />
               </div>
               <div className="grid md:grid-cols-3 gap-6">
-                <Card className="md:col-span-2">
+                <Card className="md:col-span-2 ">
                   <h3 className="text-lg font-semibold mb-4">Recent Cars</h3>
                   <div className="space-y-3 max-h-80 overflow-y-auto">
                     {cars.slice(0, 6).map((c) => (
@@ -1829,7 +2004,7 @@ const handleDeleteClient = async (id) => {
           )}
 
           {tab === "cars" && (
-            <motion.div key="cars" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            <motion.div key="cars" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} classname="min-w-fit">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-semibold">Cars Management</h2>
                 <div className="flex items-center gap-3">
@@ -1837,9 +2012,9 @@ const handleDeleteClient = async (id) => {
                   <button onClick={() => handleOpenAdd("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">Add Car</button>
                 </div>
               </div>
-              <Card>
+              <Card className="min-w-fit">
                 <div className="overflow-x-auto">
-                  <table className="w-full table-auto">
+                  <table className="w-full table-auto overflow-x-scroll">
                     <thead>
                       <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
                         <th className="py-3 px-3">ID</th>
@@ -1898,11 +2073,11 @@ const handleDeleteClient = async (id) => {
                 <Card>
                   <h3 className="text-lg font-semibold mb-4">Suppliers</h3>
                   <div className="mt-4">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4 max-md:gap-2">
                       <h2 className="text-2xl font-semibold">Fournisseurs</h2>
                       <button
                         onClick={() => setShowAddFournisseur(true)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg max-md:py-0 max-md:px-2"
                       >
                         Ajouter Fournisseur
                       </button>
@@ -1924,7 +2099,7 @@ const handleDeleteClient = async (id) => {
                             <p className="text-sm text-gray-400">Surname : {f.surname || "—"}</p>
                             <p className="text-sm text-gray-400">Téléphone : {f.phone_number || "—"}</p>
                             <p className="text-sm text-gray-400">Adresse : {f.address || "—"}</p>
-                            <div className="flex justify-end mt-3 space-x-2">
+                            <div className="flex flex-col gap-3  justify-center items-center mt-3 space-x-2">
                               <button
                                 onClick={() => handleEditFournisseur(f)}
                                 className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
@@ -2431,10 +2606,9 @@ const handleDeleteClient = async (id) => {
                                   <th className="py-3 px-4 text-left">ID Client</th>
                                   <th className="py-3 px-4 text-left">ID Voiture</th>
                                   <th className="py-3 px-4 text-left">Qté</th>
-                                  <th className="py-3 px-4 text-left">Statut</th>
                                   <th className="py-3 px-4 text-left">Statut Livraison</th>
                                   <th className="py-3 px-4 text-left">Payé</th>
-                                  <th className="py-3 px-4 text-left">Actions</th>
+                                  <th className="py-3 px-4 text-center items-center justify-center">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2443,10 +2617,10 @@ const handleDeleteClient = async (id) => {
                                   const car = cars.find(c => c.id === order.car_id) || {};
                                   const currency = currencyList.find(c => c.id === car.currency_id);
                                   const rate = currency?.exchange_rate_to_dzd || 1;
-                                  const value = order.quantity * (car.wholesale_price || 0) * rate;
+                                  const value = order.wholesale_price;
                                   return (
                                     <tr key={order.id ?? `worder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
-                                      <td className="py-3 px-3 font-mono text-emerald-400">{order.id}</td>
+                                      <td className="py-3 px-3 font-mono text-emerald-400">{order.order_id}</td>
                                       <td className="py-3 px-3">
                                         {client.name} {client.surname}
                                         <div className="text-xs text-purple-400">{client.company_name}</div>
@@ -2465,13 +2639,10 @@ const handleDeleteClient = async (id) => {
                                           {order.delivery_status}
                                         </span>
                                       </td>
-                                      <td className="py-3 px-3 text-purple-400">{value.toLocaleString()}</td>
-                                      <td className="py-3 px-3 text-sm text-neutral-400">
-                                        {new Date(order.created_at).toLocaleDateString()}
-                                      </td>
-                                      <td className="py-3 px-3 text-right space-x-2">
+                                      <td className="py-3 px-3 text-purple-400">{order.payment_amount} DZD</td>
+                                      <td className="py-3 px-3 max-md:flex max-md:flex-col max-md:items-center max-md:justify-end text-center space-x-2 max-md:gap-2">
                                         <button onClick={() => handleEditWholesaleOrder(order)} className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded mr-1">✏️</button>
-                                        <button onClick={() => handleDeleteWholesaleOrder(order.id)} className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded">🗑️</button>
+                                        <button onClick={() => handleDeleteWholesaleOrder(order.order_id)} className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded">🗑️</button>
                                       </td>
                                     </tr>
                                   );
@@ -2554,10 +2725,8 @@ const handleDeleteClient = async (id) => {
                                         {order.created_at ? new Date(order.created_at).toLocaleString() : '—'}
                                       </td>
                                       <td className="py-3 px-3 text-right space-x-2">
-                                        <button onClick={() => {
-                                            setClientForm(clients.find(c => c.id === client.id) || {});
-                                            setShowEditClient(true);
-                                          }} className="text-blue-400">Edit</button>
+                                        <button onClick={() => handleEditOrder(order)}
+                                        className="text-blue-400">Edit</button>
                                         <button
                                           onClick={() => handleDeleteOrder(order.id || order.order_id)}
                                           className="text-red-400 hover:text-red-300"
@@ -2688,7 +2857,7 @@ const handleDeleteClient = async (id) => {
                       <>
                         <button
                           onClick={() => handleEditOrAddSupplierItem(item)}
-                          className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded mr-1"
+                          className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded mr-1 max-md:mb-2"
                         >
                           ✏️
                         </button>
@@ -2713,7 +2882,320 @@ const handleDeleteClient = async (id) => {
 
         </AnimatePresence>
 
-      
+<Modal 
+  open={showAddOrder}
+  onClose={() => setShowAddOrder(false)}
+  title="Ajouter une Commande"
+>
+  <form onSubmit={handleOrderSubmit} className="space-y-4">
+    {/* Client Selection */}
+    <div>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">
+        Client *
+      </label>
+      <select
+        value={orderForm.client_id}
+        onChange={(e) => setOrderForm({ ...orderForm, client_id: e.target.value })}
+        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+        required
+      >
+        <option value="">Sélectionner un client</option>
+        {clients.map((client) => (
+          <option key={client.id} value={client.id}>
+            {client.name} {client.surname} - {client.phone_number}
+          </option>
+        ))}
+      </select>
+    </div>
+
+{/* Car Selection */}
+<div>
+  <label className="block text-sm font-medium text-neutral-300 mb-2">
+    Voiture *
+  </label>
+  <select
+    value={orderForm.car_id}
+    onChange={(e) => {
+      const selectedCar = cars.find(c => c.id === Number(e.target.value));
+      if (selectedCar) {
+        const priceInDZD = convertToDZD(selectedCar.price, selectedCar.currency);
+        setOrderForm({ 
+          ...orderForm, 
+          car_id: e.target.value,
+          payment_amount: priceInDZD
+        });
+      }
+    }}
+    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+    required
+  >
+    <option value="">Sélectionner une voiture</option>
+    {cars.map((car) => {
+      const priceInDZD = convertToDZD(car.price, car.currency);
+      return (
+        <option key={car.id} value={car.id}>
+          {car.model} - {car.color} ({car.year}) - {priceInDZD?.toLocaleString()} DZD
+        </option>
+      );
+    })}
+  </select>
+</div>
+    {/* Car Color */}
+    <div>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">
+        Couleur de la voiture *
+      </label>
+      <input
+        type="text"
+        value={orderForm.car_color}
+        onChange={(e) => setOrderForm({ ...orderForm, car_color: e.target.value })}
+        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+        placeholder="Ex: Rouge, Noir, Blanc..."
+        required
+      />
+    </div>
+
+    {/* Delivery Status */}
+    <div>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">
+        Statut de livraison *
+      </label>
+      <select
+        value={orderForm.delivery_status}
+        onChange={(e) => setOrderForm({ ...orderForm, delivery_status: e.target.value })}
+        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+        required
+      >
+        <option value="shipping">En cours de livraison</option>
+        <option value="delivered">Livrée</option>
+        <option value="pending">En attente</option>
+        <option value="cancelled">Annulée</option>
+      </select>
+    </div>
+
+    {/* Payment Amount */}
+    <div>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">
+        Montant du paiement *
+      </label>
+      <input
+        type="number"
+        value={orderForm.payment_amount}
+        onChange={(e) => setOrderForm({ ...orderForm, payment_amount: Number(e.target.value) })}
+        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+        placeholder="0"
+        min="0"
+        required
+      />
+      <p className="text-xs text-neutral-500 mt-1">Montant en DZD</p>
+    </div>
+
+    {/* Status */}
+    <div className="flex items-center gap-2">
+      <input
+        type="checkbox"
+        id="orderStatus"
+        checked={orderForm.status}
+        onChange={(e) => setOrderForm({ ...orderForm, status: e.target.checked })}
+        className="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
+      />
+      <label htmlFor="orderStatus" className="text-sm text-neutral-300">
+        Commande active
+      </label>
+    </div>
+
+    {/* Buttons */}
+    <div className="flex gap-3 pt-4">
+      <button
+        type="button"
+        onClick={() => {
+          setShowAddOrder(false);
+          setOrderForm({
+            id: null,
+            client_id: "",
+            car_id: "",
+            car_color: "",
+            delivery_status: "shipping",
+            payment_amount: 0,
+            status: true,
+          });
+        }}
+        className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors"
+      >
+        Annuler
+      </button>
+      <button
+        type="submit"
+        className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+      >
+        Ajouter la commande
+      </button>
+    </div>
+  </form>
+</Modal>
+
+<Modal 
+  open={showEditOrder}
+  onClose={() => {
+    setShowEditOrder(false);
+    setOrderForm({
+      id: null,
+      client_id: "",
+      car_id: "",
+      car_color: "",
+      delivery_status: "shipping",
+      payment_amount: 0,
+      status: true,
+    });
+  }}
+  title="Modifier la Commande"
+>
+  <form onSubmit={handleEditOrderSubmit} className="space-y-4">
+    {/* Client Selection */}
+    <div>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">
+        Client *
+      </label>
+      <select
+        value={orderForm.client_id}
+        onChange={(e) => setOrderForm({ ...orderForm, client_id: e.target.value })}
+        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+        required
+      >
+        <option value="">Sélectionner un client</option>
+        {clients.map((client) => (
+          <option key={client.id} value={client.id}>
+            {client.name} {client.surname} - {client.phone_number}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    {/* Car Selection */}
+    <div>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">
+        Voiture *
+      </label>
+      <select
+        value={orderForm.car_id}
+        onChange={(e) => {
+          const selectedCar = cars.find(c => c.id === Number(e.target.value));
+          if (selectedCar) {
+            const priceInDZD = convertToDZD(selectedCar.price, selectedCar.currency);
+            setOrderForm({ 
+              ...orderForm, 
+              car_id: e.target.value,
+              payment_amount: priceInDZD
+            });
+          }
+        }}
+        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+        required
+      >
+        <option value="">Sélectionner une voiture</option>
+        {cars.map((car) => {
+          const priceInDZD = convertToDZD(car.price, car.currency);
+          return (
+            <option key={car.id} value={car.id}>
+              {car.model} - {car.color} ({car.year}) - {priceInDZD?.toLocaleString()} DZD
+            </option>
+          );
+        })}
+      </select>
+    </div>
+
+    {/* Car Color */}
+    <div>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">
+        Couleur de la voiture *
+      </label>
+      <input
+        type="text"
+        value={orderForm.car_color}
+        onChange={(e) => setOrderForm({ ...orderForm, car_color: e.target.value })}
+        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+        placeholder="Ex: Rouge, Noir, Blanc..."
+        required
+      />
+    </div>
+
+    {/* Delivery Status - VALEURS CORRIGÉES */}
+<div>
+  <label className="block text-sm font-medium text-neutral-300 mb-2">
+    Statut de livraison *
+  </label>
+  <select
+    value={orderForm.delivery_status}
+    onChange={(e) => setOrderForm({ ...orderForm, delivery_status: e.target.value })}
+    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+    required
+  >
+    <option value="shipping">En cours de livraison</option>
+    <option value="arrived">Arrivée</option>
+    <option value="showroom">En showroom</option>
+  </select>
+</div>
+
+    {/* Payment Amount */}
+    <div>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">
+        Montant du paiement *
+      </label>
+      <input
+        type="number"
+        value={orderForm.payment_amount}
+        onChange={(e) => setOrderForm({ ...orderForm, payment_amount: Number(e.target.value) })}
+        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+        placeholder="0"
+        min="0"
+        required
+      />
+      <p className="text-xs text-neutral-500 mt-1">Montant en DZD</p>
+    </div>
+
+    {/* Status */}
+    <div className="flex items-center gap-2">
+      <input
+        type="checkbox"
+        id="editOrderStatus"
+        checked={orderForm.status}
+        onChange={(e) => setOrderForm({ ...orderForm, status: e.target.checked })}
+        className="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
+      />
+      <label htmlFor="editOrderStatus" className="text-sm text-neutral-300">
+        Commande active
+      </label>
+    </div>
+
+    {/* Buttons */}
+    <div className="flex gap-3 pt-4">
+      <button
+        type="button"
+        onClick={() => {
+          setShowEditOrder(false);
+          setOrderForm({
+            id: null,
+            client_id: "",
+            car_id: "",
+            car_color: "",
+            delivery_status: "shipping",
+            payment_amount: 0,
+            status: true,
+          });
+        }}
+        className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors"
+      >
+        Annuler
+      </button>
+      <button
+        type="submit"
+        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+      >
+        Mettre à jour
+      </button>
+    </div>
+  </form>
+</Modal>
 <Modal
   open={showAddSupplierItem}
   onClose={() => {
@@ -2796,7 +3278,7 @@ const handleDeleteClient = async (id) => {
   </form>
 </Modal>
 
-        {/* Modals */}
+        
       <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
         <form onSubmit={handleSubmitCar} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
