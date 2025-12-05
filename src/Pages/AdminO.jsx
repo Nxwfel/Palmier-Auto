@@ -857,39 +857,82 @@ const handleDeleteWholesaleOrder = async (id) => {
     };
     fetchCaisse();
   }, []);
-  const handleWholesaleOrderSubmit = async (e) => {
-  e.preventDefault();
+const handleWholesaleOrderSubmit = async (e) => {
+    e.preventDefault();
+    try {
+        console.log("wholesaleOrderForm avant validation:", wholesaleOrderForm); // Log pour déboguer
 
-  const payload = {
-    order_id: wholesaleOrderForm.id, // ⚠️ must be "order_id", not "id"
-    status: wholesaleOrderForm.status,
-    payment_amount: wholesaleOrderForm.payment_amount || null,
-    delivery_status: wholesaleOrderForm.delivery_status || null,
-  };
+        // --- Validation des champs requis avant la construction du payload ---
+        const clientId = Number(wholesaleOrderForm.client_id);
+        if (isNaN(clientId) || clientId <= 0) { // Vérifie si c'est un nombre valide et positif
+            console.error("client_id brut:", wholesaleOrderForm.client_id, " | Converti en nombre:", clientId);
+            throw new Error("ID client invalide");
+        }
 
-  try {
-    const response = await fetch(`${API_BASE}/wholesale_orders/`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        // Add auth header if needed, e.g., Authorization: 'Bearer ...'
-      },
-      body: JSON.stringify(payload),
-    });
+        const carId = Number(wholesaleOrderForm.car_id);
+        if (isNaN(carId) || carId <= 0) { // Vérifie si c'est un nombre valide et positif
+             console.error("car_id brut:", wholesaleOrderForm.car_id, " | Converti en nombre:", carId);
+            throw new Error("ID voiture invalide");
+        }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to update wholesale order: ${errorText}`);
+        const quantity = Number(wholesaleOrderForm.quantity);
+        if (isNaN(quantity) || quantity < 1) { // Vérifie si c'est un nombre valide et >= 1
+             console.error("quantity brute:", wholesaleOrderForm.quantity, " | Convertie en nombre:", quantity);
+            throw new Error("Quantité invalide");
+        }
+
+        // Vérification de l'ID de commande pour la mise à jour
+        if (!wholesaleOrderForm.id) {
+             console.error("wholesaleOrderForm.id est manquant:", wholesaleOrderForm.id);
+             throw new Error("ID de commande en gros manquant pour la mise à jour");
+        }
+        const orderId = Number(wholesaleOrderForm.id);
+        if (isNaN(orderId) || orderId <= 0) { // Vérifie si c'est un nombre valide et positif
+             console.error("order_id brut:", wholesaleOrderForm.id, " | Converti en nombre:", orderId);
+             throw new Error("ID de commande en gros invalide pour la mise à jour");
+        }
+
+        // --- Construction du payload avec tous les champs nécessaires ---
+        const payload = {
+            order_id: orderId, // Inclure l'ID de commande
+            client_id: clientId, // Inclure l'ID du client
+            car_id: carId,       // Inclure l'ID de la voiture
+            quantity: quantity,  // Inclure la quantité
+            delivery_status: String(wholesaleOrderForm.delivery_status), // S'assurer que c'est une chaîne
+            payment_amount: Number(wholesaleOrderForm.payment_amount), // Convertir en nombre
+            status: Boolean(wholesaleOrderForm.status), // Convertir en booléen
+        };
+
+        console.log("Payload final à envoyer (PUT):", payload); // Log pour vérifier le payload complet
+
+        const response = await apiFetch(`${API_BASE}/wholesale_orders/`, { // Assurez-vous que c'est le bon endpoint
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload), // Envoyer le payload complet
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text(); // ou response.json() si le serveur renvoie du JSON
+            console.error("Erreur serveur:", errorText);
+            throw new Error(`Failed to update wholesale order: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log("Réponse succès API:", data);
+
+        // Réussite : fermez la modal, rafraîchissez les données, etc.
+        setShowEditWholesaleOrder(false); // Fermer la modal d'édition
+        // Récupérer à nouveau les commandes pour refléter la mise à jour
+        fetchWholesaleOrders(); // Assurez-vous que cette fonction existe et met à jour l'état local
+        alert("Commande en gros mise à jour avec succès !");
+
+    } catch (err) {
+        console.error("Erreur complète dans handleWholesaleOrderSubmit:", err);
+        alert("Erreur lors de la mise à jour de la commande en gros: " + err.message);
     }
-
-    // Success: close modal, refresh data, etc.
-    setShowEditWholesaleOrder(false);
-    // Optionally: refetch orders
-  } catch (err) {
-    console.error("Error updating wholesale order:", err);
-  }
 };
-
   useEffect(() => {
     const fetchCars = async () => {
       try {
@@ -1302,7 +1345,10 @@ const handleEditOrderSubmit = async (e) => {
 };
 const handleEditWholesaleOrder = (order) => {
   setWholesaleOrderForm({
-    id: order.id,
+    id: order.order_id,
+    client_id: order.client_id,        // ← ADD THIS
+    car_id: order.car_id,              // ← ADD THIS
+    quantity: order.quantity || 1,     // ← ADD THIS
     delivery_status: order.delivery_status || "shipping",
     payment_amount: order.payment_amount || 0,
     status: order.status !== undefined ? order.status : true,
@@ -2027,6 +2073,11 @@ const handleEditWholesaleOrder = (order) => {
                 </div>
               </Card>
             </motion.div>
+          )}
+          {tab === "transactions" && (
+             <div>
+              
+             </div>
           )}
 
           {/* ✅ MAIN MODIFICATION: Fournisseurs Tab with Editable Payments & Prices */}
