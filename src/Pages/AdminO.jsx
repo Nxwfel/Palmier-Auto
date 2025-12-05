@@ -640,71 +640,7 @@ const handleDeleteOrder = async (id) => {
   } catch (err) { alert("Delete failed"); }
 };
 
-// Inside handleWholesaleOrderSubmit function in the admin page
-const handleWholesaleOrderSubmit = async (e) => {
-  e.preventDefault();
-  const { client_id, car_id, quantity, delivery_status } = wholesaleOrderForm;
 
-  const isUpdate = wholesaleOrderForm.id !== null && wholesaleOrderForm.id !== undefined && wholesaleOrderForm.id !== "";
-  const url = `${API_BASE}/wholesale_orders/`;
-
-  console.log("📋 Wholesale Order Submit:", { isUpdate, form: wholesaleOrderForm, method: isUpdate ? "PUT" : "POST" });
-
-  // Build payload based on whether it's an update or creation
-  let payload;
-  if (isUpdate) {
-    // For update, only send the ID and the fields that might have changed
-    payload = {
-      order_id: Number(wholesaleOrderForm.id), // Required for update
-      delivery_status: wholesaleOrderForm.delivery_status,
-    };
-    // Add optional fields only if they are defined in the form
-    if (wholesaleOrderForm.payment_amount !== undefined && wholesaleOrderForm.payment_amount !== null) {
-      payload.payment_amount = Number(wholesaleOrderForm.payment_amount);
-    }
-    if (wholesaleOrderForm.status !== undefined && wholesaleOrderForm.status !== null) {
-      payload.status = wholesaleOrderForm.status;
-    }
-    console.log("🔄 UPDATE payload:", payload);
-  } else {
-    // For creation, send all required fields
-    payload = {
-      client_id: Number(client_id),
-      car_id: Number(car_id),
-      quantity: Number(quantity),
-      delivery_status,
-    };
-    console.log("✨ CREATE payload:", payload);
-  }
-
-  try {
-    const res = await apiFetch(url, {
-      method: isUpdate ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to ${isUpdate ? 'update' : 'create'} wholesale order`);
-    }
-    // Close the appropriate modal based on operation type
-    if (isUpdate) {
-      setShowEditWholesaleOrder(false);
-    } else {
-      setShowAddWholesaleOrder(false);
-    }
-    // Reset form
-    setWholesaleOrderForm({ id: null, client_id: "", car_id: "", quantity: 1, delivery_status: "shipping", payment_amount: 0, status: true });
-    alert(`${isUpdate ? "Updated" : "Created"} wholesale order successfully ✅`);
-    // Refresh the list
-    const fresh = await apiFetch(`${API_BASE}/wholesale_orders/`).then(r => r.json());
-    setWholesaleOrders(Array.isArray(fresh) ? fresh : []);
-  } catch (err) {
-    console.error("Wholesale order error:", err);
-    alert(`❌ Error: ${err.message}`);
-  }
-};
 const [carRequests, setCarRequests] = useState([]);
 useEffect(() => {
   const fetchCarRequests = async () => {
@@ -921,6 +857,38 @@ const handleDeleteWholesaleOrder = async (id) => {
     };
     fetchCaisse();
   }, []);
+  const handleWholesaleOrderSubmit = async (e) => {
+  e.preventDefault();
+
+  const payload = {
+    order_id: wholesaleOrderForm.id, // ⚠️ must be "order_id", not "id"
+    status: wholesaleOrderForm.status,
+    payment_amount: wholesaleOrderForm.payment_amount || null,
+    delivery_status: wholesaleOrderForm.delivery_status || null,
+  };
+
+  try {
+    const response = await fetch(`${API_BASE}/wholesale_orders/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        // Add auth header if needed, e.g., Authorization: 'Bearer ...'
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update wholesale order: ${errorText}`);
+    }
+
+    // Success: close modal, refresh data, etc.
+    setShowEditWholesaleOrder(false);
+    // Optionally: refetch orders
+  } catch (err) {
+    console.error("Error updating wholesale order:", err);
+  }
+};
 
   useEffect(() => {
     const fetchCars = async () => {
@@ -1335,23 +1303,12 @@ const handleEditOrderSubmit = async (e) => {
 const handleEditWholesaleOrder = (order) => {
   setWholesaleOrderForm({
     id: order.id,
-    client_id: order.client_id,
-    car_id: order.car_id,
-    quantity: order.quantity || 1,
     delivery_status: order.delivery_status || "shipping",
     payment_amount: order.payment_amount || 0,
     status: order.status !== undefined ? order.status : true,
   });
   setShowEditWholesaleOrder(true);
 };
-const handleDeleteClient = async (id) => {
-  if (!confirm("Delete client?")) return;
-  try {
-    await apiFetch(`${API_BASE}/clients/?client_id=${id}`, { method: "DELETE" });
-    setClients(prev => prev.filter(c => c.id !== id));
-  } catch (err) { alert("Delete failed"); }
-};
-
   const handleOpenAdd = (agent = "Admin") => {
     setCarForm(initialCarForm);
     setEditingCar(null);
@@ -2528,9 +2485,9 @@ const handleDeleteClient = async (id) => {
           {tab === "accountants" && (
             <motion.div key="accountants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-semibold">Accountants Management</h2>
+                <h2 className="text-3xl font-semibold">Gestion des Comptable</h2>
                 <button onClick={() => { setAccountantForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddAccountant(true); }} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                  Add Accountant +
+                  Ajouter un Comptable +
                 </button>
               </div>
               <Card>
@@ -2539,10 +2496,10 @@ const handleDeleteClient = async (id) => {
                     <thead>
                       <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
                         <th className="py-3 px-3">ID</th>
-                        <th className="py-3 px-3">Name</th>
-                        <th className="py-3 px-3">Phone</th>
+                        <th className="py-3 px-3">Nom</th>
+                        <th className="py-3 px-3">Num Tel</th>
                         <th className="py-3 px-3">Address</th>
-                        <th className="py-3 px-3">Created</th>
+                        <th className="py-3 px-3">Crée</th>
                         <th className="py-3 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -2555,8 +2512,8 @@ const handleDeleteClient = async (id) => {
                           <td className="py-3 px-3 text-sm text-neutral-400">{accountant.address}</td>
                           <td className="py-3 px-3 text-sm text-neutral-400">{new Date(accountant.created_at).toLocaleDateString()}</td>
                           <td className="py-3 px-3 text-right space-x-2">
-                            <button onClick={() => { setAccountantForm({ ...accountant, accountant_id: accountant.id }); setShowEditAccountant(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
-                            <button onClick={() => handleDeleteAccountant(accountant.id)} className="text-red-400 hover:text-red-300">Delete</button>
+                            <button onClick={() => { setAccountantForm({ ...accountant, accountant_id: accountant.id }); setShowEditAccountant(true); }} className="text-blue-400 hover:text-blue-300">Modifier</button>
+                            <button onClick={() => handleDeleteAccountant(accountant.id)} className="text-red-400 hover:text-red-300">Supprimer</button>
                           </td>
                         </tr>
                       ))}
@@ -2569,7 +2526,7 @@ const handleDeleteClient = async (id) => {
           {tab === "wholesale_clients" && (
                       <motion.div key="wholesale_clients" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                         <div className="flex items-center justify-between mb-6">
-                          <h2 className="text-3xl font-semibold">Wholesale Clients</h2>
+                          <h2 className="text-3xl font-semibold">Clients Gros</h2>
                           <button 
                             onClick={() => { 
                               setWholesaleClientForm({ name: "", surname: "", phone_number: "", address: "", company_name: "" }); 
@@ -2577,7 +2534,7 @@ const handleDeleteClient = async (id) => {
                             }} 
                             className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
                           >
-                            Add Wholesale Client +
+                            Ajouter un client gros +
                           </button>
                         </div>
                         <Card>
@@ -2586,11 +2543,11 @@ const handleDeleteClient = async (id) => {
                               <thead>
                                 <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
                                   <th className="py-3 px-3">ID</th>
-                                  <th className="py-3 px-3">Name</th>
-                                  <th className="py-3 px-3">Company</th>
-                                  <th className="py-3 px-3">Phone</th>
+                                  <th className="py-3 px-3">Nom</th>
+                                  <th className="py-3 px-3">Entreprise</th>
+                                  <th className="py-3 px-3">Num Tel</th>
                                   <th className="py-3 px-3">Address</th>
-                                  <th className="py-3 px-3">Created</th>
+                                  <th className="py-3 px-3">Crée</th>
                                   <th className="py-3 px-3 text-right">Actions</th>
                                 </tr>
                               </thead>
@@ -2613,13 +2570,13 @@ const handleDeleteClient = async (id) => {
                                         }} 
                                         className="text-blue-400 hover:text-blue-300"
                                       >
-                                        Edit
+                                        Modifier
                                       </button>
                                       <button 
                                         onClick={() => handleDeleteWholesaleClient(client.id)} 
                                         className="text-red-400 hover:text-red-300"
                                       >
-                                        Delete
+                                        Supprimer
                                       </button>
                                     </td>
                                   </tr>
@@ -2631,11 +2588,10 @@ const handleDeleteClient = async (id) => {
                       </motion.div>
                     )}
           
-                    {/* ✅ NEW: Wholesale Orders Tab */}
                     {tab === "wholesale_orders" && (
                       <motion.div key="wholesale_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                         <div className="flex items-center justify-between mb-6">
-                          <h2 className="text-3xl font-semibold">Wholesale Orders</h2>
+                          <h2 className="text-3xl font-semibold">Gros Order</h2>
                           <button 
                             onClick={() => { 
                               setWholesaleOrderForm({ id: null, client_id: "", car_id: "", quantity: 1, delivery_status: "shipping", payment_amount: 0, status: true }); 
@@ -2643,7 +2599,7 @@ const handleDeleteClient = async (id) => {
                             }} 
                             className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
                           >
-                            Add Wholesale Order +
+                            Ajouter un Ordre de Gros +
                           </button>
                         </div>
                         <Card>
@@ -2656,6 +2612,7 @@ const handleDeleteClient = async (id) => {
                                   <th className="py-3 px-4 text-left">ID Voiture</th>
                                   <th className="py-3 px-4 text-left">Qté</th>
                                   <th className="py-3 px-4 text-left">Statut Livraison</th>
+                                  <th className="py-3 px-4 text-left">Total</th>
                                   <th className="py-3 px-4 text-left">Payé</th>
                                   <th className="py-3 px-4 text-center items-center justify-center">Actions</th>
                                 </tr>
@@ -2666,7 +2623,7 @@ const handleDeleteClient = async (id) => {
                                   const car = cars.find(c => c.id === order.car_id) || {};
                                   const currency = currencyList.find(c => c.id === car.currency_id);
                                   const rate = currency?.exchange_rate_to_dzd || 1;
-                                  const value = order.wholesale_price;
+                                  const value = car.price * order.quantity * rate;
                                   return (
                                     <tr key={order.id ?? `worder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
                                       <td className="py-3 px-3 font-mono text-emerald-400">{order.order_id}</td>
@@ -2688,7 +2645,8 @@ const handleDeleteClient = async (id) => {
                                           {order.delivery_status}
                                         </span>
                                       </td>
-                                      <td className="py-3 px-3 text-purple-400">{order.payment_amount} DZD</td>
+                                      <td className="py-3 px-3 text-purple-400">{value} DZD</td>
+                                      <td className="py-3 px-3 text-blue-400">{order.payment_amount} DZD</td>
                                       <td className="py-3 px-3 max-md:flex max-md:flex-col max-md:items-center max-md:justify-end text-center space-x-2 max-md:gap-2">
                                         <button onClick={() => handleEditWholesaleOrder(order)} className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded mr-1">✏️</button>
                                         <button onClick={() => handleDeleteWholesaleOrder(order.order_id)} className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded">🗑️</button>
@@ -2705,7 +2663,7 @@ const handleDeleteClient = async (id) => {
                     {tab === "clients_orders" && (
                       <motion.div key="clients_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                         <div className="flex items-center justify-between mb-6">
-                          <h2 className="text-3xl font-semibold">Clients Orders</h2>
+                          <h2 className="text-3xl font-semibold">Ordre Client</h2>
                           <button
                             onClick={() => {
                               setOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" });
@@ -2713,7 +2671,7 @@ const handleDeleteClient = async (id) => {
                             }}
                             className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
                           >
-                            Add Order +
+                            Ajouter un Ordre +
                           </button>
                         </div>
                         <Card>
@@ -2723,15 +2681,13 @@ const handleDeleteClient = async (id) => {
                                 <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
                                   <th className="py-3 px-3">ID</th>
                                   <th className="py-3 px-3">Client</th>
-                                  <th className="py-3 px-3">Phone</th>
+                                  <th className="py-3 px-3">Num Tel</th>
                                   <th className="py-3 px-3">Address</th>
-                                  <th className="py-3 px-3">Car</th>
-                                  <th className="py-3 px-3">Unit Price (DZD)</th>
-                                  <th className="py-3 px-3">Qty</th>
+                                  <th className="py-3 px-3">Voiture</th>
                                   <th className="py-3 px-3">Total (DZD)</th>
-                                  <th className="py-3 px-3">Paid (DZD)</th>
-                                  <th className="py-3 px-3">Delivery</th>
-                                  <th className="py-3 px-3">Created</th>
+                                  <th className="py-3 px-3">Payé (DZD)</th>
+                                  <th className="py-3 px-3">Status</th>
+                                  <th className="py-3 px-3">Crée</th>
                                   <th className="py-3 px-3 text-right">Actions</th>
                                 </tr>
                               </thead>
@@ -2742,7 +2698,7 @@ const handleDeleteClient = async (id) => {
                                   const currency = currencyList.find(c => c.id === car.currency_id);
                                   const rate = currency?.exchange_rate_to_dzd || 1;
                                   const unitPrice = car.price ? (car.price * rate) : (order.price_dzd || 0);
-                                  const totalValue = (order.quantity || 0) * unitPrice;
+                                  const totalValue = unitPrice ;
                                   const paid = order.payment_amount || 0;
                                   return (
                                     <tr key={(order.id || order.order_id) ?? `corder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
@@ -2757,8 +2713,6 @@ const handleDeleteClient = async (id) => {
                                         {car.model || '—'} #{car.id || order.car_id}
                                         <div className="text-xs text-neutral-500">{car.color} · {car.year}</div>
                                       </td>
-                                      <td className="py-3 px-3 text-purple-400">{Number(unitPrice || 0).toLocaleString()}</td>
-                                      <td className="py-3 px-3">{order.quantity}</td>
                                       <td className="py-3 px-3 text-purple-400">{Number(totalValue || 0).toLocaleString()}</td>
                                       <td className="py-3 px-3 text-blue-400">{Number(paid).toLocaleString()}</td>
                                       <td className="py-3 px-3">
@@ -2775,12 +2729,12 @@ const handleDeleteClient = async (id) => {
                                       </td>
                                       <td className="py-3 px-3 text-right space-x-2">
                                         <button onClick={() => handleEditOrder(order)}
-                                        className="text-blue-400">Edit</button>
+                                        className="text-blue-400">Modifier</button>
                                         <button
                                           onClick={() => handleDeleteOrder(order.id || order.order_id)}
                                           className="text-red-400 hover:text-red-300"
                                         >
-                                          Delete
+                                          Supprimer
                                         </button>
                                       </td>
                                     </tr>
@@ -2795,7 +2749,7 @@ const handleDeleteClient = async (id) => {
           {tab === "car_requests" && (
   <motion.div>
     <div className="flex justify-between items-center mb-6">
-      <h2 className="text-3xl">Car Requests</h2>
+      <h2 className="text-3xl">Requetes</h2>
       {/* Optional: Add button to create request */}
     </div>
     <Card>
@@ -3654,55 +3608,51 @@ const handleDeleteClient = async (id) => {
 <Modal 
   open={showEditWholesaleOrder} 
   onClose={() => setShowEditWholesaleOrder(false)} 
-  title={wholesaleOrderForm.id ? "Edit Wholesale Order" : "Add Wholesale Order"}
+  title={"Modifier la Commande Grossiste"}
 >
   <form onSubmit={handleWholesaleOrderSubmit} className="space-y-4">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <select
-        value={wholesaleOrderForm.client_id}
-        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, client_id: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      >
-        <option value="">Select Wholesale Client</option>
-        {wholesaleClients.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name} {c.surname} ({c.company_name})
-          </option>
-        ))}
-      </select>
-      <select
-        value={wholesaleOrderForm.car_id}
-        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, car_id: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      >
-        <option value="">Select Car</option>
-        {cars.map((car) => (
-          <option key={car.id} value={car.id}>
-            {car.model} #{car.id} — {car.color} · {car.year}
-          </option>
-        ))}
-      </select>
-      <input
-        type="number"
-        min="1"
-        placeholder="Quantity"
-        value={wholesaleOrderForm.quantity}
-        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, quantity: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      />
-      <select
-        value={wholesaleOrderForm.delivery_status}
-        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-      >
-        <option value="shipping">Shipping</option>
-        <option value="arrived">Arrived</option>
-        <option value="showroom">Showroom</option>
-      </select>
+      <div className="md:col-span-2">
+        <label className="block text-sm text-neutral-400 mb-1">Status</label>
+        <select
+          value={wholesaleOrderForm.status}
+          onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, status: e.target.value === 'true' })}
+          className="w-full bg-neutral-800 p-2 rounded text-sm"
+        >
+          <option value="true">Active</option>
+        </select>
+      </div>
+      
+      <div>
+        <label className="block text-sm text-neutral-400 mb-1">Payment Amount</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          placeholder="Payment Amount"
+          value={wholesaleOrderForm.payment_amount}
+          onChange={(e) => setWholesaleOrderForm({ 
+              ...wholesaleOrderForm, 
+              payment_amount: e.target.value === '' ? null : parseFloat(e.target.value) 
+            })}
+          className="w-full bg-neutral-800 p-2 rounded text-sm"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-sm text-neutral-400 mb-1">Delivery Status</label>
+        <select
+          value={wholesaleOrderForm.delivery_status}
+          onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
+          className="w-full bg-neutral-800 p-2 rounded text-sm"
+        >
+          <option value="shipping">Shipping</option>
+          <option value="arrived">Arrived</option>
+          <option value="showroom">Showroom</option>
+        </select>
+      </div>
     </div>
+    
     <div className="flex justify-end gap-3">
       <button
         type="button"
