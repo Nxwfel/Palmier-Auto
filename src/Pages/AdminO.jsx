@@ -1897,6 +1897,7 @@ const handleEditWholesaleOrder = (order) => {
           { id: "clients_orders", icon: FilePlus, label: "Clients Orders" },
           { id: "currency", icon: DollarSign, label: "Currency" },
           { id: "car_requests", icon: FilePlus, label: "Car Requests" },
+          { id: "transactions", icon: Clock, label: "transactions" },
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
@@ -2076,7 +2077,7 @@ const handleEditWholesaleOrder = (order) => {
           )}
           {tab === "transactions" && (
              <div>
-              
+
              </div>
           )}
 
