@@ -636,7 +636,7 @@ const handleDeleteOrder = async (id) => {
   if (!confirm("Delete order?")) return;
   try {
     await apiFetch(`${API_BASE}/orders/?order_id=${id}`, { method: "DELETE" });
-    setOrders(prev => prev.filter(o => o.order_id !== order_id));
+    setOrders(prev => prev.filter(o => o.order_id !== id));
   } catch (err) { alert("Delete failed"); }
 };
 
@@ -1921,22 +1921,22 @@ const handleDeleteClient = async (id) => {
           {tab === "overview" && (
             <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
               <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-semibold">Dashboard</h1>
+                <h1 className="text-4xl font-semibold">Tableau de Bord</h1>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Stat label="Caisse" value={`${Caisse.balance} DZD`} icon={CreditCard} />
                 <Earnings label="Chiffre d'affaire" monthly={`${monthlyearnings} DZD`} yearly={`${yearlyearnings} DZD`} icon={TrendingUp} />
-                <Stat label="Monthly Expenses" value={`${expenses.total_amount} DZD`} icon={TrendingDown} />
-                <Stat label="Yearly Expenses" value={`${yearlyExpenses.total_expenses.toFixed(2)} DZD`} icon={TrendingDown} />
-                <Stat label="Total Stock Value" value={`${totalStockValue.toFixed(2)} DZD`} icon={Car} />
-                <Stat label="Total Cars" value={cars.length} icon={Car} />
+                <Stat label="Dépenses mensuelles" value={`${expenses.total_amount} DZD`} icon={TrendingDown} />
+                <Stat label="Dépenses annuelles" value={`${yearlyExpenses.total_expenses.toFixed(2)} DZD`} icon={TrendingDown} />
+                <Stat label="Valeur De stock" value={`${totalStockValue.toFixed(2)} DZD`} icon={Car} />
+                <Stat label="Total Voitures" value={cars.length} icon={Car} />
                 <Stat label="Total Clients" value={clients.length} icon={Users} />
                 <Stat label="Total Orders" value={orders.length} icon={FilePlus} />
-                <Stat label="Total Suppliers" value={fournisseurs.length} icon={Users} />
+                <Stat label="Total Fournisseurs" value={fournisseurs.length} icon={Users} />
               </div>
               <div className="grid md:grid-cols-3 gap-6">
                 <Card className="md:col-span-2 ">
-                  <h3 className="text-lg font-semibold mb-4">Recent Cars</h3>
+                  <h3 className="text-lg font-semibold mb-4">Voitures Recentes</h3>
                   <div className="space-y-3 max-h-80 overflow-y-auto">
                     {cars.slice(0, 6).map((c) => (
                       <div key={c.id} className="flex items-center gap-4 p-3 bg-neutral-900/40 rounded-lg border border-neutral-800">
@@ -1951,7 +1951,7 @@ const handleDeleteClient = async (id) => {
                             </div>
                             <div className="text-right">
                               <div className="text-sm text-neutral-400">{c.country}</div>
-                              <div className="text-sm text-emerald-400">{c.price?.toLocaleString()} DZD</div>
+                              <div className="text-sm text-emerald-400">{c.price?.toLocaleString()}</div>
                             </div>
                           </div>
                         </div>
@@ -1960,11 +1960,11 @@ const handleDeleteClient = async (id) => {
                   </div>
                 </Card>
                 <Card>
-                  <h3 className="text-lg font-semibold mb-3">Quick Actions</h3>
+                  <h3 className="text-lg font-semibold mb-3">Actions Rapides</h3>
                   <div className="flex flex-col gap-3">
-                    <button onClick={() => handleOpenAdd("Admin")} className="w-full p-3 rounded-lg text-left bg-emerald-500/10 hover:bg-emerald-500/20 transition">Add Car</button>
-                    <button onClick={() => setTab("commercials")} className="w-full p-3 rounded-lg text-left bg-blue-500/10 hover:bg-blue-500/20 transition">Manage Commercials</button>
-                    <button onClick={() => setTab("fournisseurs")} className="w-full p-3 rounded-lg text-left bg-purple-500/10 hover:bg-purple-500/20 transition">Manage Suppliers</button>
+                    <button onClick={() => handleOpenAdd("Admin")} className="w-full p-3 rounded-lg text-left bg-emerald-500/10 hover:bg-emerald-500/20 transition">Ajouter une Voiture</button>
+                    <button onClick={() => setTab("commercials")} className="w-full p-3 rounded-lg text-left bg-blue-500/10 hover:bg-blue-500/20 transition">Gérer les Commercials</button>
+                    <button onClick={() => setTab("fournisseurs")} className="w-full p-3 rounded-lg text-left bg-purple-500/10 hover:bg-purple-500/20 transition">Gérer les fournisseurs</button>
                   </div>
                 </Card>
               </div>
@@ -2002,7 +2002,7 @@ const handleDeleteClient = async (id) => {
                       </span>
                       {existing && (
                         <span className="text-neutral-500 text-xs">
-                          Last updated: {new Date(existing.updated_at).toLocaleDateString()}
+                          Changement Récent: {new Date(existing.updated_at).toLocaleDateString()}
                         </span>
                       )}
                     </div>
@@ -2015,10 +2015,10 @@ const handleDeleteClient = async (id) => {
           {tab === "cars" && (
             <motion.div key="cars" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} classname="min-w-fit">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-semibold">Cars Management</h2>
+                <h2 className="text-3xl font-semibold">Gestion des Voitures</h2>
                 <div className="flex items-center gap-3">
                   <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search car..." className="bg-neutral-800 px-3 py-2 rounded-lg text-sm" />
-                  <button onClick={() => handleOpenAdd("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">Add Car</button>
+                  <button onClick={() => handleOpenAdd("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">Ajouter une voiture</button>
                 </div>
               </div>
               <Card className="min-w-fit">
@@ -2038,7 +2038,7 @@ const handleDeleteClient = async (id) => {
                     <tbody>
                       {filteredCars.length === 0 ? (
                         <tr>
-                          <td colSpan="8" className="py-4 text-center text-neutral-500">No cars found</td>
+                          <td colSpan="8" className="py-4 text-center text-neutral-500">Aucune Voiture trouvé</td>
                         </tr>
                       ) : (
                         filteredCars.map((car) => {
@@ -2080,7 +2080,6 @@ const handleDeleteClient = async (id) => {
               </div>
               <div className="grid md:grid-cols-2 gap-6">
                 <Card>
-                  <h3 className="text-lg font-semibold mb-4">Suppliers</h3>
                   <div className="mt-4">
                     <div className="flex items-center justify-between mb-4 max-md:gap-2">
                       <h2 className="text-2xl font-semibold">Fournisseurs</h2>
@@ -2129,7 +2128,7 @@ const handleDeleteClient = async (id) => {
                   </div>
                 </Card>
                 <Card>
-                  <h3 className="text-lg font-semibold mb-4">Supplier Finance Details</h3>
+                  <h3 className="text-lg font-semibold mb-4">Details Des Fournisseurs</h3>
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {fournisseurs.map((supplier) => {
                         const items = supplierItems.filter(item => item.supplier_id === supplier.id);
@@ -2152,19 +2151,19 @@ const handleDeleteClient = async (id) => {
                                   <div className="text-emerald-400 font-medium">
                                     {totalOwed.toLocaleString()} {items[0]?.currency_code || ""}
                                   </div>
-                                  <div className="text-neutral-400">Total Owed</div>
+                                  <div className="text-neutral-400">Total</div>
                                 </div>
                                 <div className="text-center">
                                   <div className="text-blue-400 font-medium">
                                     {totalPaid.toLocaleString()} {items[0]?.currency_code || ""}
                                   </div>
-                                  <div className="text-neutral-400">Paid</div>
+                                  <div className="text-neutral-400">Payé</div>
                                 </div>
                                 <div className="text-center">
                                   <div className={`font-bold ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
                                     {remaining.toLocaleString()} {items[0]?.currency_code || ""}
                                   </div>
-                                  <div className="text-neutral-400">Remaining</div>
+                                  <div className="text-neutral-400">Restant</div>
                                 </div>
                               </div>
                             </div>
@@ -2172,7 +2171,7 @@ const handleDeleteClient = async (id) => {
                             {/* Editable Items */}
                             {items.length > 0 && (
                               <div className="mt-3">
-                                <h4 className="text-sm font-medium text-purple-300 mb-2">Car Purchases & Payments</h4>
+                                <h4 className="text-sm font-medium text-purple-300 mb-2">Payement des voitures</h4>
 
                                 <div className="space-y-3">
                                   {items.map((item) => {
@@ -2203,7 +2202,7 @@ const handleDeleteClient = async (id) => {
                                           </div>
 
                                           <div className="text-right">
-                                            <div className="text-xs text-neutral-400">Total Owed</div>
+                                            <div className="text-xs text-neutral-400">Total</div>
                                             <div className="font-bold text-emerald-400">
                                               {editablePrice.toLocaleString()} {currency?.code.toUpperCase()}
                                             </div>
@@ -2214,7 +2213,7 @@ const handleDeleteClient = async (id) => {
                                         <div className="grid grid-cols-2 gap-2 mt-2">
                                           <div>
                                             <label className="text-xs text-neutral-400 block mb-1">
-                                              Price ({currency?.code.toUpperCase()}):
+                                              Prix ({currency?.code.toUpperCase()}):
                                             </label>
                                             <input
                                               type="number"
@@ -2236,7 +2235,7 @@ const handleDeleteClient = async (id) => {
 
                                           <div>
                                             <label className="text-xs text-neutral-400 block mb-1">
-                                              Paid ({currency?.code.toUpperCase()}):
+                                              Payé ({currency?.code.toUpperCase()}):
                                             </label>
                                             <input
                                               type="number"
@@ -2260,7 +2259,7 @@ const handleDeleteClient = async (id) => {
 
                                         {/* Remaining */}
                                         <div className="mt-2 pt-2 border-t border-neutral-700 flex justify-between">
-                                          <span className="text-xs text-neutral-400">Remaining:</span>
+                                          <span className="text-xs text-neutral-400">Restant:</span>
                                           <span className={`font-bold ${remainingItem > 0 ? 'text-red-400' : 'text-green-400'}`}>
                                             {remainingItem > 0
                                               ? `${remainingItem.toLocaleString()} ${currency?.code.toUpperCase()}`
@@ -2276,7 +2275,7 @@ const handleDeleteClient = async (id) => {
                                               onClick={() => saveSupplierItemEdit(item)}
                                               className="text-xs px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500"
                                             >
-                                              Save
+                                              Sauvgarder
                                             </button>
                                           )}
 
@@ -2291,7 +2290,7 @@ const handleDeleteClient = async (id) => {
                                               }}
                                               className="text-xs px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded"
                                             >
-                                              Cancel
+                                              Annulé
                                             </button>
                                           )}
                                         </div>
@@ -2325,11 +2324,11 @@ const handleDeleteClient = async (id) => {
                   </div>
                 </Card>
                 <Card className="md:col-span-2">
-                  <h3 className="text-lg font-semibold mb-4">Monthly Expenses (Editable)</h3>
+                  <h3 className="text-lg font-semibold mb-4">Dependes Mensuelles (Modifiable)</h3>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     {/* ... (existing expense UI remains unchanged) */}
                     <div className="p-4 bg-neutral-900/40 rounded-lg">
-                      <div className="text-sm text-neutral-400">Purchases</div>
+                      <div className="text-sm text-neutral-400">Achat</div>
                       <input
                         type="number"
                         step="0.01"
@@ -2349,7 +2348,7 @@ const handleDeleteClient = async (id) => {
                       />
                     </div>
                     <div className="p-4 bg-neutral-900/40 rounded-lg">
-                      <div className="text-sm text-neutral-400">Other</div>
+                      <div className="text-sm text-neutral-400">Autres</div>
                       <input
                         type="number"
                         step="0.01"
@@ -2392,15 +2391,15 @@ const handleDeleteClient = async (id) => {
                         }}
                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded text-white"
                       >
-                        Save Monthly
+                        Sauvgarder
                       </button>
                     </div>
                   </div>
                   <div className="mt-6 pt-4 border-t border-neutral-800">
-                    <h4 className="text-md font-medium mb-3">Yearly Summary (Read-only)</h4>
+                    <h4 className="text-md font-medium mb-3">Resumé Annuelles (Read-only)</h4>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="p-3 bg-neutral-900/30 rounded">
-                        <div className="text-sm text-neutral-400">Purchases</div>
+                        <div className="text-sm text-neutral-400">Achats</div>
                         <div className="text-lg font-bold text-emerald-400">{yearlyExpenses.total_purchases.toLocaleString()} DZD</div>
                       </div>
                       <div className="p-3 bg-neutral-900/30 rounded">
@@ -2408,7 +2407,7 @@ const handleDeleteClient = async (id) => {
                         <div className="text-lg font-bold text-blue-400">{yearlyExpenses.total_transport.toLocaleString()} DZD</div>
                       </div>
                       <div className="p-3 bg-neutral-900/30 rounded">
-                        <div className="text-sm text-neutral-400">Other</div>
+                        <div className="text-sm text-neutral-400">Autres</div>
                         <div className="text-lg font-bold text-purple-400">{yearlyExpenses.total_other.toLocaleString()} DZD</div>
                       </div>
                       <div className="p-3 bg-neutral-900/30 rounded">
@@ -2425,7 +2424,7 @@ const handleDeleteClient = async (id) => {
           {tab === "commercials" && (
             <motion.div key="commercials" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-semibold">Commercials Management</h2>
+                <h2 className="text-3xl font-semibold">Gestion des Commerciaux</h2>
                 <button onClick={() => handleOpenAddCommercial("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
                   Ajouter un Commercial +
                 </button>
@@ -2436,12 +2435,12 @@ const handleDeleteClient = async (id) => {
                     <thead>
                       <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
                         <th className="py-3 px-3">ID</th>
-                        <th className="py-3 px-3">Name</th>
-                        <th className="py-3 px-3">Phone</th>
+                        <th className="py-3 px-3">Nom</th>
+                        <th className="py-3 px-3">Num Tel</th>
                         <th className="py-3 px-3">Wilaya</th>
                         <th className="py-3 px-3">Address</th>
-                        <th className="py-3 px-3">Cars Sold</th>
-                        <th className="py-3 px-3">Created</th>
+                        <th className="py-3 px-3">Voitures Vendu</th>
+                        <th className="py-3 px-3">Crée</th>
                         <th className="py-3 px-3">Actions</th>
                       </tr>
                     </thead>
@@ -2471,7 +2470,7 @@ const handleDeleteClient = async (id) => {
                               onClick={() => {handledeleteCommercial(cm.id)}}
                               className="text-red-500 hover:text-red-300"
                               >
-                               Delete
+                               Supprimer
                               </button>
                             </td>
                           </tr>
@@ -2489,7 +2488,7 @@ const handleDeleteClient = async (id) => {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-semibold">Marketing Agents Management</h2>
                 <button onClick={() => { setMarketerForm({ name: "", surname: "", phone_number: "", address: "" }); setShowAddMarketer(true); }} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                  Add Marketer +
+                  Ajouter un Agent de Marketing +
                 </button>
               </div>
               <Card>
@@ -2498,10 +2497,10 @@ const handleDeleteClient = async (id) => {
                     <thead>
                       <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
                         <th className="py-3 px-3">ID</th>
-                        <th className="py-3 px-3">Name</th>
-                        <th className="py-3 px-3">Phone</th>
+                        <th className="py-3 px-3">Nom</th>
+                        <th className="py-3 px-3">Num Tel</th>
                         <th className="py-3 px-3">Address</th>
-                        <th className="py-3 px-3">Created</th>
+                        <th className="py-3 px-3">Crée</th>
                         <th className="py-3 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -2514,8 +2513,8 @@ const handleDeleteClient = async (id) => {
                           <td className="py-3 px-3 text-sm text-neutral-400">{marketer.address}</td>
                           <td className="py-3 px-3 text-sm text-neutral-400">{new Date(marketer.created_at).toLocaleDateString()}</td>
                           <td className="py-3 px-3 text-right space-x-2">
-                            <button onClick={() => { setMarketerForm({ ...marketer, marketer_id: marketer.id }); setShowAddMarketer(true); }} className="text-blue-400 hover:text-blue-300">Edit</button>
-                            <button onClick={() => handleDeleteMarketer(marketer.id)} className="text-red-400 hover:text-red-300">Delete</button>
+                            <button onClick={() => { setMarketerForm({ ...marketer, marketer_id: marketer.id }); setShowAddMarketer(true); }} className="text-blue-400 hover:text-blue-300">Modifier</button>
+                            <button onClick={() => handleDeleteMarketer(marketer.id)} className="text-red-400 hover:text-red-300">Supprimer</button>
                           </td>
                         </tr>
                       ))}
