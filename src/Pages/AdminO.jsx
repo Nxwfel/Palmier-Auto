@@ -537,6 +537,113 @@ const handleAddSupplierItem = async (e) => {
     alert(`❌ Error: ${err.message}`);
   }
 };
+const [transactions, setTransactions] = useState([]);
+const [loadingTransactions, setLoadingTransactions] = useState(false);
+const [transactionFilter, setTransactionFilter] = useState('all');
+const [transactionStats, setTransactionStats] = useState({
+  totalRevenue: 0,
+  totalExpenses: 0,
+  netBalance: 0
+});
+
+// Fetch Transactions
+useEffect(() => {
+  const fetchTransactions = async () => {
+    setLoadingTransactions(true);
+    try {
+      // Transform and enrich transaction data
+      const enrichedTransactions = [];
+      
+      // Add client orders as transactions
+      orders.forEach(order => {
+        const client = clients.find(c => c.id === order.client_id);
+        const car = cars.find(c => c.id === order.car_id);
+        const currency = currencyList.find(c => c.id === car?.currency_id);
+        const rate = currency?.exchange_rate_to_dzd || 1;
+        const amount = (car?.price || 0) * rate;
+        
+        enrichedTransactions.push({
+          id: `ORD-${order.order_id || order.id}`,
+          type: 'order',
+          description: `${car?.model || 'Car'} - ${car?.color}`,
+          party_name: client ? `${client.name} ${client.surname}` : 'Unknown Client',
+          amount: order.payment_amount || amount,
+          status: order.payment_amount >= amount ? 'paid' : order.payment_amount > 0 ? 'partial' : 'unpaid',
+          date: order.created_at || new Date().toISOString()
+        });
+      });
+      
+      // Add wholesale orders as transactions
+      wholesaleOrders.forEach(order => {
+        const client = wholesaleClients.find(c => c.id === order.client_id);
+        const car = cars.find(c => c.id === order.car_id);
+        const currency = currencyList.find(c => c.id === car?.currency_id);
+        const rate = currency?.exchange_rate_to_dzd || 1;
+        const amount = (car?.wholesale_price || car?.price || 0) * order.quantity * rate;
+        
+        enrichedTransactions.push({
+          id: `WHO-${order.order_id || order.id}`,
+          type: 'wholesale',
+          description: `${car?.model || 'Car'} x${order.quantity}`,
+          party_name: client ? `${client.company_name || client.name}` : 'Unknown Client',
+          amount: order.payment_amount || amount,
+          status: order.payment_amount >= amount ? 'paid' : order.payment_amount > 0 ? 'partial' : 'unpaid',
+          date: order.created_at || new Date().toISOString()
+        });
+      });
+      
+      // Add supplier payments as transactions
+      supplierItems.forEach(item => {
+        const supplier = fournisseurs.find(s => s.id === item.supplier_id);
+        const car = cars.find(c => c.id === item.car_id);
+        const currency = currencyList.find(c => c.id === item.currency_id);
+        const rate = currency?.exchange_rate_to_dzd || 1;
+        const totalCost = (item.price || 0) * rate;
+        
+        enrichedTransactions.push({
+          id: `SUP-${item.supplier_item_id}`,
+          type: 'supplier',
+          description: `${car?.model || 'Car'} - Achat`,
+          party_name: supplier ? `${supplier.name} ${supplier.surname}` : 'Unknown Supplier',
+          amount: item.payment_amount || 0,
+          status: item.payment_amount >= totalCost ? 'paid' : item.payment_amount > 0 ? 'partial' : 'unpaid',
+          date: item.created_at || new Date().toISOString()
+        });
+      });
+      
+      // Sort by date (newest first)
+      enrichedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      setTransactions(enrichedTransactions);
+      
+      // Calculate stats
+      const revenue = enrichedTransactions
+        .filter(t => t.type === 'order' || t.type === 'wholesale')
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const expenses = enrichedTransactions
+        .filter(t => t.type === 'supplier')
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      setTransactionStats({
+        totalRevenue: revenue,
+        totalExpenses: expenses,
+        netBalance: revenue - expenses
+      });
+      
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
+      setTransactions([]);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+  
+  // Only fetch if we have the necessary data
+  if (orders.length || wholesaleOrders.length || supplierItems.length) {
+    fetchTransactions();
+  }
+}, [orders, wholesaleOrders, supplierItems, clients, wholesaleClients, cars, fournisseurs, currencyList]);
 
 const handleOrderSubmit = async (e) => {
   e.preventDefault();
@@ -1880,6 +1987,15 @@ const handleEditWholesaleOrder = (order) => {
     );
   }
 
+  // Filtered transactions based on selected filter
+const filteredTransactions = transactions.filter(transaction => {
+  if (transactionFilter === 'all') return true;
+  if (transactionFilter === 'orders') return transaction.type === 'order';
+  if (transactionFilter === 'wholesale') return transaction.type === 'wholesale';
+  if (transactionFilter === 'suppliers') return transaction.type === 'supplier';
+  return true;
+});
+
   return (
     <div className="min-h-screen min-w-fit font-main bg-gradient-to-br from-neutral-950 via-black to-neutral-950 text-white flex">
       {/* Sidebar */}
@@ -2076,10 +2192,142 @@ const handleEditWholesaleOrder = (order) => {
             </motion.div>
           )}
           {tab === "transactions" && (
-             <div>
+  <motion.div key="transactions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+    <div className="flex items-center justify-between mb-6">
+      <h2 className="text-3xl font-semibold">Gestion des Transactions</h2>
+      <div className="flex gap-2">
+        <select
+          value={transactionFilter}
+          onChange={(e) => setTransactionFilter(e.target.value)}
+          className="bg-neutral-800 px-3 py-2 rounded-lg text-sm"
+        >
+          <option value="all">Toutes les Transactions</option>
+          <option value="orders">Commandes Clients</option>
+          <option value="wholesale">Commandes Gros</option>
+          <option value="suppliers">Paiements Fournisseurs</option>
+        </select>
+      </div>
+    </div>
+    
+    <Card>
+      {loadingTransactions ? (
+        <div className="text-center py-8 text-neutral-400">
+          <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Chargement des transactions...</p>
+        </div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-emerald-500/10 rounded-lg p-4 border border-emerald-500/30">
+              <div className="text-sm text-emerald-400 mb-1">Total Revenus</div>
+              <div className="text-2xl font-bold text-emerald-400">
+                {transactionStats.totalRevenue.toLocaleString()} DZD
+              </div>
+            </div>
+            <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/30">
+              <div className="text-sm text-red-400 mb-1">Total Dépenses</div>
+              <div className="text-2xl font-bold text-red-400">
+                {transactionStats.totalExpenses.toLocaleString()} DZD
+              </div>
+            </div>
+            <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
+              <div className="text-sm text-blue-400 mb-1">Solde Net</div>
+              <div className="text-2xl font-bold text-blue-400">
+                {transactionStats.netBalance.toLocaleString()} DZD
+              </div>
+            </div>
+            <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/30">
+              <div className="text-sm text-purple-400 mb-1">Transactions</div>
+              <div className="text-2xl font-bold text-purple-400">
+                {transactions.length}
+              </div>
+            </div>
+          </div>
 
-             </div>
-          )}
+          {/* Transactions Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                  <th className="py-3 px-3">ID</th>
+                  <th className="py-3 px-3">Type</th>
+                  <th className="py-3 px-3">Description</th>
+                  <th className="py-3 px-3">Client/Fournisseur</th>
+                  <th className="py-3 px-3">Montant</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-3">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="py-8 text-center text-neutral-500">
+                      Aucune transaction trouvée
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTransactions.map((transaction, i) => {
+                    const isRevenue = transaction.type === 'order' || transaction.type === 'wholesale';
+                    return (
+                      <tr key={transaction.id || `trans-${i}`} className="border-b border-neutral-800/40 hover:bg-white/5">
+                        <td className="py-3 px-3 font-mono text-emerald-400">
+                          {transaction.id || `T-${i + 1}`}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            transaction.type === 'order' ? 'bg-blue-500/20 text-blue-400' :
+                            transaction.type === 'wholesale' ? 'bg-purple-500/20 text-purple-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {transaction.type === 'order' ? '🛒 Commande' :
+                             transaction.type === 'wholesale' ? '📦 Gros' :
+                             '💸 Fournisseur'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-sm">
+                          {transaction.description}
+                        </td>
+                        <td className="py-3 px-3 text-sm text-neutral-400">
+                          {transaction.party_name}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`font-semibold ${isRevenue ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {isRevenue ? '+' : '-'}{transaction.amount.toLocaleString()} DZD
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            transaction.status === 'paid' ? 'bg-green-500/20 text-green-400' :
+                            transaction.status === 'partial' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {transaction.status === 'paid' ? '✅ Payé' :
+                             transaction.status === 'partial' ? '⏳ Partiel' :
+                             '❌ Impayé'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-sm text-neutral-400">
+                          {new Date(transaction.date).toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </Card>
+  </motion.div>
+)}
 
           {/* ✅ MAIN MODIFICATION: Fournisseurs Tab with Editable Payments & Prices */}
           {tab === "fournisseurs" && (
