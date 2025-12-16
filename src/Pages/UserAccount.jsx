@@ -13,7 +13,7 @@ import {
   ArrowBigLeft,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate , Link } from "react-router-dom";
 
 // ✅ Fixed: removed trailing spaces
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim(); // Removed trailing spaces
@@ -245,13 +245,14 @@ const UserAccount = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-black text-white">
       {/* Sidebar */}
       <aside className="w-20 md:w-24 flex flex-col items-center py-6 space-y-6 fixed left-0 top-0 h-full bg-neutral-950/80 backdrop-blur-md border-r border-neutral-800 z-40">
-        <button
-          onClick={handleLogout}
-          className="p-2 rounded-xl text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-          title="Déconnexion"
-        >
-          <ArrowBigLeft className="w-6 h-6" />
-        </button>
+        <Link to={'/'}>
+          <button
+            className="p-2 rounded-xl text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+            title="Déconnexion"
+          >
+            <ArrowBigLeft className="w-6 h-6" />
+          </button>
+        </Link>
 
         {[
           { id: "dashboard", icon: Home, label: "Tableau de bord" },

@@ -241,7 +241,9 @@ const Commercials = () => {
         client,
         car,
         color: car_color,
+        price: car.price ? `${car.price} ${priceInfo.currencyCode}` : "N/A",
         priceInDZD: priceInfo.priceInDZD,
+        paymentAmount: createdOrder.payment_amount || 0,
         orderId: createdOrder.order_id || createdOrder.id,
         date: new Date().toLocaleDateString('fr-DZ')
       });
@@ -260,8 +262,14 @@ const Commercials = () => {
 
     const generateContract = () => {
     if (!lastOrderData) return;
-    const { client, car, color, priceInDZD, date } = lastOrderData;
-    const formattedPrice = priceInDZD ? Math.round(priceInDZD).toLocaleString('fr-DZ') : "0";
+    const { client, car, color, price, priceInDZD, paymentAmount, date } = lastOrderData;
+    const totalPrice = priceInDZD ? Math.round(priceInDZD) : 0;
+    const paidAmount = paymentAmount || 0;
+    const remainingBalance = totalPrice - paidAmount;
+    
+    const formattedTotal = totalPrice.toLocaleString('fr-DZ');
+    const formattedPaid = paidAmount.toLocaleString('fr-DZ');
+    const formattedRemaining = remainingBalance.toLocaleString('fr-DZ');
     const contractDate = date; 
     const contractHTML = `
 <!DOCTYPE html>
@@ -273,7 +281,7 @@ const Commercials = () => {
     <style>
         @page {
             size: A4;
-            margin: 1cm; /* Standard A4 margins */
+            margin: 1cm;
         }
         * {
             margin: 0;
@@ -281,109 +289,127 @@ const Commercials = () => {
             box-sizing: border-box;
         }
         body {
-            font-family: 'Traditional Arabic', 'Arabic Typesetting', 'Amiri', Arial, sans-serif; /* Arabic font stack */
+            font-family: 'Traditional Arabic', 'Arabic Typesetting', 'Amiri', Arial, sans-serif;
             line-height: 1.6;
             color: #000;
             background: #fff;
-            direction: rtl; /* Right-to-left for Arabic */
-            font-size: 12pt; /* Standard document font size */
-            padding: 0.5cm; /* Small padding inside the page */
+            direction: rtl;
+            font-size: 12pt;
+            padding: 0.5cm;
         }
         .header {
             text-align: center;
-            border-bottom: 1px solid #000; /* Simple black line */
+            border-bottom: 1px solid #000;
             padding-bottom: 10px;
             margin-bottom: 15px;
         }
         .company-info {
-            font-size: 10pt; /* Smaller font for company details */
+            font-size: 10pt;
             text-align: center;
             margin-bottom: 5px;
         }
         h1 {
-            font-size: 14pt; /* Adjusted font size for title */
+            font-size: 14pt;
             font-weight: bold;
             color: #000;
             margin: 10px 0;
         }
         .section {
-            margin-bottom: 10px; /* Consistent spacing */
+            margin-bottom: 10px;
         }
         .section h2 {
             font-size: 12pt;
             font-weight: bold;
             color: #000;
             margin-bottom: 5px;
-            text-decoration: underline; /* Simple underline instead of complex borders */
+            text-decoration: underline;
         }
         .info-row {
             display: flex;
-            padding: 3px 0; /* Reduced padding */
+            padding: 3px 0;
         }
         .info-label {
             font-weight: bold;
-            color: #000; /* Standard black for labels */
-            min-width: 100px; /* Adjusted width */
-            margin-left: 8px; /* Space between label and value */
+            color: #000;
+            min-width: 100px;
+            margin-left: 8px;
         }
         .info-value {
-            color: #000; /* Standard black for values */
+            color: #000;
             flex: 1;
         }
         .terms-section {
             margin-top: 15px;
         }
         .term-item {
-            padding: 5px 0; /* Reduced padding for terms */
+            padding: 5px 0;
         }
         .term-number {
             display: inline-block;
             font-weight: bold;
-            margin-left: 5px; /* Space after number */
+            margin-left: 5px;
         }
         .price-highlight {
             text-align: center;
-            font-size: 13pt; /* Slightly larger font for price */
+            font-size: 13pt;
             font-weight: bold;
-            margin: 15px 5px; /* Spacing with padding */
-            padding: 8px; /* Inner padding */
-            border: 1px solid #000; /* Simple solid border around price */
+            margin: 15px 5px;
+            padding: 8px;
+            border: 1px solid #000;
+        }
+        .payment-details {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 15px 0;
+            border: 1px solid #000;
+        }
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 11pt;
+        }
+        .payment-row.total {
+            font-weight: bold;
+            font-size: 12pt;
+            border-top: 2px solid #000;
+            margin-top: 5px;
+            padding-top: 8px;
         }
         .signature-section {
             display: flex;
             justify-content: space-between;
-            margin-top: 30px; /* Space before signatures */
-            padding: 0 10px; /* Padding for alignment */
+            margin-top: 30px;
+            padding: 0 10px;
         }
         .signature-box {
-            width: 45%; /* Roughly half width */
+            width: 45%;
             text-align: center;
-            padding-top: 20px; /* Space for signature line */
-            border-top: 1px solid #000; /* Signature line */
+            padding-top: 20px;
+            border-top: 1px solid #000;
         }
         .signature-box h3 {
             font-size: 11pt;
             margin-bottom: 3px;
         }
         .signature-line {
-            margin-top: 15px; /* Space above the line text */
-            color: #000; /* Standard black */
+            margin-top: 15px;
+            color: #000;
             font-size: 10pt;
         }
         .footer {
             margin-top: 30px;
             text-align: center;
-            color: #000; /* Standard black */
+            color: #000;
             font-size: 10pt;
             padding-top: 8px;
-            border-top: 1px solid #000; /* Simple black line */
+            border-top: 1px solid #000;
         }
         @media print {
             body {
-                padding: 0.5cm; /* Ensure padding is set for print */
-                font-size: 11pt; /* Slightly smaller for printing if needed, adjust as necessary */
+                padding: 0.5cm;
+                font-size: 11pt;
             }
-             /* Ensure the print button is not printed */
             .no-print {
                 display: none;
             }
@@ -404,7 +430,7 @@ const Commercials = () => {
     <div class="section">
         <div class="info-row">
             <div class="info-label">بتاريخ:</div>
-            <div class="info-value">${contractDate}</div> <!-- Use the date from lastOrderData -->
+            <div class="info-value">${contractDate}</div>
         </div>
         <div class="info-row">
             <div class="info-value">تم الاتفاق بدولة الجزائر بين الطرفين</div>
@@ -469,10 +495,6 @@ const Commercials = () => {
             <div class="info-label">اللون:</div>
             <div class="info-value">${color}</div>
         </div>
-        <div class="info-row">
-            <div class="info-label">ناقل الحركة:</div>
-            <div class="info-value">أوتوماتيك</div>
-        </div>
         ${car.engine ? `
         <div class="info-row">
             <div class="info-label">المحرك:</div>
@@ -482,9 +504,26 @@ const Commercials = () => {
     </div>
 
     <div class="price-highlight">
-        المبلغ الإجمالي والنهائي: ${formattedPrice} دج
+        المبلغ الإجمالي والنهائي: ${formattedTotal} دج 
+        ${price}
         <br>
         <small style="font-size: 10pt;">(متضمناً جميع تكاليف النقل والتأمين دون حقوق الجمركة)</small>
+    </div>
+
+    <div class="payment-details">
+        <h2 style="text-align: center; margin-bottom: 10px;">تفاصيل الدفع</h2>
+        <div class="payment-row">
+            <span>المبلغ الإجمالي:</span>
+            <span>${formattedTotal} دج</span>
+        </div>
+        <div class="payment-row">
+            <span>المبلغ المدفوع:</span>
+            <span style="color: #059669;">${formattedPaid} دج</span>
+        </div>
+        <div class="payment-row total">
+            <span>المبلغ المتبقي:</span>
+            <span style="color: ${remainingBalance > 0 ? '#dc2626' : '#059669'};">${formattedRemaining} دج</span>
+        </div>
     </div>
 
     <div class="terms-section section">
@@ -495,7 +534,7 @@ const Commercials = () => {
         </div>
         <div class="term-item">
             <span class="term-number">2-</span>
-            <span>يتعهد المشتري بدفع المبلغ ${formattedPrice} دج في أجل أقصاه 30 أياماً من تاريخ العقد.</span>
+            <span>يتعهد المشتري بدفع المبلغ ${formattedTotal} دج في أجل أقصاه 30 أياماً من تاريخ العقد.</span>
         </div>
         <div class="term-item">
             <span class="term-number">3-</span>
@@ -537,8 +576,7 @@ const Commercials = () => {
         <p>هذا العقد محرر ومطبوع في نسختين، نسخة لكل طرف</p>
     </div>
 
-    <!-- Print Button (Hidden when printing) -->
-     <div class="no-print" style="text-align: center; margin-top: 30px;">
+    <div class="no-print" style="text-align: center; margin-top: 30px;">
         <button onclick="window.print()" style="background: #2563eb; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;">
             طباعة العقد
         </button>
@@ -547,13 +585,10 @@ const Commercials = () => {
 </html>
     `;
 
-    // Open in new window for printing
     const printWindow = window.open('', '_blank');
     if (printWindow) {
         printWindow.document.write(contractHTML);
         printWindow.document.close();
-        // Optional: Focus the new window
-        // printWindow.focus();
     } else {
         alert("❌ لم يتمكن من فتح نافذة الطباعة. يرجى التحقق من إعدادات المتصفح.");
     }

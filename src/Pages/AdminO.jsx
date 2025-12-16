@@ -645,65 +645,7 @@ useEffect(() => {
   }
 }, [orders, wholesaleOrders, supplierItems, clients, wholesaleClients, cars, fournisseurs, currencyList]);
 
-const handleOrderSubmit = async (e) => {
-  e.preventDefault();
-  
-  try {
-    const isUpdate = !!orderForm.id;
-    const url = `${API_BASE}/orders/`;
-    
-    const payload = {
-      client_id: Number(orderForm.client_id),
-      car_id: Number(orderForm.car_id),
-      car_color: orderForm.car_color || null,
-      delivery_status: orderForm.delivery_status,
-      payment_amount: Number(orderForm.payment_amount),
-      status: orderForm.status,
-    };
-
-    if (isUpdate) {
-      payload.id = orderForm.id;
-    }
-
-    // Utilisez apiFetch au lieu de fetch
-    const response = await apiFetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || "Erreur lors de l'ajout de la commande");
-    }
-
-    const data = await response.json();
-    
-    // Log the action
-    pushLog("Admin", `Ajout d'une nouvelle commande pour le client ${orderForm.client_id}`);
-    
-    // Close modal and reset form
-    setShowAddOrder(false);
-    setOrderForm({
-      id: null,
-      client_id: "",
-      car_id: "",
-      car_color: "",
-      delivery_status: "shipping",
-      payment_amount: 0,
-      status: true,
-    });
-    
-    // Optional: Show success message
-    alert("Commande ajoutée avec succès!");
-    
-  } catch (error) {
-    console.error("Erreur:", error);
-    alert(error.message || "Erreur lors de l'ajout de la commande");
-  }
-};
+const handleOrderSubmit=async(e)=>{e.preventDefault();try{const url=`${API_BASE}/orders/`;const payload={client_id:Number(orderForm.client_id),car_id:Number(orderForm.car_id),car_color:String(orderForm.car_color),delivery_status:String(orderForm.delivery_status),};if(!payload.client_id||isNaN(payload.client_id)){throw new Error("Veuillez sélectionner un client");}if(!payload.car_id||isNaN(payload.car_id)){throw new Error("Veuillez sélectionner une voiture");}if(!payload.car_color){throw new Error("Veuillez spécifier une couleur");}console.log("📤 Submitting order payload:",payload);const response=await apiFetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),});if(!response.ok){const errorData=await response.json().catch(()=>({}));console.error("❌ API Error:",errorData);throw new Error(errorData.detail||"Erreur lors de l'ajout");}const data=await response.json();console.log("✅ Order created:",data);setShowAddOrder(false);setOrderForm({id:null,client_id:"",car_id:"",car_color:"",delivery_status:"shipping",payment_amount:0,status:true,});console.log("🔄 Refreshing orders list...");const freshResponse=await apiFetch(`${API_BASE}/orders/`);if(freshResponse.ok){const fresh=await freshResponse.json();console.log("✅ Orders refreshed, count:",fresh.length);setOrders(Array.isArray(fresh)?fresh:[])}else{console.error("❌ Failed to refresh orders")}alert("✅ Commande ajoutée avec succès!")}catch(error){console.error("❌ Error in handleOrderSubmit:",error);alert(error.message||"Erreur lors de l'ajout de la commande")}};
 
 // Add new state for showing the supplier item modal
 const [showAddSupplierItem, setShowAddSupplierItem] = useState(false);
@@ -774,21 +716,39 @@ useEffect(() => {
 }, []);
 
 // Fetch Wholesale Orders
-useEffect(() => {
-  const fetchWholesaleOrders = async () => {
-    try {
-      const res = await apiFetch(`${API_BASE}/wholesale_orders/`);
-      const data = await res.json();
-      setWholesaleOrders(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error fetching wholesale orders:", err);
+// Add this fetch function near your other fetch functions
+const fetchWholesaleOrders = async () => {
+  console.log("🔄 Starting fetchWholesaleOrders...");
+  try {
+    const url = `${API_BASE}/wholesale_orders/`;
+    console.log("📍 Fetching from URL:", url);
+    
+    const res = await apiFetch(url);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("❌ Response not OK:", errorText);
+      throw new Error(`HTTP ${res.status}: ${errorText}`);
+    }
+    
+    const text = await res.text();
+    
+    const data = JSON.parse(text);
+    
+    if (Array.isArray(data)) {
+      setWholesaleOrders(data);
+    } else {
       setWholesaleOrders([]);
     }
-  };
+  } catch (err) {
+    setWholesaleOrders([]);
+  }
+};
+
+useEffect(() => {
   fetchWholesaleOrders();
 }, []);
-// ✅ Handle Wholesale Client Submit
-// ✅ Updated wholesale client submit — supports password display like commercial/accountant
+
 const handleWholesaleClientSubmit = async (e) => {
   e.preventDefault();
   try {
@@ -965,80 +925,99 @@ const handleDeleteWholesaleOrder = async (id) => {
     fetchCaisse();
   }, []);
 const handleWholesaleOrderSubmit = async (e) => {
-    e.preventDefault();
-    try {
-        console.log("wholesaleOrderForm avant validation:", wholesaleOrderForm); // Log pour déboguer
+  e.preventDefault();
+  try {
+    console.log("wholesaleOrderForm avant validation:", wholesaleOrderForm);
 
-        // --- Validation des champs requis avant la construction du payload ---
-        const clientId = Number(wholesaleOrderForm.client_id);
-        if (isNaN(clientId) || clientId <= 0) { // Vérifie si c'est un nombre valide et positif
-            console.error("client_id brut:", wholesaleOrderForm.client_id, " | Converti en nombre:", clientId);
-            throw new Error("ID client invalide");
-        }
-
-        const carId = Number(wholesaleOrderForm.car_id);
-        if (isNaN(carId) || carId <= 0) { // Vérifie si c'est un nombre valide et positif
-             console.error("car_id brut:", wholesaleOrderForm.car_id, " | Converti en nombre:", carId);
-            throw new Error("ID voiture invalide");
-        }
-
-        const quantity = Number(wholesaleOrderForm.quantity);
-        if (isNaN(quantity) || quantity < 1) { // Vérifie si c'est un nombre valide et >= 1
-             console.error("quantity brute:", wholesaleOrderForm.quantity, " | Convertie en nombre:", quantity);
-            throw new Error("Quantité invalide");
-        }
-
-        // Vérification de l'ID de commande pour la mise à jour
-        if (!wholesaleOrderForm.id) {
-             console.error("wholesaleOrderForm.id est manquant:", wholesaleOrderForm.id);
-             throw new Error("ID de commande en gros manquant pour la mise à jour");
-        }
-        const orderId = Number(wholesaleOrderForm.id);
-        if (isNaN(orderId) || orderId <= 0) { // Vérifie si c'est un nombre valide et positif
-             console.error("order_id brut:", wholesaleOrderForm.id, " | Converti en nombre:", orderId);
-             throw new Error("ID de commande en gros invalide pour la mise à jour");
-        }
-
-        // --- Construction du payload avec tous les champs nécessaires ---
-        const payload = {
-            order_id: orderId, // Inclure l'ID de commande
-            client_id: clientId, // Inclure l'ID du client
-            car_id: carId,       // Inclure l'ID de la voiture
-            quantity: quantity,  // Inclure la quantité
-            delivery_status: String(wholesaleOrderForm.delivery_status), // S'assurer que c'est une chaîne
-            payment_amount: Number(wholesaleOrderForm.payment_amount), // Convertir en nombre
-            status: Boolean(wholesaleOrderForm.status), // Convertir en booléen
-        };
-
-        console.log("Payload final à envoyer (PUT):", payload); // Log pour vérifier le payload complet
-
-        const response = await apiFetch(`${API_BASE}/wholesale_orders/`, { // Assurez-vous que c'est le bon endpoint
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload), // Envoyer le payload complet
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text(); // ou response.json() si le serveur renvoie du JSON
-            console.error("Erreur serveur:", errorText);
-            throw new Error(`Failed to update wholesale order: ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log("Réponse succès API:", data);
-
-        // Réussite : fermez la modal, rafraîchissez les données, etc.
-        setShowEditWholesaleOrder(false); // Fermer la modal d'édition
-        // Récupérer à nouveau les commandes pour refléter la mise à jour
-        fetchWholesaleOrders(); // Assurez-vous que cette fonction existe et met à jour l'état local
-        alert("Commande en gros mise à jour avec succès !");
-
-    } catch (err) {
-        console.error("Erreur complète dans handleWholesaleOrderSubmit:", err);
-        alert("Erreur lors de la mise à jour de la commande en gros: " + err.message);
+    // --- Validation des champs requis ---
+    const clientId = Number(wholesaleOrderForm.client_id);
+    if (isNaN(clientId) || clientId <= 0) {
+      throw new Error("ID client invalide");
     }
+
+    const carId = Number(wholesaleOrderForm.car_id);
+    if (isNaN(carId) || carId <= 0) {
+      throw new Error("ID voiture invalide");
+    }
+
+    const quantity = Number(wholesaleOrderForm.quantity);
+    if (isNaN(quantity) || quantity < 1) {
+      throw new Error("Quantité invalide");
+    }
+
+    const isUpdate = !!wholesaleOrderForm.id;
+    const method = isUpdate ? 'PUT' : 'POST';
+    const url = `${API_BASE}/wholesale_orders/`;
+
+    let payload;
+    
+    if (isUpdate) {
+      const orderId = Number(wholesaleOrderForm.id);
+      if (isNaN(orderId) || orderId <= 0) {
+        throw new Error("ID de commande en gros invalide pour la mise à jour");
+      }
+      
+      payload = {
+        order_id: orderId,
+        client_id: clientId,
+        car_id: carId,
+        quantity: quantity,
+        delivery_status: String(wholesaleOrderForm.delivery_status),
+        payment_amount: wholesaleOrderForm.payment_amount === '' ? null : Number(wholesaleOrderForm.payment_amount),
+        status: Boolean(wholesaleOrderForm.status),
+      };
+    } else {
+      // ✅ FIX: Include client_id in POST request (admin creating order for a client)
+      payload = {
+        client_id: clientId,  // ← ADD THIS
+        car_id: carId,
+        quantity: quantity,
+        delivery_status: String(wholesaleOrderForm.delivery_status),
+      };
+    }
+
+    console.log(`📤 Payload final à envoyer (${method}):`, payload);
+
+    const response = await apiFetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Erreur serveur:", errorText);
+      throw new Error(`Failed to ${isUpdate ? 'update' : 'create'} wholesale order: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("✅ Réponse succès API:", data);
+
+    // Close modals and reset form
+    setShowAddWholesaleOrder(false);
+    setShowEditWholesaleOrder(false);
+    setWholesaleOrderForm({ 
+      id: null,
+      client_id: "", 
+      car_id: "", 
+      quantity: 1, 
+      delivery_status: "shipping",
+      payment_amount: 0,
+      status: true
+    });
+
+    // Refresh orders list
+    console.log("🔄 Refreshing wholesale orders...");
+    await fetchWholesaleOrders();
+    
+    alert(`✅ Commande en gros ${isUpdate ? 'mise à jour' : 'ajoutée'} avec succès !`);
+
+  } catch (err) {
+    console.error("❌ Erreur complète dans handleWholesaleOrderSubmit:", err);
+    alert("❌ Erreur: " + err.message);
+  }
 };
   useEffect(() => {
     const fetchCars = async () => {
@@ -1321,134 +1300,86 @@ const handleWholesaleOrderSubmit = async (e) => {
   }
   return price * rate;
 };
-const handleEditOrder = (order) => {
-  console.log("Structure complète de l'order:", order);
-  console.log("Clés disponibles:", Object.keys(order));
-  
-  // Vérifier si c'est 'id' ou 'order_id'
-  const orderId = order.id || order.order_id;
-  
-  if (!orderId) {
-    console.error("Aucun ID trouvé dans:", order);
-    alert("Impossible de charger la commande - ID manquant");
-    return;
-  }
-  
-  setOrderForm({
-    id: Number(orderId),  // Utiliser orderId au lieu de order.id
-    client_id: Number(order.client_id) || "",
-    car_id: Number(order.car_id) || "",
-    car_color: order.car_color || "",
-    delivery_status: order.delivery_status || "shipping",
-    payment_amount: Number(order.payment_amount) || 0,
-    status: order.status !== undefined ? Boolean(order.status) : true,
-  });
-  
-  console.log("OrderForm configuré avec ID:", orderId);
-  
-  setShowEditOrder(true);
-};
-const handleEditOrderSubmit = async (e) => {
-  e.preventDefault();
-  
-  console.log("OrderForm avant validation:", orderForm);
-  
-  try {
-    // Validation détaillée
-    if (!orderForm.id) {
-      console.error("orderForm.id est:", orderForm.id);
-      throw new Error("ID de commande manquant");
-    }
-    
-    if (!orderForm.client_id) {
-      throw new Error("Client non sélectionné");
-    }
-    
-    if (!orderForm.car_id) {
-      throw new Error("Voiture non sélectionnée");
-    }
-    
-    const url = `${API_BASE}/orders/`;
-    
-    const payload = {
-      order_id: Number(orderForm.id),
-      client_id: Number(orderForm.client_id),
-      car_id: Number(orderForm.car_id),
-      car_color: String(orderForm.car_color || ""),
-      delivery_status: String(orderForm.delivery_status),
-      payment_amount: Number(orderForm.payment_amount),
-      status: Boolean(orderForm.status),
-    };
-
-    // Validation des valeurs converties
-    if (!payload.order_id || isNaN(payload.order_id)) {
-      console.error("order_id invalide:", payload.order_id, "depuis:", orderForm.id);
-      throw new Error("ID de commande invalide");
-    }
-    
-    if (!payload.client_id || isNaN(payload.client_id)) {
-      console.error("client_id invalide:", payload.client_id);
-      throw new Error("ID client invalide");
-    }
-    
-    if (!payload.car_id || isNaN(payload.car_id)) {
-      console.error("car_id invalide:", payload.car_id);
-      throw new Error("ID voiture invalide");
-    }
-    
-    if (!['shipping', 'arrived', 'showroom'].includes(payload.delivery_status)) {
-      console.error("delivery_status invalide:", payload.delivery_status);
-      throw new Error("Statut de livraison invalide. Doit être: shipping, arrived ou showroom");
-    }
-
-    console.log("Payload final à envoyer:", payload);
-
-    const response = await apiFetch(url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Réponse d'erreur du serveur:", errorData);
-      
-      let errorMessage = "Erreur lors de la modification de la commande";
-      if (errorData.detail && Array.isArray(errorData.detail)) {
-        errorMessage = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join("\n");
-      } else if (errorData.message) {
-        errorMessage = errorData.message;
-      }
-      
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
-    console.log("Succès:", data);
-    
-    // Log the action
-    pushLog("Admin", `Modification de la commande #${orderForm.id}`);
-    
-    // Close modal and reset form
-    setShowEditOrder(false);
-    setOrderForm({
-      id: null,
-      client_id: "",
-      car_id: "",
-      car_color: "",
-      delivery_status: "shipping",
-      payment_amount: 0,
-      status: true,
-    });
-    
-    alert("Commande modifiée avec succès!");
-    
-  } catch (error) {
-    console.error("Erreur complète:", error);
-    alert(error.message || "Erreur lors de la modification de la commande");
-  }
+const handleEditOrderSubmit = async (e) =>
+{
+	e.
+	preventDefault();
+	try
+	{
+		const url = `
+${
+API_BASE
+}
+/orders/
+`;
+		const payload = {
+			order_id: Number(orderForm.id),
+			// ✅ FIXED: Use order_id in payload
+			status: Boolean(orderForm.status),
+			payment_amount: Number(orderForm.payment_amount) || null,
+			delivery_status: String(orderForm.delivery_status),
+		};
+		// Validation
+		if (!payload.order_id || isNaN(payload.order_id))
+		{
+			throw new
+			Error("ID de commande invalide");
+		}
+		if (!['shipping', 'arrived', 'showroom'].includes(payload.delivery_status))
+		{
+			throw new
+			Error("Statut de livraison invalide");
+		}
+		const response = await
+		apiFetch(url,
+		{
+			method: "PUT",
+			headers:
+			{
+				"Content-Type": "application/json"
+			},
+			body: JSON.
+			stringify(payload),
+		});
+		if (!response.ok)
+		{
+			const errorData = await
+			response.
+			json().
+			catch(
+				() => (
+				{}));
+			throw new
+			Error(errorData.detail || "Failed to update order");
+		}
+		setShowEditOrder(false);
+		setOrderForm(
+		{
+			id: null,
+			client_id: "",
+			car_id: "",
+			car_color: "",
+			delivery_status: "shipping",
+			payment_amount: 0,
+			status: true,
+		});
+		alert("Commande modifiée avec succès!");
+		// Refresh orders list
+		const fresh = await apiFetch(`
+${
+API_BASE
+}
+/orders/
+`).
+		then(r => r.json());
+		setOrders(Array.isArray(fresh) ? fresh : []);
+	}
+	catch (error)
+	{
+		console.
+		error("Erreur complète:", error);
+		alert(error.message || "Erreur lors de la modification");
+	}
 };
 const handleEditWholesaleOrder = (order) => {
   setWholesaleOrderForm({
@@ -1861,104 +1792,88 @@ const handleEditWholesaleOrder = (order) => {
     }
   };
 
-  // ✅ NEW: Save editable supplier item (price + paid)
- const saveSupplierItemEdit = async (item) => {
-  try {
-    // 🐛 DEBUG - Voir la structure complète de l'item
-    console.log("🔍 Item complet reçu:", item);
-    console.log("🔍 Clés disponibles:", Object.keys(item));
-    console.log("🔍 supplier_item_id:", item.supplier_item_id);
-    console.log("🔍 id:", item.id);
-    
-    const editedData = editingSupplierItem[item.supplier_item_id];
-    
-    if (!editedData) {
-      console.error("Aucune donnée éditée trouvée");
-      return;
-    }
-
-    const url = `${API_BASE}/suppliers_items/`;
-    
-    // Essayer différents noms possibles pour l'ID
-    const itemId = item.supplier_item_id || item.id || item.item_id;
-    
-    console.log("🔍 itemId détecté:", itemId);
-    
-    const payload = {
-      supplier_item_id: Number(itemId),
-      supplier_id: Number(item.supplier_id),
-      price: Number(editedData.price ?? item.price),
-      payment_amount: Number(editedData.payment_amount ?? item.payment_amount),
-    };
-
-    console.log("📤 Payload à envoyer:", payload);
-
-    // Validation
-    if (!payload.supplier_item_id || isNaN(payload.supplier_item_id)) {
-      console.error("❌ supplier_item_id invalide:", payload.supplier_item_id);
-      console.error("Item original:", item);
-      throw new Error("ID de l'item invalide");
-    }
-    if (!payload.supplier_id || isNaN(payload.supplier_id)) {
-      throw new Error("ID du fournisseur invalide");
-    }
-    if (isNaN(payload.price) || payload.price < 0) {
-      throw new Error("Prix invalide");
-    }
-    if (isNaN(payload.payment_amount) || payload.payment_amount < 0) {
-      throw new Error("Montant payé invalide");
-    }
-
-    const response = await apiFetch(url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Erreur du serveur:", errorData);
-      
-      let errorMessage = "Erreur lors de la mise à jour";
-      if (errorData.detail && Array.isArray(errorData.detail)) {
-        errorMessage = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join("\n");
-      } else if (errorData.message) {
-        errorMessage = errorData.message;
-      } else if (errorData.detail) {
-        errorMessage = errorData.detail;
-      }
-      
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
-    console.log("✅ Mise à jour réussie:", data);
-    // Retirer de l'état d'édition - utiliser le bon ID
-    setEditingSupplierItem(prev => {
-      const copy = { ...prev };
-      delete copy[itemId];
-      return copy;
-    });
-
-    // Log
-    pushLog("Admin", `Mise à jour de l'item fournisseur #${itemId}: Prix ${payload.price}, Payé ${payload.payment_amount} DZD`);
-    
-    alert("✅ Mise à jour réussie!");
-
-  } catch (error) {
-    console.error("❌ Update failed — reverting:", error);
-    alert("❌ " + (error.message || "Échec de la mise à jour"));
-    
-    // Rollback
-    const itemId = item.supplier_item_id || item.id || item.item_id;
-    setEditingSupplierItem(prev => {
-      const copy = { ...prev };
-      delete copy[itemId];
-      return copy;
-    });
-  }
+const saveSupplierItemEdit = async (item) =>
+{
+	try
+	{
+		const editedData = editingSupplierItem[item.supplier_item_id];
+		if (!editedData)
+		{
+			console.
+			error("Aucune donnée éditée trouvée");
+			return;
+		}
+		// ✅ FIXED: Only send the fields that can be updated according to spec
+		const payload = {
+			supplier_item_id: Number(item.supplier_item_id),
+			supplier_id: Number(item.supplier_id) || null,
+			payment_amount: Number(editedData.payment_amount) || null,
+			price: Number(editedData.price) || null,
+		};
+		// Validation
+		if (!payload.supplier_item_id || isNaN(payload.supplier_item_id))
+		{
+			throw new
+			Error("ID de l'item invalide");
+		}
+		const response = await
+		apiFetch(`
+${
+API_BASE
+}
+/suppliers_items/
+`,
+		{
+			method: "PUT",
+			headers:
+			{
+				"Content-Type": "application/json"
+			},
+			body: JSON.
+			stringify(payload),
+		});
+		if (!response.ok)
+		{
+			const errorData = await
+			response.json()
+      .catch(
+				() => (
+				{}));
+			let errorMessage = "Erreur lors de la mise à jour";
+			if (errorData.detail && Array.isArray(errorData.detail))
+			{
+				errorMessage = errorData.
+				detail.map(err => `${err.loc.join('.')}: ${err.msg}`).
+				join("\n");
+			}
+			else
+			if (errorData.detail)
+			{
+				errorMessage = errorData.
+				detail;
+			}
+			throw	new
+			Error(errorMessage);
+		}
+		// Remove from editing state
+		setEditingSupplierItem(prev =>
+		{
+			const copy = {
+				...prev
+			};
+			delete
+			copy[item.supplier_item_id];
+			return
+			copy;
+		});
+		alert("✅ Mise à jour réussie!");
+	}
+	catch (error)
+	{
+		console.
+		error("❌ Update failed:", error);
+		alert("❌ " + (error.message || "Échec de la mise à jour"));
+	}
 };
 
   const filteredCars = cars.filter((c) =>
@@ -2894,7 +2809,7 @@ const filteredTransactions = transactions.filter(transaction => {
                           <h2 className="text-3xl font-semibold">Gros Order</h2>
                           <button 
                             onClick={() => { 
-                              setWholesaleOrderForm({ id: null, client_id: "", car_id: "", quantity: 1, delivery_status: "shipping", payment_amount: 0, status: true }); 
+                              setWholesaleOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping", payment_amount: 0, status: true }); 
                               setShowAddWholesaleOrder(true); 
                             }} 
                             className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
@@ -3839,23 +3754,28 @@ const filteredTransactions = transactions.filter(transaction => {
 <Modal 
   open={showAddWholesaleOrder} 
   onClose={() => setShowAddWholesaleOrder(false)} 
-  title={wholesaleOrderForm.id ? "Edit Wholesale Order" : "Add Wholesale Order"}
+  title={"Ajouter une Commande Grossiste"}
 >
   <form onSubmit={handleWholesaleOrderSubmit} className="space-y-4">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <select
-        value={wholesaleOrderForm.client_id}
-        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, client_id: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      >
-        <option value="">Select Wholesale Client</option>
-        {wholesaleClients.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name} {c.surname} ({c.company_name})
-          </option>
-        ))}
-      </select>
+      {/* ✅ Client Selection - REQUIRED for CREATE */}
+      <div className="md:col-span-2">
+        <label className="block text-sm text-neutral-400 mb-1">Client Grossiste *</label>
+        <select
+          value={wholesaleOrderForm.client_id}
+          onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, client_id: e.target.value })}
+          className="w-full bg-neutral-800 p-2 rounded text-sm"
+          required
+        >
+          <option value="">Sélectionner un client grossiste</option>
+          {wholesaleClients.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} {c.surname} ({c.company_name})
+            </option>
+          ))}
+        </select>
+      </div>
+
       <select
         value={wholesaleOrderForm.car_id}
         onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, car_id: e.target.value })}
@@ -3869,6 +3789,7 @@ const filteredTransactions = transactions.filter(transaction => {
           </option>
         ))}
       </select>
+      
       <input
         type="number"
         min="1"
@@ -3878,6 +3799,7 @@ const filteredTransactions = transactions.filter(transaction => {
         className="bg-neutral-800 p-2 rounded text-sm"
         required
       />
+      
       <select
         value={wholesaleOrderForm.delivery_status}
         onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
@@ -3888,19 +3810,20 @@ const filteredTransactions = transactions.filter(transaction => {
         <option value="showroom">Showroom</option>
       </select>
     </div>
+    
     <div className="flex justify-end gap-3">
       <button
         type="button"
         onClick={() => setShowAddWholesaleOrder(false)}
         className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
       >
-        Cancel
+        Annuler
       </button>
       <button
         type="submit"
         className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
       >
-        {wholesaleOrderForm.id ? "✏️ Update Order" : "➕ Add Order"}
+        ➕ Ajouter la commande
       </button>
     </div>
   </form>

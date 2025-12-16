@@ -1,7 +1,7 @@
 // src/Pages/AuthPage.jsx
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Lock, Phone, User } from "lucide-react";
+import { Eye, EyeOff, Lock, Phone, User, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim();
@@ -18,6 +18,7 @@ const AuthPage = () => {
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false); // ✅ NEW: Track signup success
 
   const navigate = useNavigate();
 
@@ -25,6 +26,7 @@ const AuthPage = () => {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setSignupSuccess(false); // Reset success state
 
     if (!isLogin) {
       if (password !== confirmPassword) {
@@ -43,15 +45,43 @@ const AuthPage = () => {
       let response;
 
       if (isLogin) {
-        // Login
+        // ✅ LOGIN FLOW
+        console.log("📡 Attempting login...");
         response = await fetch(`${API_BASE_URL}/users/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phone_number: phone, password }),
         });
 
+        const data = await response.json();
+
+        if (!response.ok) {
+          const msg = data.detail || data.message || "Erreur inconnue";
+          setError(msg);
+          setLoading(false);
+          return;
+        }
+
+        if (!data.access_token) {
+          setError("Token manquant dans la réponse.");
+          setLoading(false);
+          return;
+        }
+
+        console.log("✅ Login successful!");
+        
+        // Store token and role in localStorage
+        const token = data.access_token;
+        localStorage.setItem("authToken", token);
+        localStorage.setItem("userRole", "client");
+
+        // Auto-redirect to saved "from" route if exists, else to /account
+        const from = location.state?.from || "/account";
+        navigate(from);
+
       } else {
-        // Signup
+        // ✅ SIGNUP FLOW
+        console.log("📡 Attempting signup...");
         const [name, ...surnameParts] = fullName.trim().split(" ");
         const surname = surnameParts.join(" ") || name;
 
@@ -65,41 +95,45 @@ const AuthPage = () => {
           address,
         };
 
-        response = await fetch(`${API_BASE_URL}/clients`, {
+        response = await fetch(`${API_BASE_URL}/clients/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-      }
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        const msg = data.detail || data.message || "Erreur inconnue";
-        setError(msg);
+        if (!response.ok) {
+          const msg = data.detail || data.message || "Erreur inconnue";
+          setError(msg);
+          setLoading(false);
+          return;
+        }
+
+        // ✅ SIGNUP SUCCESS - Show success message and redirect to login
+        console.log("✅ Signup successful!");
+        setSignupSuccess(true);
         setLoading(false);
-        return;
+        
+        // Clear form fields
+        setFullName("");
+        setNin("");
+        setWilaya("");
+        setAddress("");
+        setPhone("");
+        setPassword("");
+        setConfirmPassword("");
+        
+        // Switch to login mode after 2 seconds
+        setTimeout(() => {
+          setSignupSuccess(false);
+          setIsLogin(true);
+        }, 2000);
       }
-
-      if (!data.access_token) {
-        setError("Token manquant dans la réponse.");
-        setLoading(false);
-        return;
-      }
-
-      // Store token and role in localStorage
-      const token = data.access_token;
-      localStorage.setItem("authToken", token);
-      localStorage.setItem("userRole", "client");
-
-      // ✅ Auto-redirect to saved "from" route if exists, else to /account
-      const from = location.state?.from || "/account";
-      navigate(from);
       
     } catch (err) {
-      console.error("Auth error:", err);
+      console.error("❌ Auth error:", err);
       setError("Erreur réseau. Réessayez ultérieurement.");
-    } finally {
       setLoading(false);
     }
   };
@@ -135,10 +169,28 @@ const AuthPage = () => {
           </p>
         </div>
 
+        {/* ✅ Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-900/30 text-red-300 rounded-lg text-sm text-center">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-3 bg-red-900/30 border border-red-500/50 text-red-300 rounded-lg text-sm text-center"
+          >
             {error}
-          </div>
+          </motion.div>
+        )}
+
+        {/* ✅ NEW: Success Message */}
+        {signupSuccess && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-4 p-4 bg-emerald-500/10 border border-emerald-500/50 text-emerald-300 rounded-lg text-center"
+          >
+            <CheckCircle className="w-8 h-8 mx-auto mb-2 text-emerald-400" />
+            <p className="font-semibold">Inscription réussie ! ✅</p>
+            <p className="text-sm mt-1">Redirection vers la connexion...</p>
+          </motion.div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -152,7 +204,8 @@ const AuthPage = () => {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                  disabled={signupSuccess}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -165,7 +218,8 @@ const AuthPage = () => {
                   onChange={(e) => setNin(e.target.value)}
                   required
                   min="1"
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                  disabled={signupSuccess}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -177,7 +231,8 @@ const AuthPage = () => {
                   value={wilaya}
                   onChange={(e) => setWilaya(e.target.value)}
                   required
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                  disabled={signupSuccess}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -189,7 +244,8 @@ const AuthPage = () => {
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   required
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                  disabled={signupSuccess}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </>
@@ -203,7 +259,8 @@ const AuthPage = () => {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+              disabled={signupSuccess}
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -215,12 +272,14 @@ const AuthPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-10 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+              disabled={signupSuccess}
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-10 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3.5 text-gray-500 hover:text-gray-300"
+              disabled={signupSuccess}
+              className="absolute right-3 top-3.5 text-gray-500 hover:text-gray-300 disabled:opacity-50"
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
@@ -235,41 +294,46 @@ const AuthPage = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                disabled={signupSuccess}
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           )}
 
           <motion.button
+            type="submit"
             whileTap={{ scale: 0.97 }}
-            disabled={loading}
+            disabled={loading || signupSuccess}
             className={`w-full py-3 rounded-xl font-semibold transition shadow-lg ${
-              loading
+              loading || signupSuccess
                 ? "bg-gray-600 cursor-not-allowed"
                 : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90"
             } text-white`}
           >
-            {loading ? "Chargement..." : isLogin ? "Se Connecter" : "S'inscrire"}
+            {loading ? "Chargement..." : signupSuccess ? "Succès ✓" : isLogin ? "Se Connecter" : "S'inscrire"}
           </motion.button>
         </form>
 
-        <div className="text-center mt-6 text-sm text-gray-400">
-          {isLogin ? (
-            <>
-              Pas encore de compte ?{" "}
-              <button onClick={() => setIsLogin(false)} className="text-emerald-400 hover:text-emerald-300 font-medium">
-                S'inscrire
-              </button>
-            </>
-          ) : (
-            <>
-              Déjà inscrit ?{" "}
-              <button onClick={() => setIsLogin(true)} className="text-emerald-400 hover:text-emerald-300 font-medium">
-                Se connecter
-              </button>
-            </>
-          )}
-        </div>
+        {/* ✅ Hide toggle buttons during success message */}
+        {!signupSuccess && (
+          <div className="text-center mt-6 text-sm text-gray-400">
+            {isLogin ? (
+              <>
+                Pas encore de compte ?{" "}
+                <button onClick={() => setIsLogin(false)} className="text-emerald-400 hover:text-emerald-300 font-medium">
+                  S'inscrire
+                </button>
+              </>
+            ) : (
+              <>
+                Déjà inscrit ?{" "}
+                <button onClick={() => setIsLogin(true)} className="text-emerald-400 hover:text-emerald-300 font-medium">
+                  Se connecter
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
