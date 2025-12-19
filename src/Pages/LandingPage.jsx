@@ -92,15 +92,39 @@ const LandingPage = () => {
               Fermer
             </button>
             <div className="flex flex-col gap-5 mt-8">
-              {['A Propos', 'Services', 'Contact', 'Commandez'].map((item, i) => (
-                <button
-                  key={i}
-                  className="text-left py-3  tracking-wide border-b border-white/10"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item}
-                </button>
-              ))}
+              {['A Propos', 'Services', 'Contact', 'Commandez'].map((item, i) => {
+                const targets = {
+                  'A Propos': 'about',
+                  'Services': 'Inventory',
+                  'Contact': 'Contact',
+                };
+
+                if (item === 'Commandez') {
+                  return (
+                    <Link
+                      key={i}
+                      to="/order"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="text-left py-3 tracking-wide border-b border-white/10"
+                    >
+                      {item}
+                    </Link>
+                  );
+                }
+
+                return (
+                  <Scorll
+                    key={i}
+                    to={targets[item]}
+                    smooth={true}
+                    duration={500}
+                    onClick={() => setIsMenuOpen(false)}
+                    className="text-left py-3 tracking-wide border-b border-white/10 cursor-pointer"
+                  >
+                    {item}
+                  </Scorll>
+                );
+              })}
             </div>
           </motion.div>
         )}
