@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, File, Car, LetterTextIcon, Printer, Download } from "lucide-react";
-import QrCode from "../assets/qr_client.png"; ;
+import QrCode from "../assets/qr_client.png";
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 const Commercials = () => {
@@ -270,7 +270,11 @@ const generateContract = () => {
     const formattedTotal = totalPrice.toLocaleString('fr-DZ');
     const formattedPaid = paidAmount.toLocaleString('fr-DZ');
     const formattedRemaining = remainingBalance.toLocaleString('fr-DZ');
-    const contractDate = date; 
+    const contractDate = date;
+    
+    // Use the imported QR code directly - it should be the path or base64
+    const qrCodeSrc = QrCode;
+    
     const contractHTML = `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -314,6 +318,7 @@ const generateContract = () => {
         .qr-code img {
             width: 100%;
             height: 100%;
+            object-fit: contain;
         }
         .company-info {
             font-size: 10pt;
@@ -423,7 +428,11 @@ const generateContract = () => {
                 font-size: 11pt;
             }
             .no-print {
-                display: none;
+                display: none !important;
+            }
+            .qr-code {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
     </style>
@@ -431,7 +440,7 @@ const generateContract = () => {
 <body>
     <div class="header">
         <div class="qr-code">
-            <img src=${QrCode} alt="QR Code">
+            <img src="${qrCodeSrc}" alt="QR Code" crossorigin="anonymous">
         </div>
         <div class="company-info">
             تجارة بالتجزئة للسيارات | شركة NB SUD | س ت رقم: ب0200015-18/05
@@ -549,11 +558,11 @@ const generateContract = () => {
         </div>
         <div class="term-item">
             <span class="term-number">2-</span>
-            <span>يتعهد المشتري بدفع المبلغ ${formattedTotal} دج في أجل أقصاه 30 أياماً من تاريخ العقد.</span>
+            <span>يتعهد المشتري بدفع المبلغ ${formattedTotal} دج في أجل أقصاه 3 أياماً من تاريخ العقد.</span>
         </div>
         <div class="term-item">
             <span class="term-number">3-</span>
-            <span>يتعهد الطرف الأول بتجهيز السيارة إلى الشحن خلال 15 يوم عمل من تاريخ الدفع إلا في حالة القوة القاهرة والخارجة عن إرادة الوكيل كالتأخير في الشحن من البلد المورد أو تعطل الباخرة المخصصة للشحن أو إضراب الخ...</span>
+            <span>يتعهد الطرف الأول بتجهيز السيارة إلى الشحن خلال 45 يوم عمل من تاريخ الدفع إلا في حالة القوة القاهرة والخارجة عن إرادة الوكيل كالتأخير في الشحن من البلد المورد أو تعطل الباخرة المخصصة للشحن أو إضراب الخ...</span>
         </div>
         <div class="term-item">
             <span class="term-number">4-</span>
@@ -561,7 +570,7 @@ const generateContract = () => {
         </div>
         <div class="term-item">
             <span class="term-number">5-</span>
-            <span>يتعهد الطرف الأول بأن يقوم بتجهيز الأوراق وإرسالها للطرف الثاني خلال 48 يوم عمل من تاريخ استلام المورد بصين لمستحقاته.</span>
+            <span>يتعهد الطرف الأول بأن يقوم بتجهيز الأوراق وإرسالها للطرف الثاني خلال 48 يوم عمل من تاريخ استلام المورد بصين   لمستحقاته.</span>
         </div>
         <div class="term-item">
             <span class="term-number">6-</span>
@@ -591,9 +600,9 @@ const generateContract = () => {
         <p>هذا العقد محرر ومطبوع في نسختين، نسخة لكل طرف</p>
     </div>
 
-    <div class="no-print" style="text-align: center; margin-top: 30px;">
-        <button onclick="window.print()" style="background: #2563eb; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;">
-            طباعة العقد
+    <div class="no-print" style="text-align: center; margin-top: 30px; padding: 20px;">
+        <button onclick="window.print()" style="background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(37,99,235,0.3);">
+            🖨️ طباعة العقد
         </button>
     </div>
 </body>
@@ -604,6 +613,19 @@ const generateContract = () => {
     if (printWindow) {
         printWindow.document.write(contractHTML);
         printWindow.document.close();
+        
+        // Wait for images to load before allowing print
+        printWindow.onload = function() {
+            const qrImg = printWindow.document.querySelector('.qr-code img');
+            if (qrImg) {
+                qrImg.onload = function() {
+                    console.log('QR Code loaded successfully');
+                };
+                qrImg.onerror = function() {
+                    console.error('Failed to load QR code');
+                };
+            }
+        };
     } else {
         alert("❌ لم يتمكن من فتح نافذة الطباعة. يرجى التحقق من إعدادات المتصفح.");
     }
@@ -628,10 +650,31 @@ const generateContract = () => {
         try { errorData = JSON.parse(errorText); } catch { errorData = { message: errorText }; }
         throw new Error(errorData.detail || errorData.message || `HTTP ${res.status}`);
       }
+      
+      // Update the lastOrderData if we're editing the most recent order
+      const updatedOrder = await res.json();
+      if (lastOrderData && lastOrderData.orderId === orderId) {
+        const client = clients.find(c => c.id === updatedOrder.client_id);
+        const car = cars.find(c => c.id === updatedOrder.car_id);
+        const priceInfo = getCarPriceInfo(car);
+        
+        setLastOrderData({
+          ...lastOrderData,
+          paymentAmount: updatedOrder.payment_amount || 0,
+          client,
+          car
+        });
+      }
+      
       alert("✅ Mise à jour réussie");
       setEditingOrderId(null);
       setEditForm({ payment_amount: "", delivery_status: "" });
       fetchOrders();
+      
+      // Ask if they want to regenerate the contract
+      if (window.confirm("Voulez-vous régénérer le contrat avec les nouvelles informations?")) {
+        generateContract();
+      }
     } catch (err) {
       console.error("Update Order Error:", err);
       if (err.message.includes("Failed to fetch")) {
