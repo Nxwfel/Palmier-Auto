@@ -688,19 +688,45 @@ const generateContract = () => {
   };
 
   const handleDeleteOrder = async (orderId) => {
-    if (!confirm("Supprimer cette commande ?")) return;
+    if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer cette commande ?")) return;
     try {
       setLoading(true);
       const token = localStorage.getItem('authToken');
       const res = await fetch(`${API_BASE_URL}/orders/?order_id=${orderId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
       });
-      if (!res.ok) throw new Error("Suppression échouée");
-      alert("✅ Commande supprimée");
+      
+      if (res.status === 401) {
+        navigate('/commercialslogin');
+        return;
+      }
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorData;
+        try { 
+          errorData = JSON.parse(errorText); 
+        } catch { 
+          errorData = { message: errorText }; 
+        }
+        throw new Error(errorData.detail || errorData.message || `HTTP ${res.status}: Suppression échouée`);
+      }
+      
+      alert("✅ Commande supprimée avec succès !");
+      
+      // Clear the lastOrderData if we're deleting the most recent order
+      if (lastOrderData && lastOrderData.orderId === orderId) {
+        setLastOrderData(null);
+      }
+      
       fetchOrders();
     } catch (err) {
-      alert("❌ Erreur suppression");
+      console.error("Delete Order Error:", err);
+      alert("❌ Erreur lors de la suppression:\n" + err.message);
     } finally {
       setLoading(false);
     }
@@ -1029,6 +1055,7 @@ const generateContract = () => {
                       </select>
                       <div className="flex gap-3">
                         <button onClick={() => handleUpdateOrder(order.order_id)} className="flex-1 bg-blue-600 py-2 rounded-lg">Sauvegarder</button>
+                        <button onClick={() => generateContract()} className="flex-1 bg-blue-600 py-2 rounded-lg">Imprimer</button>
                         <button onClick={() => setEditingOrderId(null)} className="flex-1 bg-neutral-700 py-2 rounded-lg">Annuler</button>
                       </div>
                     </div>
@@ -1037,8 +1064,25 @@ const generateContract = () => {
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="text-xl font-bold">{order.car_model}</h3>
                         <div className="flex gap-2">
-                          <button onClick={() => setEditingOrderId(order.order_id)} className="text-blue-400 hover:text-blue-300">Edit</button>
-                          <button onClick={() => handleDeleteOrder(order.order_id)} className="text-red-400 hover:text-red-300">Delete</button>
+                          <button 
+                            onClick={() => {
+                              setEditingOrderId(order.order_id);
+                              setEditForm({
+                                payment_amount: order.payment_amount?.toString() || "",
+                                delivery_status: order.delivery_status || "shipping"
+                              });
+                            }} 
+                            className="text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteOrder(order.order_id)} 
+                            disabled={loading}
+                            className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Delete
+                          </button>
                         </div>
                       </div>
                       <p className="text-sm text-neutral-400">Client: {order.client_name} {order.client_surname}</p>
