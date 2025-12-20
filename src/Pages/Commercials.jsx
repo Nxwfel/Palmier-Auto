@@ -431,7 +431,7 @@ const generateContract = () => {
 <body>
     <div class="header">
         <div class="qr-code">
-            <img src={QrCode} alt="QR Code">
+            <img src=${QrCode} alt="QR Code">
         </div>
         <div class="company-info">
             تجارة بالتجزئة للسيارات | شركة NB SUD | س ت رقم: ب0200015-18/05
