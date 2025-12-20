@@ -1055,7 +1055,7 @@ const generateContract = () => {
                       </select>
                       <div className="flex gap-3">
                         <button onClick={() => handleUpdateOrder(order.order_id)} className="flex-1 bg-blue-600 py-2 rounded-lg">Sauvegarder</button>
-                        <button onClick={() => generateContract()} className="flex-1 bg-blue-600 py-2 rounded-lg">Imprimer</button>
+                        <button onClick={() => generateContract()} className="flex-1 bg-green-600 py-2 rounded-lg">Imprimer</button>
                         <button onClick={() => setEditingOrderId(null)} className="flex-1 bg-neutral-700 py-2 rounded-lg">Annuler</button>
                       </div>
                     </div>
