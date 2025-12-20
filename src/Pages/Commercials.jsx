@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, File, Car, LetterTextIcon, Printer, Download } from "lucide-react";
-
+import QrCode from "../assets/qr_client.png"; ;
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 const Commercials = () => {
@@ -260,7 +260,7 @@ const Commercials = () => {
     }
   };
 
-    const generateContract = () => {
+const generateContract = () => {
     if (!lastOrderData) return;
     const { client, car, color, price, priceInDZD, paymentAmount, date } = lastOrderData;
     const totalPrice = priceInDZD ? Math.round(priceInDZD) : 0;
@@ -302,6 +302,18 @@ const Commercials = () => {
             border-bottom: 1px solid #000;
             padding-bottom: 10px;
             margin-bottom: 15px;
+            position: relative;
+        }
+        .qr-code {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+        }
+        .qr-code img {
+            width: 100%;
+            height: 100%;
         }
         .company-info {
             font-size: 10pt;
@@ -418,6 +430,9 @@ const Commercials = () => {
 </head>
 <body>
     <div class="header">
+        <div class="qr-code">
+            <img src={QrCode} alt="QR Code">
+        </div>
         <div class="company-info">
             تجارة بالتجزئة للسيارات | شركة NB SUD | س ت رقم: ب0200015-18/05
         </div>
@@ -572,7 +587,7 @@ const Commercials = () => {
     </div>
 
     <div class="footer">
-        <p> palmier Auto - شركة موثوقة لبيع السيارات المستوردة</p>
+        <p>Palmier Auto - شركة موثوقة لبيع السيارات المستوردة</p>
         <p>هذا العقد محرر ومطبوع في نسختين، نسخة لكل طرف</p>
     </div>
 
