@@ -17,31 +17,59 @@ const MarketingAgentLogin = () => {
     setLoading(true);
 
     try {
-      // ✅ Correct API URL — NO trailing spaces
+      console.log("Attempting login with:", { phone_number: phoneNumber });
+      
       const response = await fetch("https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com/users/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          phone_number: phoneNumber, // ← matches OpenAPI "loginUser" schema
+          phone_number: phoneNumber,
           password: password,
         }),
       });
 
+      console.log("Response status:", response.status);
       const data = await response.json();
+      console.log("Response data:", data);
 
       if (response.ok) {
-        // ✅ Save JWT token (FastAPI typically returns { "access_token": "...", "token_type": "bearer" })
-        localStorage.setItem("authToken", data.access_token);
+        // ✅ CRITICAL FIX: Check what token field your backend returns
+        // Common variations: access_token, token, accessToken, jwt
+        const token = data.access_token || data.token || data.jwt || data.accessToken;
+        
+        if (!token) {
+          console.error("No token in response:", data);
+          setError("Erreur: Token manquant dans la réponse");
+          return;
+        }
+
+        console.log("Token received, saving to localStorage");
+        localStorage.setItem("authToken", token);
+        
+        // ✅ Optional: Store additional user info if provided
+        if (data.user_id) {
+          localStorage.setItem("userId", data.user_id);
+        }
+        if (data.user_type) {
+          localStorage.setItem("userType", data.user_type);
+        }
+
+        console.log("Navigating to /marketing");
         navigate("/marketing");
       } else {
-        // ✅ Handle FastAPI-style errors (your spec uses Pydantic validation)
-        setError(data.detail || "Numéro de téléphone ou mot de passe incorrect");
+        // Handle error response
+        const errorMessage = data.detail 
+          ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail))
+          : "Numéro de téléphone ou mot de passe incorrect";
+        
+        console.error("Login failed:", errorMessage);
+        setError(errorMessage);
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError("Erreur réseau. Veuillez vérifier votre connexion.");
-      console.error("Login failed:", err);
     } finally {
       setLoading(false);
     }
@@ -118,6 +146,7 @@ const MarketingAgentLogin = () => {
           <motion.button
             whileTap={{ scale: 0.97 }}
             disabled={loading}
+            type="submit"
             className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 font-semibold text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Connexion..." : "Se connecter"}

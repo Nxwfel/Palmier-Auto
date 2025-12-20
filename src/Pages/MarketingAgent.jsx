@@ -4,38 +4,60 @@ import { Plus, Car, Trash2, Edit, X } from "lucide-react";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
-// ✅ Enhanced apiFetch: preserves redirect intent on 401
+// ✅ FIXED: Better error handling and token management
 const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem("authToken");
-  const headers = {};
   
-  if (token) {
+  // ✅ Debug logging
+  console.log("Making request to:", url);
+  console.log("Token exists:", !!token);
+  
+  const headers = {
+    ...(options.headers || {}),
+  };
+  
+  // ✅ Only add Authorization if token exists and Content-Type isn't multipart/form-data
+  if (token && !url.includes("/users/login")) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...headers,
-      ...(options.headers || {}),
-    },
-  });
-
-  if (response.status === 401) {
-    localStorage.removeItem("authToken");
-    const currentPath = window.location.pathname;
-    const redirectParam = currentPath !== "/marketinglogin" ? `?redirect=${encodeURIComponent(currentPath)}` : "";
-    window.location.href = `/marketinglogin${redirectParam}`;
-    throw new Error("Session expired — please log in again");
+  // ✅ Don't set Content-Type for FormData - browser handles it
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
-  return response;
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    // ✅ Better 401 handling - only redirect if not already on login page
+    if (response.status === 401) {
+      console.error("401 Unauthorized - Token may be invalid or expired");
+      localStorage.removeItem("authToken");
+      
+      // Only redirect if we're not already trying to login
+      if (!url.includes("/users/login") && window.location.pathname !== "/marketinglogin") {
+        const currentPath = window.location.pathname;
+        const redirectParam = `?redirect=${encodeURIComponent(currentPath)}`;
+        window.location.href = `/marketinglogin${redirectParam}`;
+      }
+      throw new Error("Session expired");
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Fetch error:", error);
+    throw error;
+  }
 };
 
 const MarketingAgent = () => {
   const [cars, setCars] = useState([]);
   const [currencies, setCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const currencyMap = useMemo(() => {
     const map = {};
@@ -45,7 +67,6 @@ const MarketingAgent = () => {
     return map;
   }, [currencies]);
 
-  // ✅ Added wholesale_price to initial state
   const [formData, setFormData] = useState({
     currency_id: "",
     model: "",
@@ -54,12 +75,12 @@ const MarketingAgent = () => {
     engine: "",
     power: "",
     fuel_type: "",
-    milage: "", // kept as "milage" to match your backend spelling
+    milage: "",
     country: "",
     commercial_comission: "",
     quantity: "",
     price: "",
-    wholesale_price: "", // ✅ ADDED
+    wholesale_price: "",
     shipping_date: "",
     arriving_date: "",
     images: [],
@@ -75,7 +96,6 @@ const MarketingAgent = () => {
 
   const [selectedCar, setSelectedCar] = useState(null);
   
-  // ✅ Added wholesale_price to edit state
   const [editForm, setEditForm] = useState({
     car_id: "",
     currency_id: "",
@@ -90,7 +110,7 @@ const MarketingAgent = () => {
     commercial_comission: "",
     quantity: "",
     price: "",
-    wholesale_price: "", // ✅ ADDED
+    wholesale_price: "",
     shipping_date: "",
     arriving_date: "",
     images: [],
@@ -103,15 +123,29 @@ const MarketingAgent = () => {
   const isFieldEmpty = (value) => value === "" || value == null;
 
   useEffect(() => {
+    // ✅ Check if user is authenticated before fetching
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      console.error("No auth token found");
+      window.location.href = "/marketinglogin";
+      return;
+    }
+    
     fetchAllData();
   }, []);
 
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      await Promise.all([fetchCars(), fetchCurrencies()]);
+      setError(null);
+      
+      // ✅ Fetch sequentially to better identify which call fails
+      await fetchCurrencies();
+      await fetchCars();
+      
     } catch (error) {
       console.error("Error fetching data:", error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -119,25 +153,40 @@ const MarketingAgent = () => {
 
   const fetchCars = async () => {
     try {
+      console.log("Fetching cars...");
       const response = await apiFetch(`${API_BASE_URL}/cars/all`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch cars: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log("Cars fetched successfully:", data.length);
       setCars(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching cars:", error);
+      throw error;
     }
   };
 
   const fetchCurrencies = async () => {
     try {
+      console.log("Fetching currencies...");
       const response = await apiFetch(`${API_BASE_URL}/currencies/`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch currencies: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log("Currencies fetched successfully:", data.length);
       setCurrencies(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching currencies:", error);
+      throw error;
     }
   };
 
@@ -148,8 +197,6 @@ const MarketingAgent = () => {
   const handleAddCar = async (e) => {
     e.preventDefault();
 
-
-    // ✅ Added wholesale_price to required fields
     const requiredFields = [
       "currency_id",
       "model",
@@ -163,7 +210,7 @@ const MarketingAgent = () => {
       "commercial_comission",
       "quantity",
       "price",
-      "wholesale_price", // ✅ ADDED
+      "wholesale_price",
       "shipping_date",
       "arriving_date",
     ];
@@ -178,24 +225,30 @@ const MarketingAgent = () => {
     try {
       const formDataToSend = new FormData();
 
+      // ✅ According to your OpenAPI spec, the field names should match exactly
       formDataToSend.append("currency_id", parseInt(formData.currency_id));
       formDataToSend.append("model", formData.model);
-      formDataToSend.append("color", formData.color);
+      
+      // ✅ IMPORTANT: API expects "color" as an array
+      formDataToSend.append("color", JSON.stringify([formData.color]));
+      
       formDataToSend.append("year", parseInt(formData.year));
       formDataToSend.append("engine", formData.engine);
       formDataToSend.append("power", formData.power);
       formDataToSend.append("fuel_type", formData.fuel_type);
       formDataToSend.append("milage", parseFloat(formData.milage));
       formDataToSend.append("country", formData.country);
-      formDataToSend.append("commercial_comission", parseFloat(formData.commercial_comission));
       formDataToSend.append("quantity", parseInt(formData.quantity));
       formDataToSend.append("price", parseFloat(formData.price));
-      formDataToSend.append("wholesale_price", parseFloat(formData.wholesale_price)); // ✅ ADDED
+      formDataToSend.append("wholesale_price", parseFloat(formData.wholesale_price));
       formDataToSend.append("shipping_date", formData.shipping_date);
       formDataToSend.append("arriving_date", formData.arriving_date);
+      
+      // Add images if any
       formData.images.forEach(file => {
-      formDataToSend.append("images", file);
-    });
+        formDataToSend.append("images", file);
+      });
+
       const response = await apiFetch(`${API_BASE_URL}/cars/`, {
         method: "POST",
         body: formDataToSend,
@@ -216,9 +269,10 @@ const MarketingAgent = () => {
           commercial_comission: "",
           quantity: "",
           price: "",
-          wholesale_price: "", // ✅ Reset
+          wholesale_price: "",
           shipping_date: "",
           arriving_date: "",
+          images: [],
         });
         fetchCars();
       } else {
@@ -284,7 +338,7 @@ const MarketingAgent = () => {
       commercial_comission: car.commercial_comission || "",
       quantity: car.quantity || "",
       price: car.price || "",
-      wholesale_price: car.wholesale_price || "", // ✅ ADDED
+      wholesale_price: car.wholesale_price || "",
       shipping_date: car.shipping_date || "",
       arriving_date: car.arriving_date || "",
       images: [],
@@ -302,24 +356,27 @@ const MarketingAgent = () => {
       const formDataToSend = new FormData();
       
       formDataToSend.append("car_id", editForm.car_id);
-      formDataToSend.append("currency_id", editForm.currency_id || "");
-      formDataToSend.append("model", editForm.model || "");
-      formDataToSend.append("color", editForm.color || "");
-      formDataToSend.append("year", editForm.year || "");
-      formDataToSend.append("engine", editForm.engine || "");
-      formDataToSend.append("power", editForm.power || "");
-      formDataToSend.append("fuel_type", editForm.fuel_type || "");
-      formDataToSend.append("milage", editForm.milage || "");
-      formDataToSend.append("country", editForm.country || "");
-      formDataToSend.append("commercial_comission", editForm.commercial_comission || "");
-      formDataToSend.append("quantity", editForm.quantity || "");
-      formDataToSend.append("price", editForm.price || "");
-      formDataToSend.append("wholesale_price", editForm.wholesale_price || ""); // ✅ ADDED
-      formDataToSend.append("shipping_date", editForm.shipping_date || "");
-      formDataToSend.append("arriving_date", editForm.arriving_date || "");
+      
+      // ✅ Only append fields that have values
+      if (editForm.currency_id) formDataToSend.append("currency_id", editForm.currency_id);
+      if (editForm.model) formDataToSend.append("model", editForm.model);
+      if (editForm.color) formDataToSend.append("color", JSON.stringify([editForm.color]));
+      if (editForm.year) formDataToSend.append("year", editForm.year);
+      if (editForm.engine) formDataToSend.append("engine", editForm.engine);
+      if (editForm.power) formDataToSend.append("power", editForm.power);
+      if (editForm.fuel_type) formDataToSend.append("fuel_type", editForm.fuel_type);
+      if (editForm.milage) formDataToSend.append("milage", editForm.milage);
+      if (editForm.country) formDataToSend.append("country", editForm.country);
+      if (editForm.quantity) formDataToSend.append("quantity", editForm.quantity);
+      if (editForm.price) formDataToSend.append("price", editForm.price);
+      if (editForm.wholesale_price) formDataToSend.append("wholesale_price", editForm.wholesale_price);
+      if (editForm.shipping_date) formDataToSend.append("shipping_date", editForm.shipping_date);
+      if (editForm.arriving_date) formDataToSend.append("arriving_date", editForm.arriving_date);
+      
       editForm.images.forEach(file => {
-  formDataToSend.append("images", file);
-});
+        formDataToSend.append("images", file);
+      });
+
       const response = await apiFetch(`${API_BASE_URL}/cars/`, {
         method: "PUT",
         body: formDataToSend,
@@ -354,6 +411,11 @@ const MarketingAgent = () => {
     setSelectedCar(null);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    window.location.href = "/marketinglogin";
+  };
+
   const toggleMenu = () => setMenuOpen(!menuOpen);
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -363,7 +425,10 @@ const MarketingAgent = () => {
   if (loading) {
     return (
       <div className="min-h-screen w-screen bg-neutral-950 text-white flex items-center justify-center">
-        <div className="text-2xl">Chargement...</div>
+        <div className="text-center">
+          <div className="text-2xl mb-4">Chargement...</div>
+          {error && <div className="text-red-400 text-sm">{error}</div>}
+        </div>
       </div>
     );
   }
@@ -418,6 +483,7 @@ const MarketingAgent = () => {
         <motion.div
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 1 }}
+          onClick={handleLogout}
           className="w-[90%] p-[2vh] text-[2vh] cursor-pointer bg-red-600 rounded-lg text-center flex justify-start items-center gap-[0.2vw]"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-[3vh]">
@@ -457,7 +523,6 @@ const MarketingAgent = () => {
             animate={{ opacity: 1 }}
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Currency */}
               <select
                 name="currency_id"
                 value={formData.currency_id}
@@ -569,7 +634,6 @@ const MarketingAgent = () => {
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                 required
               />
-              {/* ✅ ADDED wholesale_price */}
               <input
                 name="wholesale_price"
                 value={formData.wholesale_price}
@@ -596,56 +660,54 @@ const MarketingAgent = () => {
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                 required
               />
-              {/* ✅ Photo Upload */}
-<div className="md:col-span-3">
-  <label className="block text-sm text-emerald-400 mb-2">Photos (facultatif)</label>
-  <input
-    type="file"
-    accept="image/*"
-    multiple
-    onChange={(e) => {
-      const files = Array.from(e.target.files);
-      setFormData(prev => ({ ...prev, images: files }));
-    }}
-    className="w-full bg-neutral-800 text-sm p-2 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
-  />
-  {/* Preview */}
-  {formData.images.length > 0 && (
-    <div className="mt-3">
-      <p className="text-xs text-neutral-400 mb-2">
-        {formData.images.length} image{formData.images.length > 1 ? 's' : ''} sélectionnée{formData.images.length > 1 ? 's' : ''}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {formData.images.slice(0, 4).map((file, i) => (
-          <div key={i} className="relative w-16 h-16">
-            <img
-              src={URL.createObjectURL(file)}
-              alt={`preview ${i}`}
-              className="w-full h-full object-cover rounded border border-neutral-700"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setFormData(prev => ({
-                  ...prev,
-                  images: prev.images.filter((_, idx) => idx !== i)
-                }));
-              }}
-              className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        {formData.images.length > 4 && (
-          <div className="w-16 h-16 bg-neutral-800 rounded flex items-center justify-center text-xs">
-            +{formData.images.length - 4}
-          </div>
-        )}
-      </div>
-    </div>
-  )}
-</div>
+              <div className="md:col-span-3">
+                <label className="block text-sm text-emerald-400 mb-2">Photos (facultatif)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    setFormData(prev => ({ ...prev, images: files }));
+                  }}
+                  className="w-full bg-neutral-800 text-sm p-2 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
+                />
+                {formData.images.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs text-neutral-400 mb-2">
+                      {formData.images.length} image{formData.images.length > 1 ? 's' : ''} sélectionnée{formData.images.length > 1 ? 's' : ''}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.images.slice(0, 4).map((file, i) => (
+                        <div key={i} className="relative w-16 h-16">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`preview ${i}`}
+                            className="w-full h-full object-cover rounded border border-neutral-700"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                images: prev.images.filter((_, idx) => idx !== i)
+                              }));
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      {formData.images.length > 4 && (
+                        <div className="w-16 h-16 bg-neutral-800 rounded flex items-center justify-center text-xs">
+                          +{formData.images.length - 4}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <button
@@ -656,7 +718,6 @@ const MarketingAgent = () => {
             </button>
           </motion.form>
 
-          {/* Car List */}
           <motion.div
             className="bg-neutral-900 rounded-2xl p-6 border border-neutral-800 shadow-lg"
             initial={{ opacity: 0 }}
@@ -677,7 +738,7 @@ const MarketingAgent = () => {
                       <th className="p-2">Année</th>
                       <th className="p-2">Pays</th>
                       <th className="p-2">Prix</th>
-                      <th className="p-2">Prix gros</th> {/* ✅ Added */}
+                      <th className="p-2">Prix gros</th>
                       <th className="p-2">Devise</th>
                       <th className="p-2">Kilométrage</th>
                       <th className="p-2">Quantité</th>
@@ -692,7 +753,7 @@ const MarketingAgent = () => {
                         <td className="p-2">{car.year}</td>
                         <td className="p-2">{car.country}</td>
                         <td className="p-2">{car.price}</td>
-                        <td className="p-2">{car.wholesale_price}</td> {/* ✅ Display */}
+                        <td className="p-2">{car.wholesale_price}</td>
                         <td className="p-2">{currencyMap[car.currency_id]?.name || "Unknown"}</td>
                         <td className="p-2">{car.milage}</td>
                         <td className="p-2">{car.quantity}</td>
@@ -932,7 +993,6 @@ const MarketingAgent = () => {
                         step="0.01"
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
-                      {/* ✅ ADDED wholesale_price in edit form */}
                       <input
                         name="wholesale_price"
                         value={editForm.wholesale_price}
@@ -957,56 +1017,55 @@ const MarketingAgent = () => {
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                       
-{/* ✅ Photo Upload */}
-<div className="md:col-span-3">
-  <label className="block text-sm text-emerald-400 mb-2">Ajouter/Remplacer photos (facultatif)</label>
-  <input
-    type="file"
-    accept="image/*"
-    multiple
-    onChange={(e) => {
-      const files = Array.from(e.target.files);
-      setEditForm(prev => ({ ...prev, images: files }));
-    }}
-    className="w-full bg-neutral-800 text-sm p-2 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
-  />
-  
-  {editForm.images.length > 0 && (
-    <div className="mt-3">
-      <p className="text-xs text-neutral-400 mb-2">
-        {editForm.images.length} nouvelle{editForm.images.length > 1 ? 's' : ''} image{editForm.images.length > 1 ? 's' : ''}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {editForm.images.slice(0, 4).map((file, i) => (
-          <div key={i} className="relative w-16 h-16">
-            <img
-              src={URL.createObjectURL(file)}
-              alt={`preview ${i}`}
-              className="w-full h-full object-cover rounded border border-neutral-700"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setEditForm(prev => ({
-                  ...prev,
-                  images: prev.images.filter((_, idx) => idx !== i)
-                }));
-              }}
-              className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        {editForm.images.length > 4 && (
-          <div className="w-16 h-16 bg-neutral-800 rounded flex items-center justify-center text-xs">
-            +{editForm.images.length - 4}
-          </div>
-        )}
-      </div>
-    </div>
-  )}
-</div>
+                      <div className="md:col-span-3">
+                        <label className="block text-sm text-emerald-400 mb-2">Ajouter/Remplacer photos (facultatif)</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files);
+                            setEditForm(prev => ({ ...prev, images: files }));
+                          }}
+                          className="w-full bg-neutral-800 text-sm p-2 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
+                        />
+                        
+                        {editForm.images.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs text-neutral-400 mb-2">
+                              {editForm.images.length} nouvelle{editForm.images.length > 1 ? 's' : ''} image{editForm.images.length > 1 ? 's' : ''}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {editForm.images.slice(0, 4).map((file, i) => (
+                                <div key={i} className="relative w-16 h-16">
+                                  <img
+                                    src={URL.createObjectURL(file)}
+                                    alt={`preview ${i}`}
+                                    className="w-full h-full object-cover rounded border border-neutral-700"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditForm(prev => ({
+                                        ...prev,
+                                        images: prev.images.filter((_, idx) => idx !== i)
+                                      }));
+                                    }}
+                                    className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                              {editForm.images.length > 4 && (
+                                <div className="w-16 h-16 bg-neutral-800 rounded flex items-center justify-center text-xs">
+                                  +{editForm.images.length - 4}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex justify-end gap-3 mt-6">
@@ -1045,7 +1104,7 @@ const MarketingAgent = () => {
                       <th className="p-2">Année</th>
                       <th className="p-2">Pays</th>
                       <th className="p-2">Prix</th>
-                      <th className="p-2">Prix gros</th> {/* ✅ Added */}
+                      <th className="p-2">Prix gros</th>
                       <th className="p-2">Devise</th>
                       <th className="p-2">Kilométrage</th>
                       <th className="p-2">Quantité</th>
@@ -1060,7 +1119,7 @@ const MarketingAgent = () => {
                         <td className="p-2">{car.year}</td>
                         <td className="p-2">{car.country}</td>
                         <td className="p-2">{car.price}</td>
-                        <td className="p-2">{car.wholesale_price}</td> {/* ✅ Display */}
+                        <td className="p-2">{car.wholesale_price}</td>
                         <td className="p-2">{currencyMap[car.currency_id]?.name || "Unknown"}</td>
                         <td className="p-2">{car.milage}</td>
                         <td className="p-2">{car.quantity}</td>
