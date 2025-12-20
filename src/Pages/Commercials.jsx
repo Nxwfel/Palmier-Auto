@@ -687,6 +687,41 @@ const generateContract = () => {
     }
   };
 
+  const handlePrintContract = async (order) => {
+    try {
+      // Find the client and car details for this order
+      const client = clients.find(c => c.id === order.client_id);
+      const car = cars.find(c => c.id === order.car_id);
+      
+      if (!client || !car) {
+        alert("❌ Impossible de générer le contrat. Données manquantes.");
+        return;
+      }
+      
+      const priceInfo = getCarPriceInfo(car);
+      
+      // Update lastOrderData with the current order's information
+      setLastOrderData({
+        client,
+        car,
+        color: order.car_color,
+        price: car.price ? `${car.price} ${priceInfo.currencyCode}` : "N/A",
+        priceInDZD: priceInfo.priceInDZD,
+        paymentAmount: order.payment_amount || 0,
+        orderId: order.order_id,
+        date: order.created_at ? new Date(order.created_at).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ')
+      });
+      
+      // Wait a moment for state to update, then generate contract
+      setTimeout(() => {
+        generateContract();
+      }, 100);
+      
+    } catch (err) {
+      console.error("Print Contract Error:", err);
+      alert("❌ Erreur lors de la génération du contrat");
+    }
+  };
   const handleDeleteOrder = async (orderId) => {
     if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer cette commande ?")) return;
     try {
@@ -699,12 +734,12 @@ const generateContract = () => {
           "Content-Type": "application/json"
         },
       });
-      
+
       if (res.status === 401) {
         navigate('/commercialslogin');
         return;
       }
-      
+
       if (!res.ok) {
         const errorText = await res.text();
         let errorData;
@@ -715,14 +750,14 @@ const generateContract = () => {
         }
         throw new Error(errorData.detail || errorData.message || `HTTP ${res.status}: Suppression échouée`);
       }
-      
+
       alert("✅ Commande supprimée avec succès !");
-      
+
       // Clear the lastOrderData if we're deleting the most recent order
       if (lastOrderData && lastOrderData.orderId === orderId) {
         setLastOrderData(null);
       }
-      
+
       fetchOrders();
     } catch (err) {
       console.error("Delete Order Error:", err);
@@ -1054,9 +1089,27 @@ const generateContract = () => {
                         <option value="showroom">Showroom</option>
                       </select>
                       <div className="flex gap-3">
-                        <button onClick={() => handleUpdateOrder(order.order_id)} className="flex-1 bg-blue-600 py-2 rounded-lg">Sauvegarder</button>
-                        <button onClick={() => generateContract()} className="flex-1 bg-green-600 py-2 rounded-lg">Imprimer</button>
-                        <button onClick={() => setEditingOrderId(null)} className="flex-1 bg-neutral-700 py-2 rounded-lg">Annuler</button>
+                        <button 
+                          onClick={() => handleUpdateOrder(order.order_id)} 
+                          disabled={loading}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg disabled:opacity-50 transition-colors"
+                        >
+                          Sauvegarder
+                        </button>
+                        <button 
+                          onClick={() => handlePrintContract(order)} 
+                          disabled={loading}
+                          className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Printer size={16} />
+                          Imprimer
+                        </button>
+                        <button 
+                          onClick={() => setEditingOrderId(null)} 
+                          className="flex-1 bg-neutral-700 hover:bg-neutral-600 py-2 rounded-lg transition-colors"
+                        >
+                          Annuler
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -1090,6 +1143,14 @@ const generateContract = () => {
                       <p className="text-sm mt-3">Statut: <span className="text-white font-medium">{getStatusText(order.delivery_status)}</span></p>
                       <p className="text-sm">Prix: <span className="text-green-400 font-medium">{order.price_dzd?.toLocaleString() || 0} DZD</span></p>
                       <p className="text-sm">Payé: <span className="text-blue-400 font-medium">{order.payment_amount?.toLocaleString() || 0} DZD</span></p>
+                      <button 
+                        onClick={() => handlePrintContract(order)}
+                        disabled={loading}
+                        className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Printer size={18} />
+                        Imprimer Contrat
+                      </button>
                     </>
                   )}
                 </div>
