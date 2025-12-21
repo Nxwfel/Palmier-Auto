@@ -1,5 +1,6 @@
 // src/Pages/Commercials.jsx
 import React, { useState, useEffect, useMemo } from "react";
+import { parseColors } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, File, Car, LetterTextIcon, Printer, Download } from "lucide-react";
 import QrCode from "../assets/qr_client.png";
@@ -19,7 +20,8 @@ const Commercials = () => {
     password: "", 
     wilaya: "", 
     address: "",
-    nin: ""
+    nin: "",
+    passport_number: "" // ADDED: New required field
   });
 
   const [newOrder, setNewOrder] = useState({
@@ -112,7 +114,7 @@ const Commercials = () => {
       const res = await fetch(`${API_BASE_URL}/cars/all`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({})
+        body: JSON.stringify({}) // Already correct - POST with empty body
       });
       if (res.status === 401) return navigate('/commercialslogin');
       if (!res.ok) throw new Error("Failed to fetch cars");
@@ -138,16 +140,25 @@ const Commercials = () => {
   };
 
   const handleAddClient = async () => {
-    const { name, surname, phone, password, wilaya, address, nin } = newClient;
-    if (!name || !surname || !phone || !password || !wilaya || !address || !nin) {
-      alert("Veuillez remplir tous les champs (y compris le NIN) !");
+    // UPDATED: Added passport_number validation
+    const { name, surname, phone, password, wilaya, address, nin, passport_number } = newClient;
+    if (!name || !surname || !phone || !password || !wilaya || !address || !nin || !passport_number) {
+      alert("Veuillez remplir tous les champs (y compris le NIN et le numéro de passeport) !");
       return;
     }
     const parsedNIN = parseInt(nin, 10);
+    const parsedPassport = parseInt(passport_number, 10);
+    
     if (isNaN(parsedNIN) || parsedNIN <= 0) {
       alert("Le NIN doit être un nombre entier positif !");
       return;
     }
+    
+    if (isNaN(parsedPassport) || parsedPassport <= 0) {
+      alert("Le numéro de passeport doit être un nombre entier positif !");
+      return;
+    }
+    
     try {
       setLoading(true);
       const token = localStorage.getItem('authToken');
@@ -158,6 +169,7 @@ const Commercials = () => {
           name,
           surname,
           nin: parsedNIN,
+          passport_number: parsedPassport, // ADDED: New required field
           phone_number: phone,
           password,
           wilaya,
@@ -177,7 +189,7 @@ const Commercials = () => {
         throw new Error(errMessage);
       }
       alert("✅ Client ajouté avec succès !");
-      setNewClient({ name: "", surname: "", phone: "", password: "", wilaya: "", address: "", nin: "" });
+      setNewClient({ name: "", surname: "", phone: "", password: "", wilaya: "", address: "", nin: "", passport_number: "" });
       fetchClients();
     } catch (err) {
       console.error("Add Client Error:", err);
@@ -492,6 +504,10 @@ const generateContract = () => {
             <div class="info-value">${client.nin}</div>
         </div>
         <div class="info-row">
+            <div class="info-label">رقم جواز السفر:</div>
+            <div class="info-value">${client.passport_number || 'غير محدد'}</div>
+        </div>
+        <div class="info-row">
             <div class="info-label">رقم الهاتف:</div>
             <div class="info-value">${client.phone_number}</div>
         </div>
@@ -794,14 +810,14 @@ const generateContract = () => {
   const getAvailableColors = (carId) => {
     if (!carId) return [];
     const car = cars.find(c => c.id === carId);
-    if (car) return [car.color];
+    if (car) return parseColors(car.color);
 
     const model = cars.find(c => c.id === carId)?.model;
     if (model) {
-      const colors = [...new Set(
-        cars.filter(c => c.model === model && c.quantity > 0).map(c => c.color)
-      )];
-      return colors;
+      const colors = cars
+        .filter(c => c.model === model && c.quantity > 0)
+        .flatMap(c => parseColors(c.color));
+      return Array.from(new Set(colors));
     }
     return [];
   };
@@ -815,7 +831,8 @@ const generateContract = () => {
         groups.push(g);
       }
       g.quantity++;
-      if (!g.colors.includes(car.color)) g.colors.push(car.color);
+      const parsed = parseColors(car.color);
+      parsed.forEach(col => { if (!g.colors.includes(col)) g.colors.push(col); });
     });
     return groups;
   }, [cars]);
@@ -947,6 +964,16 @@ const generateContract = () => {
                   required
                   min="1"
                 />
+                {/* ADDED: Passport number field */}
+                <input
+                  type="number"
+                  placeholder="Numéro de Passeport"
+                  value={newClient.passport_number}
+                  onChange={e => setNewClient({ ...newClient, passport_number: e.target.value })}
+                  className="bg-neutral-800 p-4 rounded-lg outline-none"
+                  required
+                  min="1"
+                />
               </div>
               <button type="submit" disabled={loading} className="mt-8 w-full bg-emerald-600 py-4 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 transition">
                 {loading ? "Ajout en cours..." : "Ajouter Client"}
@@ -963,6 +990,7 @@ const generateContract = () => {
                     <div key={c.id} className="bg-neutral-800 p-4 rounded-lg">
                       <p className="font-medium text-lg">{c.name} {c.surname} <span className="text-emerald-400 text-sm">#{c.id}</span></p>
                       <p className="text-sm text-neutral-400">NIN: {c.nin}</p>
+                      <p className="text-sm text-neutral-400">Passeport: {c.passport_number || 'N/A'}</p>
                       <p className="text-sm text-neutral-400">{c.phone_number} • {c.wilaya}</p>
                     </div>
                   ))

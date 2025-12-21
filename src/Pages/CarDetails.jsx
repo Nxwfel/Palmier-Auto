@@ -73,9 +73,24 @@ const CarDetails = () => {
           };
         });
 
-        // 4. Build color options
-        const rawColors = Array.isArray(car.color) ? car.color : [car.color || "N/A"];
-        const colorOptions = rawColors.map((name) => ({
+        // 4. Build color options — normalize string/JSON/array values
+        const parseColors = (val) => {
+          if (!val) return ["N/A"];
+          if (Array.isArray(val)) return val.filter(Boolean);
+          if (typeof val === "string") {
+            try {
+              const parsed = JSON.parse(val);
+              if (Array.isArray(parsed)) return parsed.filter(Boolean);
+              if (typeof parsed === "string") val = parsed;
+            } catch {}
+            const cleaned = val.replace(/^\[|\]$/g, "").replace(/['"]/g, "");
+            return cleaned.split(",").map((s) => s.trim()).filter(Boolean);
+          }
+          return [String(val)];
+        };
+
+        const rawColors = parseColors(car.color);
+        const colorOptions = Array.from(new Set(rawColors)).map((name) => ({
           name: name || "N/A",
           hex: getColorHexByName(name),
         }));

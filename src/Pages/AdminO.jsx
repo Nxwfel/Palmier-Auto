@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { parseColors } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
@@ -60,14 +61,14 @@ const CommercialCarsModal = ({
       car_id: car.id,
       currency_id: car.currency_id || "",
       model: car.model || "",
-      color: car.color || "",
+      description: car.description || "",
+      color: Array.isArray(car.color) ? car.color.join(", ") : (car.color || ""),
       year: car.year || "",
       engine: car.engine || "",
       power: car.power || "",
       fuel_type: car.fuel_type || "",
       milage: car.milage || "",
       country: car.country || "",
-      commercial_comission: car.commercial_comission || "",
       quantity: car.quantity || "",
       price: car.price || "",
       wholesale_price: car.wholesale_price || "",
@@ -89,14 +90,20 @@ const CommercialCarsModal = ({
       formDataToSend.append("car_id", editCarForm.car_id);
       formDataToSend.append("currency_id", editCarForm.currency_id || "");
       formDataToSend.append("model", editCarForm.model || "");
-      formDataToSend.append("color", editCarForm.color || "");
+      formDataToSend.append("description", editCarForm.description || "");
+      
+      // ✅ FIX: Handle colors as array
+      const colorsArray = editCarForm.color.split(',').map(c => c.trim()).filter(c => c);
+      colorsArray.forEach(color => {
+        formDataToSend.append("color", color);
+      });
+      
       formDataToSend.append("year", editCarForm.year || "");
       formDataToSend.append("engine", editCarForm.engine || "");
       formDataToSend.append("power", editCarForm.power || "");
       formDataToSend.append("fuel_type", editCarForm.fuel_type || "");
       formDataToSend.append("milage", editCarForm.milage || "");
       formDataToSend.append("country", editCarForm.country || "");
-      formDataToSend.append("commercial_comission", editCarForm.commercial_comission || "");
       formDataToSend.append("quantity", editCarForm.quantity || "");
       formDataToSend.append("price", editCarForm.price || "");
       formDataToSend.append("wholesale_price", editCarForm.wholesale_price || "");
@@ -184,7 +191,8 @@ const CommercialCarsModal = ({
                               ))}
                             </select>
                             <input name="model" value={editCarForm.model} onChange={handleEditCarChange} placeholder="Model" className="bg-neutral-700 p-2 rounded text-sm" />
-                            <input name="color" value={editCarForm.color} onChange={handleEditCarChange} placeholder="Color" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="description" value={editCarForm.description} onChange={handleEditCarChange} placeholder="Description" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="color" value={editCarForm.color} onChange={handleEditCarChange} placeholder="Colors (comma-separated)" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="year" type="number" value={editCarForm.year} onChange={handleEditCarChange} placeholder="Year" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="engine" value={editCarForm.engine} onChange={handleEditCarChange} placeholder="Engine" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="power" value={editCarForm.power} onChange={handleEditCarChange} placeholder="Power" className="bg-neutral-700 p-2 rounded text-sm" />
@@ -192,7 +200,6 @@ const CommercialCarsModal = ({
                             <input name="milage" type="number" step="0.01" value={editCarForm.milage} onChange={handleEditCarChange} placeholder="Mileage" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="quantity" type="number" value={editCarForm.quantity} onChange={handleEditCarChange} placeholder="Quantity" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="country" value={editCarForm.country} onChange={handleEditCarChange} placeholder="Country" className="bg-neutral-700 p-2 rounded text-sm" />
-                            <input name="commercial_comission" type="number" step="0.01" value={editCarForm.commercial_comission} onChange={handleEditCarChange} placeholder="Commission" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="price" type="number" step="0.01" value={editCarForm.price} onChange={handleEditCarChange} placeholder="Price" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="wholesale_price" type="number" step="0.01" value={editCarForm.wholesale_price} onChange={handleEditCarChange} placeholder="Wholesale Price" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="shipping_date" type="date" value={editCarForm.shipping_date} onChange={handleEditCarChange} className="bg-neutral-700 p-2 rounded text-sm" />
@@ -230,6 +237,7 @@ const CommercialCarsModal = ({
                     const itemsForCar = supplierItems.filter(item => item.car_id === car.id);
                     const carCurrency = currencyList.find(c => c.id === car.currency_id);
                     const salePriceDZD = (car.price || 0) * (carCurrency?.exchange_rate_to_dzd || 1);
+                    const displayColor = Array.isArray(car.color) ? car.color.join(', ') : car.color;
 
                     return (
                       <div key={car.id} className="bg-neutral-800/30 rounded-xl p-4 border border-neutral-700">
@@ -246,8 +254,8 @@ const CommercialCarsModal = ({
                                 <span>{car.year || 'N/A'}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-neutral-400">Color:</span>
-                                <span>{car.color || 'N/A'}</span>
+                                <span className="text-neutral-400">Colors:</span>
+                                <span>{displayColor || 'N/A'}</span>
                               </div>
                             </div>
                           </div>
@@ -392,10 +400,10 @@ export default function AdminSuperPanel() {
   const API_BASE = 'https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com';
   const [showEditOrder, setShowEditOrder] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
-  const [passwordModalType, setPasswordModalType] = useState(null); // "commercial", "marketer", "accountant"
+  const [passwordModalType, setPasswordModalType] = useState(null);
   const [userPhoneForPassword, setUserPhoneForPassword] = useState("");
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [editingSupplierItem, setEditingSupplierItem] = useState({}); // ✅ New state for editable supplier items
+  const [editingSupplierItem, setEditingSupplierItem] = useState({});
   const [generatedPassword, setGeneratedPassword] = useState("");
   const navigate = useNavigate();
   const [tab, setTab] = useState("overview");
@@ -426,11 +434,27 @@ export default function AdminSuperPanel() {
   });
   const [showAddCar, setShowAddCar] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
+  
+  // ✅ FIX: Updated initial car form with description and colors as string
   const initialCarForm = {
-    model: "", color: "", year: "", engine: "", power: "", fuelType: "", milage: "",
-    country: "", commercial_comission: "", price: "", wholesale_price: "", shippingDate: "", arrivingDate: "",
-    currency_id: "", quantity: "", imageFiles: [],
+    model: "", 
+    description: "",
+    color: "", // Will be split into array on submit
+    year: "", 
+    engine: "", 
+    power: "", 
+    fuelType: "", 
+    milage: "",
+    country: "", 
+    price: "", 
+    wholesale_price: "", 
+    shippingDate: "", 
+    arrivingDate: "",
+    currency_id: "", 
+    quantity: "", 
+    imageFiles: [],
   };
+  
   const [carForm, setCarForm] = useState(initialCarForm);
   const [CommercialForm, setCommercialForm] = useState({
     name: "", surname: "", phone_number: "", wilayas: [], address: ""
@@ -439,7 +463,6 @@ export default function AdminSuperPanel() {
   const [message, setMessage] = useState("");
   const [commercialLoading, setCommercialLoading] = useState(false);
   
-  // ✅ Marketer & Accountant States
   const [marketerForm, setMarketerForm] = useState({
     name: "", surname: "", phone_number: "", address: ""
   });
@@ -468,378 +491,432 @@ export default function AdminSuperPanel() {
   const [showAddWholesaleOrder, setShowAddWholesaleOrder] = useState(false);
   const [showEditWholesaleOrder, setShowEditWholesaleOrder] = useState(false);
   const [showAddOrder , setShowAddOrder] = useState (false);
+  
+  // ✅ FIX: Updated client form with nin and passport_number
   const [clientForm, setClientForm] = useState({
-  id: null,
-  name: "", surname: "", nin: "", phone_number: "", password: "", wilaya: "", address: ""
-});
-const [showEditClient, setShowEditClient] = useState(false);
+    id: null,
+    name: "", 
+    surname: "", 
+    nin: "", 
+    passport_number: "",
+    phone_number: "", 
+    password: "", 
+    wilaya: "", 
+    address: ""
+  });
+  
+  const [showEditClient, setShowEditClient] = useState(false);
+  
   const pushLog = (actor, action) => {
     setLogs((p) => [{ id: Date.now(), actor, action, date: new Date().toISOString() }, ...p]);
   };
+  
   const [orderForm, setOrderForm] = useState({
-  id: null,
-  client_id: "",
-  car_id: "",
-  car_color: "",
-  delivery_status: "shipping",
-  payment_amount: 0,
-  status: true,
-});
+    id: null,
+    client_id: "",
+    car_id: "",
+    car_color: "",
+    delivery_status: "shipping",
+    payment_amount: 0,
+    status: true,
+  });
 
-// Add new state for supplier item form
-const [supplierItemForm, setSupplierItemForm] = useState({
-  car_id: "",
-  supplier_id: "",
-  currency_id: "",
-  price: 0
-});
+  const [supplierItemForm, setSupplierItemForm] = useState({
+    car_id: "",
+    supplier_id: "",
+    currency_id: "",
+    price: 0
+  });
+  
   const getSupplierName = (supplierId) => {
     const supplier = fournisseurs.find(s => s.id === supplierId);
     return supplier ? `${supplier.name} ${supplier.surname}` : 'Unknown';
   };
 
-// Add new handler for adding supplier items
-const handleAddSupplierItem = async (e) => {
-  e.preventDefault();
-  const { car_id, supplier_id, currency_id, price } = supplierItemForm;
+  const handleAddSupplierItem = async (e) => {
+    e.preventDefault();
+    const { car_id, supplier_id, currency_id, price } = supplierItemForm;
 
-  if (!car_id || !supplier_id || !currency_id || price === null || price === undefined) {
-    alert("⚠️ All fields are required for adding a supplier item");
-    return;
-  }
-
-  console.log("📦 Adding supplier item:", { car_id, supplier_id, currency_id, price });
-
-  try {
-    const response = await apiFetch(`${API_BASE}/suppliers_items/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        car_id: Number(car_id),
-        supplier_id: Number(supplier_id),
-        currency_id: Number(currency_id),
-        price: Number(price)
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("❌ API Error:", errorData);
-      throw new Error(errorData.detail || "Failed to add supplier item");
+    if (!car_id || !supplier_id || !currency_id || price === null || price === undefined) {
+      alert("⚠️ All fields are required for adding a supplier item");
+      return;
     }
 
-    setShowAddSupplierItem(false); // Close the modal
-    setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 }); // Reset form
-    pushLog("Admin", `Added new supplier item for car #${car_id} from supplier #${supplier_id}`);
-    alert("✅ Supplier item added successfully!");
-  } catch (err) {
-    console.error("Add supplier item error:", err);
-    alert(`❌ Error: ${err.message}`);
-  }
-};
-const [transactions, setTransactions] = useState([]);
-const [loadingTransactions, setLoadingTransactions] = useState(false);
-const [transactionFilter, setTransactionFilter] = useState('all');
-const [transactionStats, setTransactionStats] = useState({
-  totalRevenue: 0,
-  totalExpenses: 0,
-  netBalance: 0
-});
+    console.log("📦 Adding supplier item:", { car_id, supplier_id, currency_id, price });
 
-// Fetch Transactions
-useEffect(() => {
-  const fetchTransactions = async () => {
-    setLoadingTransactions(true);
     try {
-      // Transform and enrich transaction data
-      const enrichedTransactions = [];
-      
-      // Add client orders as transactions
-      orders.forEach(order => {
-        const client = clients.find(c => c.id === order.client_id);
-        const car = cars.find(c => c.id === order.car_id);
-        const currency = currencyList.find(c => c.id === car?.currency_id);
-        const rate = currency?.exchange_rate_to_dzd || 1;
-        const amount = (car?.price || 0) * rate;
-        
-        enrichedTransactions.push({
-          id: `ORD-${order.order_id || order.id}`,
-          type: 'order',
-          description: `${car?.model || 'Car'} - ${car?.color}`,
-          party_name: client ? `${client.name} ${client.surname}` : 'Unknown Client',
-          amount: order.payment_amount || amount,
-          status: order.payment_amount >= amount ? 'paid' : order.payment_amount > 0 ? 'partial' : 'unpaid',
-          date: order.created_at || new Date().toISOString()
-        });
+      const response = await apiFetch(`${API_BASE}/suppliers_items/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          car_id: Number(car_id),
+          supplier_id: Number(supplier_id),
+          currency_id: Number(currency_id),
+          price: Number(price)
+        })
       });
-      
-      // Add wholesale orders as transactions
-      wholesaleOrders.forEach(order => {
-        const client = wholesaleClients.find(c => c.id === order.client_id);
-        const car = cars.find(c => c.id === order.car_id);
-        const currency = currencyList.find(c => c.id === car?.currency_id);
-        const rate = currency?.exchange_rate_to_dzd || 1;
-        const amount = (car?.wholesale_price || car?.price || 0) * order.quantity * rate;
-        
-        enrichedTransactions.push({
-          id: `WHO-${order.order_id || order.id}`,
-          type: 'wholesale',
-          description: `${car?.model || 'Car'} x${order.quantity}`,
-          party_name: client ? `${client.company_name || client.name}` : 'Unknown Client',
-          amount: order.payment_amount || amount,
-          status: order.payment_amount >= amount ? 'paid' : order.payment_amount > 0 ? 'partial' : 'unpaid',
-          date: order.created_at || new Date().toISOString()
-        });
-      });
-      
-      // Add supplier payments as transactions
-      supplierItems.forEach(item => {
-        const supplier = fournisseurs.find(s => s.id === item.supplier_id);
-        const car = cars.find(c => c.id === item.car_id);
-        const currency = currencyList.find(c => c.id === item.currency_id);
-        const rate = currency?.exchange_rate_to_dzd || 1;
-        const totalCost = (item.price || 0) * rate;
-        
-        enrichedTransactions.push({
-          id: `SUP-${item.supplier_item_id}`,
-          type: 'supplier',
-          description: `${car?.model || 'Car'} - Achat`,
-          party_name: supplier ? `${supplier.name} ${supplier.surname}` : 'Unknown Supplier',
-          amount: item.payment_amount || 0,
-          status: item.payment_amount >= totalCost ? 'paid' : item.payment_amount > 0 ? 'partial' : 'unpaid',
-          date: item.created_at || new Date().toISOString()
-        });
-      });
-      
-      // Sort by date (newest first)
-      enrichedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-      
-      setTransactions(enrichedTransactions);
-      
-      // Calculate stats
-      const revenue = enrichedTransactions
-        .filter(t => t.type === 'order' || t.type === 'wholesale')
-        .reduce((sum, t) => sum + t.amount, 0);
-      
-      const expenses = enrichedTransactions
-        .filter(t => t.type === 'supplier')
-        .reduce((sum, t) => sum + t.amount, 0);
-      
-      setTransactionStats({
-        totalRevenue: revenue,
-        totalExpenses: expenses,
-        netBalance: revenue - expenses
-      });
-      
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ API Error:", errorData);
+        throw new Error(errorData.detail || "Failed to add supplier item");
+      }
+
+      setShowAddSupplierItem(false);
+      setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 });
+      pushLog("Admin", `Added new supplier item for car #${car_id} from supplier #${supplier_id}`);
+      alert("✅ Supplier item added successfully!");
     } catch (err) {
-      console.error("Error fetching transactions:", err);
-      setTransactions([]);
-    } finally {
-      setLoadingTransactions(false);
+      console.error("Add supplier item error:", err);
+      alert(`❌ Error: ${err.message}`);
     }
   };
-  
-  // Only fetch if we have the necessary data
-  if (orders.length || wholesaleOrders.length || supplierItems.length) {
-    fetchTransactions();
-  }
-}, [orders, wholesaleOrders, supplierItems, clients, wholesaleClients, cars, fournisseurs, currencyList]);
 
-const handleOrderSubmit=async(e)=>{e.preventDefault();try{const url=`${API_BASE}/orders/`;const payload={client_id:Number(orderForm.client_id),car_id:Number(orderForm.car_id),car_color:String(orderForm.car_color),delivery_status:String(orderForm.delivery_status),};if(!payload.client_id||isNaN(payload.client_id)){throw new Error("Veuillez sélectionner un client");}if(!payload.car_id||isNaN(payload.car_id)){throw new Error("Veuillez sélectionner une voiture");}if(!payload.car_color){throw new Error("Veuillez spécifier une couleur");}console.log("📤 Submitting order payload:",payload);const response=await apiFetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),});if(!response.ok){const errorData=await response.json().catch(()=>({}));console.error("❌ API Error:",errorData);throw new Error(errorData.detail||"Erreur lors de l'ajout");}const data=await response.json();console.log("✅ Order created:",data);setShowAddOrder(false);setOrderForm({id:null,client_id:"",car_id:"",car_color:"",delivery_status:"shipping",payment_amount:0,status:true,});console.log("🔄 Refreshing orders list...");const freshResponse=await apiFetch(`${API_BASE}/orders/`);if(freshResponse.ok){const fresh=await freshResponse.json();console.log("✅ Orders refreshed, count:",fresh.length);setOrders(Array.isArray(fresh)?fresh:[])}else{console.error("❌ Failed to refresh orders")}alert("✅ Commande ajoutée avec succès!")}catch(error){console.error("❌ Error in handleOrderSubmit:",error);alert(error.message||"Erreur lors de l'ajout de la commande")}};
+  const [transactions, setTransactions] = useState([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [transactionFilter, setTransactionFilter] = useState('all');
+  const [transactionStats, setTransactionStats] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netBalance: 0
+  });
 
-// Add new state for showing the supplier item modal
-const [showAddSupplierItem, setShowAddSupplierItem] = useState(false);
-
-// Add new handler to open the modal and pre-fill if editing
-const handleEditOrAddSupplierItem = (item = null) => {
-  if (item) {
-    // Editing existing item (handled by editingSupplierItem state)
-    setEditingSupplierItem(prev => ({
-      ...prev,
-      [item.supplier_item_id]: { price: item.price, payment_amount: item.payment_amount }
-    }));
-  } else {
-    // Adding new item
-    setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 });
-    setShowAddSupplierItem(true);
-  }
-};
-
-// Add new handler for deleting supplier items
-const handleDeleteSupplierItem = async (id) => {
-  if (!window.confirm("Supprimer cet élément fournisseur ?")) return;
-  try {
-    const url = `${API_BASE}/suppliers_items/?supplier_item_id=${id}`;
-    await apiFetch(url, { method: "DELETE" });
-    pushLog("Admin", `Deleted supplier item #${id}`);
-    alert("Deleted supplier item successfully ✅");
-  } catch (err) {
-    console.error("Erreur de suppression élément fournisseur:", err);
-    alert(`❌ Error deleting supplier item: ${err.message}`);
-  }
-};
-
-
-// ✅ Delete
-const handleDeleteOrder = async (id) => {
-  if (!confirm("Delete order?")) return;
-  try {
-    await apiFetch(`${API_BASE}/orders/?order_id=${id}`, { method: "DELETE" });
-    setOrders(prev => prev.filter(o => o.order_id !== id));
-  } catch (err) { alert("Delete failed"); }
-};
-
-
-const [carRequests, setCarRequests] = useState([]);
-useEffect(() => {
-  const fetchCarRequests = async () => {
-    try {
-      const res = await apiFetch(`${API_BASE}/cars_requests/`);
-      const data = await res.json();
-      setCarRequests(Array.isArray(data) ? data : []);
-    } catch (err) { console.error("Car requests fetch error:", err); }
-  };
-  fetchCarRequests();
-}, []);
   useEffect(() => {
-  const fetchWholesaleClients = async () => {
+    const fetchTransactions = async () => {
+      setLoadingTransactions(true);
+      try {
+        const enrichedTransactions = [];
+        
+        orders.forEach(order => {
+          const client = clients.find(c => c.id === order.client_id);
+          const car = cars.find(c => c.id === order.car_id);
+          const currency = currencyList.find(c => c.id === car?.currency_id);
+          const rate = currency?.exchange_rate_to_dzd || 1;
+          const amount = (car?.price || 0) * rate;
+          
+          enrichedTransactions.push({
+            id: `ORD-${order.order_id || order.id}`,
+            type: 'order',
+            description: `${car?.model || 'Car'} - ${car?.color}`,
+            party_name: client ? `${client.name} ${client.surname}` : 'Unknown Client',
+            amount: order.payment_amount || amount,
+            status: order.payment_amount >= amount ? 'paid' : order.payment_amount > 0 ? 'partial' : 'unpaid',
+            date: order.created_at || new Date().toISOString()
+          });
+        });
+        
+        wholesaleOrders.forEach(order => {
+          const client = wholesaleClients.find(c => c.id === order.client_id);
+          const car = cars.find(c => c.id === order.car_id);
+          const currency = currencyList.find(c => c.id === car?.currency_id);
+          const rate = currency?.exchange_rate_to_dzd || 1;
+          const amount = (car?.wholesale_price || car?.price || 0) * order.quantity * rate;
+          
+          enrichedTransactions.push({
+            id: `WHO-${order.order_id || order.id}`,
+            type: 'wholesale',
+            description: `${car?.model || 'Car'} x${order.quantity}`,
+            party_name: client ? `${client.company_name || client.name}` : 'Unknown Client',
+            amount: order.payment_amount || amount,
+            status: order.payment_amount >= amount ? 'paid' : order.payment_amount > 0 ? 'partial' : 'unpaid',
+            date: order.created_at || new Date().toISOString()
+          });
+        });
+        
+        supplierItems.forEach(item => {
+          const supplier = fournisseurs.find(s => s.id === item.supplier_id);
+          const car = cars.find(c => c.id === item.car_id);
+          const currency = currencyList.find(c => c.id === item.currency_id);
+          const rate = currency?.exchange_rate_to_dzd || 1;
+          const totalCost = (item.price || 0) * rate;
+          
+          enrichedTransactions.push({
+            id: `SUP-${item.supplier_item_id}`,
+            type: 'supplier',
+            description: `${car?.model || 'Car'} - Achat`,
+            party_name: supplier ? `${supplier.name} ${supplier.surname}` : 'Unknown Supplier',
+            amount: item.payment_amount || 0,
+            status: item.payment_amount >= totalCost ? 'paid' : item.payment_amount > 0 ? 'partial' : 'unpaid',
+            date: item.created_at || new Date().toISOString()
+          });
+        });
+        
+        enrichedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        setTransactions(enrichedTransactions);
+        
+        const revenue = enrichedTransactions
+          .filter(t => t.type === 'order' || t.type === 'wholesale')
+          .reduce((sum, t) => sum + t.amount, 0);
+        
+        const expenses = enrichedTransactions
+          .filter(t => t.type === 'supplier')
+          .reduce((sum, t) => sum + t.amount, 0);
+        
+        setTransactionStats({
+          totalRevenue: revenue,
+          totalExpenses: expenses,
+          netBalance: revenue - expenses
+        });
+        
+      } catch (err) {
+        console.error("Error fetching transactions:", err);
+        setTransactions([]);
+      } finally {
+        setLoadingTransactions(false);
+      }
+    };
+    
+    if (orders.length || wholesaleOrders.length || supplierItems.length) {
+      fetchTransactions();
+    }
+  }, [orders, wholesaleOrders, supplierItems, clients, wholesaleClients, cars, fournisseurs, currencyList]);
+
+  const handleOrderSubmit = async (e) => {
+    e.preventDefault();
     try {
-      const res = await apiFetch(`${API_BASE}/wholesale_clients/`);
-      const data = await res.json();
-      setWholesaleClients(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error fetching wholesale clients:", err);
-      setWholesaleClients([]);
+      const url = `${API_BASE}/orders/`;
+      const payload = {
+        client_id: Number(orderForm.client_id),
+        car_id: Number(orderForm.car_id),
+        car_color: String(orderForm.car_color),
+        delivery_status: String(orderForm.delivery_status),
+      };
+      
+      if (!payload.client_id || isNaN(payload.client_id)) {
+        throw new Error("Veuillez sélectionner un client");
+      }
+      if (!payload.car_id || isNaN(payload.car_id)) {
+        throw new Error("Veuillez sélectionner une voiture");
+      }
+      if (!payload.car_color) {
+        throw new Error("Veuillez spécifier une couleur");
+      }
+      
+      console.log("📤 Submitting order payload:", payload);
+      
+      const response = await apiFetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ API Error:", errorData);
+        throw new Error(errorData.detail || "Erreur lors de l'ajout");
+      }
+      
+      const data = await response.json();
+      console.log("✅ Order created:", data);
+      
+      setShowAddOrder(false);
+      setOrderForm({
+        id: null,
+        client_id: "",
+        car_id: "",
+        car_color: "",
+        delivery_status: "shipping",
+        payment_amount: 0,
+        status: true,
+      });
+      
+      console.log("🔄 Refreshing orders list...");
+      const freshResponse = await apiFetch(`${API_BASE}/orders/`);
+      if (freshResponse.ok) {
+        const fresh = await freshResponse.json();
+        console.log("✅ Orders refreshed, count:", fresh.length);
+        setOrders(Array.isArray(fresh) ? fresh : [])
+      } else {
+        console.error("❌ Failed to refresh orders")
+      }
+      
+      alert("✅ Commande ajoutée avec succès!")
+    } catch (error) {
+      console.error("❌ Error in handleOrderSubmit:", error);
+      alert(error.message || "Erreur lors de l'ajout de la commande")
     }
   };
-  fetchWholesaleClients();
-}, []);
 
-// Fetch Wholesale Orders
-// Add this fetch function near your other fetch functions
-const fetchWholesaleOrders = async () => {
-  console.log("🔄 Starting fetchWholesaleOrders...");
-  try {
-    const url = `${API_BASE}/wholesale_orders/`;
-    console.log("📍 Fetching from URL:", url);
-    
-    const res = await apiFetch(url);
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("❌ Response not OK:", errorText);
-      throw new Error(`HTTP ${res.status}: ${errorText}`);
-    }
-    
-    const text = await res.text();
-    
-    const data = JSON.parse(text);
-    
-    if (Array.isArray(data)) {
-      setWholesaleOrders(data);
+  const [showAddSupplierItem, setShowAddSupplierItem] = useState(false);
+
+  const handleEditOrAddSupplierItem = (item = null) => {
+    if (item) {
+      setEditingSupplierItem(prev => ({
+        ...prev,
+        [item.supplier_item_id]: { price: item.price, payment_amount: item.payment_amount }
+      }));
     } else {
+      setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 });
+      setShowAddSupplierItem(true);
+    }
+  };
+
+  const handleDeleteSupplierItem = async (id) => {
+    if (!window.confirm("Supprimer cet élément fournisseur ?")) return;
+    try {
+      const url = `${API_BASE}/suppliers_items/?supplier_item_id=${id}`;
+      await apiFetch(url, { method: "DELETE" });
+      pushLog("Admin", `Deleted supplier item #${id}`);
+      alert("Deleted supplier item successfully ✅");
+    } catch (err) {
+      console.error("Erreur de suppression élément fournisseur:", err);
+      alert(`❌ Error deleting supplier item: ${err.message}`);
+    }
+  };
+
+  const handleDeleteOrder = async (id) => {
+    if (!confirm("Delete order?")) return;
+    try {
+      await apiFetch(`${API_BASE}/orders/?order_id=${id}`, { method: "DELETE" });
+      setOrders(prev => prev.filter(o => o.order_id !== id));
+    } catch (err) { 
+      alert("Delete failed"); 
+    }
+  };
+
+  const [carRequests, setCarRequests] = useState([]);
+  
+  useEffect(() => {
+    const fetchCarRequests = async () => {
+      try {
+        const res = await apiFetch(`${API_BASE}/cars_requests/`);
+        const data = await res.json();
+        setCarRequests(Array.isArray(data) ? data : []);
+      } catch (err) { 
+        console.error("Car requests fetch error:", err); 
+      }
+    };
+    fetchCarRequests();
+  }, []);
+
+  useEffect(() => {
+    const fetchWholesaleClients = async () => {
+      try {
+        const res = await apiFetch(`${API_BASE}/wholesale_clients/`);
+        const data = await res.json();
+        setWholesaleClients(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching wholesale clients:", err);
+        setWholesaleClients([]);
+      }
+    };
+    fetchWholesaleClients();
+  }, []);
+
+  const fetchWholesaleOrders = async () => {
+    console.log("🔄 Starting fetchWholesaleOrders...");
+    try {
+      const url = `${API_BASE}/wholesale_orders/`;
+      console.log("📍 Fetching from URL:", url);
+      
+      const res = await apiFetch(url);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("❌ Response not OK:", errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+      
+      const text = await res.text();
+      const data = JSON.parse(text);
+      
+      if (Array.isArray(data)) {
+        setWholesaleOrders(data);
+      } else {
+        setWholesaleOrders([]);
+      }
+    } catch (err) {
       setWholesaleOrders([]);
     }
-  } catch (err) {
-    setWholesaleOrders([]);
-  }
-};
+  };
 
-useEffect(() => {
-  fetchWholesaleOrders();
-}, []);
+  useEffect(() => {
+    fetchWholesaleOrders();
+  }, []);
 
-const handleWholesaleClientSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const isUpdate = !!wholesaleClientForm.id;
-    const url = `${API_BASE}/wholesale_clients/`;
-    const payload = {
-      name: wholesaleClientForm.name,
-      surname: wholesaleClientForm.surname,
-      phone_number: wholesaleClientForm.phone_number,
-      address: wholesaleClientForm.address,
-      company_name: wholesaleClientForm.company_name,
-    };
+  const handleWholesaleClientSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const isUpdate = !!wholesaleClientForm.id;
+      const url = `${API_BASE}/wholesale_clients/`;
+      const payload = {
+        name: wholesaleClientForm.name,
+        surname: wholesaleClientForm.surname,
+        phone_number: wholesaleClientForm.phone_number,
+        address: wholesaleClientForm.address,
+        company_name: wholesaleClientForm.company_name,
+      };
 
-    if (isUpdate) {
-      payload.id = wholesaleClientForm.id;
-    }
-
-    const res = await apiFetch(url, {
-      method: isUpdate ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const responseData = await res.json();
-
-    if (!res.ok) {
-      throw new Error(responseData.detail || "Failed to save wholesale client");
-    }
-
-    // ✅ Refresh list
-    const fresh = await apiFetch(`${API_BASE}/wholesale_clients/`).then(r => r.json());
-    setWholesaleClients(Array.isArray(fresh) ? fresh : []);
-
-    // ✅ Handle password display on CREATE only (like commercial/accountant)
-    if (!isUpdate) {
-      let password = "";
-      // 🔑 Try direct password field first
-      if (responseData.password) {
-        password = responseData.password;
-      } 
-      // 🔑 Fallback: parse from detail (e.g., "password: abc123")
-      else if (responseData.detail?.includes("password:")) {
-        password = responseData.detail.split("password:")[1]?.trim();
+      if (isUpdate) {
+        payload.id = wholesaleClientForm.id;
       }
 
-      if (password) {
-        setTempPassword(password);
-        setUserPhoneForPassword(wholesaleClientForm.phone_number);
-        setPasswordModalType("wholesale_client");
-        setShowPasswordModal(true);
-      } else {
-        console.warn("Password not found in response for wholesale client", responseData);
-        // Optionally alert, but don’t block — may be intentional update
+      const res = await apiFetch(url, {
+        method: isUpdate ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const responseData = await res.json();
+
+      if (!res.ok) {
+        throw new Error(responseData.detail || "Failed to save wholesale client");
       }
+
+      const fresh = await apiFetch(`${API_BASE}/wholesale_clients/`).then(r => r.json());
+      setWholesaleClients(Array.isArray(fresh) ? fresh : []);
+
+      if (!isUpdate) {
+        let password = "";
+        if (responseData.password) {
+          password = responseData.password;
+        } else if (responseData.detail?.includes("password:")) {
+          password = responseData.detail.split("password:")[1]?.trim();
+        }
+
+        if (password) {
+          setTempPassword(password);
+          setUserPhoneForPassword(wholesaleClientForm.phone_number);
+          setPasswordModalType("wholesale_client");
+          setShowPasswordModal(true);
+        } else {
+          console.warn("Password not found in response for wholesale client", responseData);
+        }
+      }
+
+      setWholesaleClientForm({ name: "", surname: "", phone_number: "", address: "", company_name: "" });
+      setShowAddWholesaleClient(false);
+      alert(`${isUpdate ? "Updated" : "Added"} wholesale client ✅`);
+
+    } catch (err) {
+      console.error("Wholesale client error:", err);
+      alert("❌ " + (err.message || "Unknown error"));
     }
+  };
 
-    // ✅ Reset & close
-    setWholesaleClientForm({ name: "", surname: "", phone_number: "", address: "", company_name: "" });
-    setShowAddWholesaleClient(false);
-    alert(`${isUpdate ? "Updated" : "Added"} wholesale client ✅`);
+  const handleDeleteWholesaleClient = async (id) => {
+    if (!confirm("Delete this wholesale client?")) return;
+    try {
+      await apiFetch(`${API_BASE}/wholesale_clients/?client_id=${id}`, { method: "DELETE" });
+      setWholesaleClients(prev => prev.filter(c => c.id !== id));
+    } catch (err) {
+      console.error("Error deleting wholesale client:", err);
+      alert("❌ Failed to delete");
+    }
+  };
 
-  } catch (err) {
-    console.error("Wholesale client error:", err);
-    alert("❌ " + (err.message || "Unknown error"));
-  }
-};
-// ✅ Handle Wholesale Order Submit
-// ✅ Delete Wholesale Client
-const handleDeleteWholesaleClient = async (id) => {
-  if (!confirm("Delete this wholesale client?")) return;
-  try {
-    await apiFetch(`${API_BASE}/wholesale_clients/?client_id=${id}`, { method: "DELETE" });
-    setWholesaleClients(prev => prev.filter(c => c.id !== id));
-  } catch (err) {
-    console.error("Error deleting wholesale client:", err);
-    alert("❌ Failed to delete");
-  }
-};
+  const handleDeleteWholesaleOrder = async (id) => {
+    if (!confirm("Delete this wholesale order?")) return;
+    try {
+      await apiFetch(`${API_BASE}/wholesale_orders/?order_id=${id}`, { method: "DELETE" });
+      setWholesaleOrders(prev => prev.filter(o => o.id !== id));
+    } catch (err) {
+      console.error("Error deleting wholesale order:", err);
+      alert("❌ Failed to delete");
+    }
+  };
 
-
-// ✅ Delete Wholesale Order
-const handleDeleteWholesaleOrder = async (id) => {
-  if (!confirm("Delete this wholesale order?")) return;
-  try {
-    await apiFetch(`${API_BASE}/wholesale_orders/?order_id=${id}`, { method: "DELETE" });
-    setWholesaleOrders(prev => prev.filter(o => o.id !== id));
-  } catch (err) {
-    console.error("Error deleting wholesale order:", err);
-    alert("❌ Failed to delete");
-  }
-};
   useEffect(() => {
     const fetchEarnings = async () => {
       try {
@@ -924,101 +1001,99 @@ const handleDeleteWholesaleOrder = async (id) => {
     };
     fetchCaisse();
   }, []);
-const handleWholesaleOrderSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    console.log("wholesaleOrderForm avant validation:", wholesaleOrderForm);
 
-    // --- Validation des champs requis ---
-    const clientId = Number(wholesaleOrderForm.client_id);
-    if (isNaN(clientId) || clientId <= 0) {
-      throw new Error("ID client invalide");
-    }
+  const handleWholesaleOrderSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      console.log("wholesaleOrderForm avant validation:", wholesaleOrderForm);
 
-    const carId = Number(wholesaleOrderForm.car_id);
-    if (isNaN(carId) || carId <= 0) {
-      throw new Error("ID voiture invalide");
-    }
-
-    const quantity = Number(wholesaleOrderForm.quantity);
-    if (isNaN(quantity) || quantity < 1) {
-      throw new Error("Quantité invalide");
-    }
-
-    const isUpdate = !!wholesaleOrderForm.id;
-    const method = isUpdate ? 'PUT' : 'POST';
-    const url = `${API_BASE}/wholesale_orders/`;
-
-    let payload;
-    
-    if (isUpdate) {
-      const orderId = Number(wholesaleOrderForm.id);
-      if (isNaN(orderId) || orderId <= 0) {
-        throw new Error("ID de commande en gros invalide pour la mise à jour");
+      const clientId = Number(wholesaleOrderForm.client_id);
+      if (isNaN(clientId) || clientId <= 0) {
+        throw new Error("ID client invalide");
       }
+
+      const carId = Number(wholesaleOrderForm.car_id);
+      if (isNaN(carId) || carId <= 0) {
+        throw new Error("ID voiture invalide");
+      }
+
+      const quantity = Number(wholesaleOrderForm.quantity);
+      if (isNaN(quantity) || quantity < 1) {
+        throw new Error("Quantité invalide");
+      }
+
+      const isUpdate = !!wholesaleOrderForm.id;
+      const method = isUpdate ? 'PUT' : 'POST';
+      const url = `${API_BASE}/wholesale_orders/`;
+
+      let payload;
       
-      payload = {
-        order_id: orderId,
-        client_id: clientId,
-        car_id: carId,
-        quantity: quantity,
-        delivery_status: String(wholesaleOrderForm.delivery_status),
-        payment_amount: wholesaleOrderForm.payment_amount === '' ? null : Number(wholesaleOrderForm.payment_amount),
-        status: Boolean(wholesaleOrderForm.status),
-      };
-    } else {
-      // ✅ FIX: Include client_id in POST request (admin creating order for a client)
-      payload = {
-        client_id: clientId,  // ← ADD THIS
-        car_id: carId,
-        quantity: quantity,
-        delivery_status: String(wholesaleOrderForm.delivery_status),
-      };
+      if (isUpdate) {
+        const orderId = Number(wholesaleOrderForm.id);
+        if (isNaN(orderId) || orderId <= 0) {
+          throw new Error("ID de commande en gros invalide pour la mise à jour");
+        }
+        
+        payload = {
+          order_id: orderId,
+          client_id: clientId,
+          car_id: carId,
+          quantity: quantity,
+          delivery_status: String(wholesaleOrderForm.delivery_status),
+          payment_amount: wholesaleOrderForm.payment_amount === '' ? null : Number(wholesaleOrderForm.payment_amount),
+          status: Boolean(wholesaleOrderForm.status),
+        };
+      } else {
+        payload = {
+          client_id: clientId,
+          car_id: carId,
+          quantity: quantity,
+          delivery_status: String(wholesaleOrderForm.delivery_status),
+        };
+      }
+
+      console.log(`📤 Payload final à envoyer (${method}):`, payload);
+
+      const response = await apiFetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ Erreur serveur:", errorText);
+        throw new Error(`Failed to ${isUpdate ? 'update' : 'create'} wholesale order: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Réponse succès API:", data);
+
+      setShowAddWholesaleOrder(false);
+      setShowEditWholesaleOrder(false);
+      setWholesaleOrderForm({ 
+        id: null,
+        client_id: "", 
+        car_id: "", 
+        quantity: 1, 
+        delivery_status: "shipping",
+        payment_amount: 0,
+        status: true
+      });
+
+      console.log("🔄 Refreshing wholesale orders...");
+      await fetchWholesaleOrders();
+      
+      alert(`✅ Commande en gros ${isUpdate ? 'mise à jour' : 'ajoutée'} avec succès !`);
+
+    } catch (err) {
+      console.error("❌ Erreur complète dans handleWholesaleOrderSubmit:", err);
+      alert("❌ Erreur: " + err.message);
     }
+  };
 
-    console.log(`📤 Payload final à envoyer (${method}):`, payload);
-
-    const response = await apiFetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ Erreur serveur:", errorText);
-      throw new Error(`Failed to ${isUpdate ? 'update' : 'create'} wholesale order: ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log("✅ Réponse succès API:", data);
-
-    // Close modals and reset form
-    setShowAddWholesaleOrder(false);
-    setShowEditWholesaleOrder(false);
-    setWholesaleOrderForm({ 
-      id: null,
-      client_id: "", 
-      car_id: "", 
-      quantity: 1, 
-      delivery_status: "shipping",
-      payment_amount: 0,
-      status: true
-    });
-
-    // Refresh orders list
-    console.log("🔄 Refreshing wholesale orders...");
-    await fetchWholesaleOrders();
-    
-    alert(`✅ Commande en gros ${isUpdate ? 'mise à jour' : 'ajoutée'} avec succès !`);
-
-  } catch (err) {
-    console.error("❌ Erreur complète dans handleWholesaleOrderSubmit:", err);
-    alert("❌ Erreur: " + err.message);
-  }
-};
   useEffect(() => {
     const fetchCars = async () => {
       try {
@@ -1028,7 +1103,11 @@ const handleWholesaleOrderSubmit = async (e) => {
           body: JSON.stringify({})
         });
         const data = await response.json();
-        setCars(Array.isArray(data) ? data : []);
+        const normalized = (Array.isArray(data) ? data : []).map(car => {
+          const colors = parseColors(car.color);
+          return { ...car, colors, color: colors[0] || car.color };
+        });
+        setCars(normalized);
       } catch (err) {
         console.error("Error fetching cars:", err);
         setCars([]);
@@ -1050,7 +1129,9 @@ const handleWholesaleOrderSubmit = async (e) => {
     }
   };
 
-  useEffect(() => { fetchFournisseurs(); }, []);
+  useEffect(() => { 
+    fetchFournisseurs(); 
+  }, []);
 
   const handleChangeFournisseur = (e) => {
     setFournisseurForm({ ...fournisseurForm, [e.target.name]: e.target.value });
@@ -1138,7 +1219,6 @@ const handleWholesaleOrderSubmit = async (e) => {
     }
   }
 
-  // ✅ Fetch Marketers
   useEffect(() => {
     const fetchMarketers = async () => {
       try {
@@ -1153,7 +1233,6 @@ const handleWholesaleOrderSubmit = async (e) => {
     fetchMarketers();
   }, []);
 
-  // ✅ Fetch Accountants
   useEffect(() => {
     const fetchAccountants = async () => {
       try {
@@ -1289,110 +1368,83 @@ const handleWholesaleOrderSubmit = async (e) => {
       });
     }
   };
+
   const convertToDZD = (price, currency) => {
-  if (!currency || currency.toLowerCase() === 'dzd') {
-    return price;
-  }
-  const rate = currencies[currency.toLowerCase()];
-  if (!rate) {
-    console.warn(`Exchange rate not found for ${currency}`);
-    return price;
-  }
-  return price * rate;
-};
-const handleEditOrderSubmit = async (e) =>
-{
-	e.
-	preventDefault();
-	try
-	{
-		const url = `
-${
-API_BASE
-}
-/orders/
-`;
-		const payload = {
-			order_id: Number(orderForm.id),
-			// ✅ FIXED: Use order_id in payload
-			status: Boolean(orderForm.status),
-			payment_amount: Number(orderForm.payment_amount) || null,
-			delivery_status: String(orderForm.delivery_status),
-		};
-		// Validation
-		if (!payload.order_id || isNaN(payload.order_id))
-		{
-			throw new
-			Error("ID de commande invalide");
-		}
-		if (!['shipping', 'arrived', 'showroom'].includes(payload.delivery_status))
-		{
-			throw new
-			Error("Statut de livraison invalide");
-		}
-		const response = await
-		apiFetch(url,
-		{
-			method: "PUT",
-			headers:
-			{
-				"Content-Type": "application/json"
-			},
-			body: JSON.
-			stringify(payload),
-		});
-		if (!response.ok)
-		{
-			const errorData = await
-			response.
-			json().
-			catch(
-				() => (
-				{}));
-			throw new
-			Error(errorData.detail || "Failed to update order");
-		}
-		setShowEditOrder(false);
-		setOrderForm(
-		{
-			id: null,
-			client_id: "",
-			car_id: "",
-			car_color: "",
-			delivery_status: "shipping",
-			payment_amount: 0,
-			status: true,
-		});
-		alert("Commande modifiée avec succès!");
-		// Refresh orders list
-		const fresh = await apiFetch(`
-${
-API_BASE
-}
-/orders/
-`).
-		then(r => r.json());
-		setOrders(Array.isArray(fresh) ? fresh : []);
-	}
-	catch (error)
-	{
-		console.
-		error("Erreur complète:", error);
-		alert(error.message || "Erreur lors de la modification");
-	}
-};
-const handleEditWholesaleOrder = (order) => {
-  setWholesaleOrderForm({
-    id: order.order_id,
-    client_id: order.client_id,        // ← ADD THIS
-    car_id: order.car_id,              // ← ADD THIS
-    quantity: order.quantity || 1,     // ← ADD THIS
-    delivery_status: order.delivery_status || "shipping",
-    payment_amount: order.payment_amount || 0,
-    status: order.status !== undefined ? order.status : true,
-  });
-  setShowEditWholesaleOrder(true);
-};
+    if (!currency || currency.toLowerCase() === 'dzd') {
+      return price;
+    }
+    const rate = currencies[currency.toLowerCase()];
+    if (!rate) {
+      console.warn(`Exchange rate not found for ${currency}`);
+      return price;
+    }
+    return price * rate;
+  };
+
+  const handleEditOrderSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const url = `${API_BASE}/orders/`;
+      const payload = {
+        order_id: Number(orderForm.id),
+        status: Boolean(orderForm.status),
+        payment_amount: Number(orderForm.payment_amount) || null,
+        delivery_status: String(orderForm.delivery_status),
+      };
+      
+      if (!payload.order_id || isNaN(payload.order_id)) {
+        throw new Error("ID de commande invalide");
+      }
+      if (!['shipping', 'arrived', 'showroom'].includes(payload.delivery_status)) {
+        throw new Error("Statut de livraison invalide");
+      }
+      
+      const response = await apiFetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to update order");
+      }
+      
+      setShowEditOrder(false);
+      setOrderForm({
+        id: null,
+        client_id: "",
+        car_id: "",
+        car_color: "",
+        delivery_status: "shipping",
+        payment_amount: 0,
+        status: true,
+      });
+      
+      alert("Commande modifiée avec succès!");
+      const fresh = await apiFetch(`${API_BASE}/orders/`).then(r => r.json());
+      setOrders(Array.isArray(fresh) ? fresh : []);
+    } catch (error) {
+      console.error("Erreur complète:", error);
+      alert(error.message || "Erreur lors de la modification");
+    }
+  };
+
+  const handleEditWholesaleOrder = (order) => {
+    setWholesaleOrderForm({
+      id: order.order_id,
+      client_id: order.client_id,
+      car_id: order.car_id,
+      quantity: order.quantity || 1,
+      delivery_status: order.delivery_status || "shipping",
+      payment_amount: order.payment_amount || 0,
+      status: order.status !== undefined ? order.status : true,
+    });
+    setShowEditWholesaleOrder(true);
+  };
+
   const handleOpenAdd = (agent = "Admin") => {
     setCarForm(initialCarForm);
     setEditingCar(null);
@@ -1412,6 +1464,7 @@ const handleEditWholesaleOrder = (order) => {
     pushLog(agent, "Opened Add Commercial modal");
   };
 
+  // ✅ FIX: Updated handleSubmitCar to handle colors as array
   const handleSubmitCar = async (e) => {
     e.preventDefault();
     if (!carForm.model || !carForm.currency_id || !carForm.quantity) {
@@ -1421,13 +1474,19 @@ const handleEditWholesaleOrder = (order) => {
     try {
       const formData = new FormData();
       
-      // Add car_id first if editing
       if (editingCar) {
         formData.append('car_id', editingCar.id);
       }
       
       formData.append('model', carForm.model);
-      formData.append('color', carForm.color);
+      formData.append('description', carForm.description || "");
+      
+      // ✅ FIX: Handle colors as array - split comma-separated input
+      const colorsArray = carForm.color.split(',').map(c => c.trim()).filter(c => c);
+      colorsArray.forEach(color => {
+        formData.append('color', color);
+      });
+      
       formData.append('year', parseInt(carForm.year) || new Date().getFullYear());
       formData.append('quantity', parseInt(carForm.quantity) || 1);
       formData.append('engine', carForm.engine);
@@ -1435,16 +1494,11 @@ const handleEditWholesaleOrder = (order) => {
       formData.append('fuel_type', carForm.fuelType);
       formData.append('milage', parseFloat(carForm.milage) || 0);
       formData.append('country', carForm.country);
-      formData.append('commercial_comission', parseFloat(carForm.commercial_comission) || 0);
       formData.append('price', parseFloat(carForm.price) || 0);
       formData.append('wholesale_price', parseFloat(carForm.wholesale_price) || 0);
       formData.append('shipping_date', carForm.shippingDate || new Date().toISOString().split('T')[0]);
       formData.append('arriving_date', carForm.arrivingDate || new Date().toISOString().split('T')[0]);
       formData.append('currency_id', parseInt(carForm.currency_id));
-      
-      if (carForm.commercial_id) {
-        formData.append('commercial_id', parseInt(carForm.commercial_id));
-      }
       
       if (carForm.imageFiles && carForm.imageFiles.length > 0) {
         Array.from(carForm.imageFiles).forEach(file => {
@@ -1455,7 +1509,6 @@ const handleEditWholesaleOrder = (order) => {
       const url = `${API_BASE}/cars/`;
       const method = editingCar ? 'PUT' : 'POST';
 
-      // Use apiFetch with FormData: don't set Content-Type so browser can set boundary
       const response = await apiFetch(url, {
         method,
         body: formData
@@ -1486,22 +1539,22 @@ const handleEditWholesaleOrder = (order) => {
 
   const handleEdit = (car) => {
     setEditingCar(car);
+    const displayColor = Array.isArray(car.color) ? car.color.join(', ') : (car.color || "");
     setCarForm({
       model: car.model || "",
-      color: car.color || "",
+      description: car.description || "",
+      color: displayColor,
       year: car.year || "",
       engine: car.engine || "",
       power: car.power || "",
       fuelType: car.fuel_type || "",
       milage: car.milage || "",
       country: car.country || "",
-      commercial_comission: car.commercial_comission || "",
       price: car.price || "",
       wholesale_price: car.wholesale_price || "",
       shippingDate: car.shipping_date || "",
       arrivingDate: car.arriving_date || "",
       currency_id: car.currency_id || "",
-      commercial_id: car.commercial_id || "",
       imageFiles: [],
     });
     setShowAddCar(true);
@@ -1526,14 +1579,12 @@ const handleEditWholesaleOrder = (order) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'wilayas') {
-      // ✅ Split input into array
       setCommercialForm(prev => ({ ...prev, wilayas: value.split(/[,;\n]/).map(w => w.trim()).filter(w => w) }));
     } else {
       setCommercialForm(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  // ✅ FIXED Commercial submit (wilayas as array + password fallback)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setCommercialLoading(true);
@@ -1564,7 +1615,6 @@ const handleEditWholesaleOrder = (order) => {
       if (response.ok) {
         setMessage("Commercial saved successfully ✅");
         if (!isUpdate) {
-          // ✅ Flexible password extraction
           let password = "";
           if (responseData.password) {
             password = responseData.password;
@@ -1576,7 +1626,7 @@ const handleEditWholesaleOrder = (order) => {
             password = pwdData.password || pwdData.detail || "temp123";
           }
           setTempPassword(password);
-                   setPasswordModalType("commercial");
+          setPasswordModalType("commercial");
           setShowPasswordModal(true);
         }
         setCommercialForm({ name: "", surname: "", phone_number: "", wilayas: [], address: "" });
@@ -1594,7 +1644,6 @@ const handleEditWholesaleOrder = (order) => {
     }
   };
 
-  // ✅ Handle Marketer Submit
   const handleMarketerSubmit = async (e) => {
     e.preventDefault();
     setMarketerLoading(true);
@@ -1651,7 +1700,6 @@ const handleEditWholesaleOrder = (order) => {
     }
   };
 
-  // ✅ Handle Accountant Submit
   const handleAccountantSubmit = async (e) => {
     e.preventDefault();
     setAccountantLoading(true);
@@ -1709,7 +1757,8 @@ const handleEditWholesaleOrder = (order) => {
       setAccountantLoading(false);
     }
   };
-    const handleAccountantEdit = async (e) => {
+
+  const handleAccountantEdit = async (e) => {
     e.preventDefault();
     setAccountantLoading(true);
     setAccountantMessage("");
@@ -1764,7 +1813,6 @@ const handleEditWholesaleOrder = (order) => {
     }
   };
 
-  // ✅ Delete Marketer
   const handleDeleteMarketer = async (id) => {
     if (!window.confirm("Delete this marketer?")) return;
     try {
@@ -1778,7 +1826,6 @@ const handleEditWholesaleOrder = (order) => {
     }
   };
 
-  // ✅ Delete Accountant
   const handleDeleteAccountant = async (id) => {
     if (!window.confirm("Delete this accountant?")) return;
     try {
@@ -1792,89 +1839,56 @@ const handleEditWholesaleOrder = (order) => {
     }
   };
 
-const saveSupplierItemEdit = async (item) =>
-{
-	try
-	{
-		const editedData = editingSupplierItem[item.supplier_item_id];
-		if (!editedData)
-		{
-			console.
-			error("Aucune donnée éditée trouvée");
-			return;
-		}
-		// ✅ FIXED: Only send the fields that can be updated according to spec
-		const payload = {
-			supplier_item_id: Number(item.supplier_item_id),
-			supplier_id: Number(item.supplier_id) || null,
-			payment_amount: Number(editedData.payment_amount) || null,
-			price: Number(editedData.price) || null,
-		};
-		// Validation
-		if (!payload.supplier_item_id || isNaN(payload.supplier_item_id))
-		{
-			throw new
-			Error("ID de l'item invalide");
-		}
-		const response = await
-		apiFetch(`
-${
-API_BASE
-}
-/suppliers_items/
-`,
-		{
-			method: "PUT",
-			headers:
-			{
-				"Content-Type": "application/json"
-			},
-			body: JSON.
-			stringify(payload),
-		});
-		if (!response.ok)
-		{
-			const errorData = await
-			response.json()
-      .catch(
-				() => (
-				{}));
-			let errorMessage = "Erreur lors de la mise à jour";
-			if (errorData.detail && Array.isArray(errorData.detail))
-			{
-				errorMessage = errorData.
-				detail.map(err => `${err.loc.join('.')}: ${err.msg}`).
-				join("\n");
-			}
-			else
-			if (errorData.detail)
-			{
-				errorMessage = errorData.
-				detail;
-			}
-			throw	new
-			Error(errorMessage);
-		}
-		// Remove from editing state
-		setEditingSupplierItem(prev =>
-		{
-			const copy = {
-				...prev
-			};
-			delete
-			copy[item.supplier_item_id];
-			return
-			copy;
-		});
-		alert("✅ Mise à jour réussie!");
-	}
-	catch (error)
-	{
-		console.
-		error("❌ Update failed:", error);
-		alert("❌ " + (error.message || "Échec de la mise à jour"));
-	}
-};
+  const saveSupplierItemEdit = async (item) => {
+    try {
+      const editedData = editingSupplierItem[item.supplier_item_id];
+      if (!editedData) {
+        console.error("Aucune donnée éditée trouvée");
+        return;
+      }
+      
+      const payload = {
+        supplier_item_id: Number(item.supplier_item_id),
+        supplier_id: Number(item.supplier_id) || null,
+        payment_amount: Number(editedData.payment_amount) || null,
+        price: Number(editedData.price) || null,
+      };
+      
+      if (!payload.supplier_item_id || isNaN(payload.supplier_item_id)) {
+        throw new Error("ID de l'item invalide");
+      }
+      
+      const response = await apiFetch(`${API_BASE}/suppliers_items/`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        let errorMessage = "Erreur lors de la mise à jour";
+        if (errorData.detail && Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join("\n");
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      setEditingSupplierItem(prev => {
+        const copy = { ...prev };
+        delete copy[item.supplier_item_id];
+        return copy;
+      });
+      
+      alert("✅ Mise à jour réussie!");
+    } catch (error) {
+      console.error("❌ Update failed:", error);
+      alert("❌ " + (error.message || "Échec de la mise à jour"));
+    }
+  };
 
   const filteredCars = cars.filter((c) =>
     (c.model && c.model.toLowerCase().includes(search.toLowerCase())) ||
@@ -1902,14 +1916,26 @@ API_BASE
     );
   }
 
-  // Filtered transactions based on selected filter
-const filteredTransactions = transactions.filter(transaction => {
-  if (transactionFilter === 'all') return true;
-  if (transactionFilter === 'orders') return transaction.type === 'order';
-  if (transactionFilter === 'wholesale') return transaction.type === 'wholesale';
-  if (transactionFilter === 'suppliers') return transaction.type === 'supplier';
-  return true;
-});
+  const filteredTransactions = transactions.filter(transaction => {
+    if (transactionFilter === 'all') return true;
+    if (transactionFilter === 'orders') return transaction.type === 'order';
+    if (transactionFilter === 'wholesale') return transaction.type === 'wholesale';
+    if (transactionFilter === 'suppliers') return transaction.type === 'supplier';
+    return true;
+  });
+
+  const handleEditOrder = (order) => {
+    setOrderForm({
+      id: order.order_id || order.id,
+      client_id: order.client_id,
+      car_id: order.car_id,
+      car_color: order.car_color,
+      delivery_status: order.delivery_status,
+      payment_amount: order.payment_amount || 0,
+      status: order.status !== undefined ? order.status : true,
+    });
+    setShowEditOrder(true);
+  };
 
   return (
     <div className="min-h-screen min-w-fit font-main bg-gradient-to-br from-neutral-950 via-black to-neutral-950 text-white flex">

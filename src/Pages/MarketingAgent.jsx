@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Car, Trash2, Edit, X } from "lucide-react";
+import { parseColors } from "../lib/utils";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
@@ -70,14 +71,14 @@ const MarketingAgent = () => {
   const [formData, setFormData] = useState({
     currency_id: "",
     model: "",
-    color: "",
+    description: "", // ADDED: New optional field
+    color: [], // CHANGED: Now an array instead of string
     year: "",
     engine: "",
     power: "",
     fuel_type: "",
     milage: "",
     country: "",
-    commercial_comission: "",
     quantity: "",
     price: "",
     wholesale_price: "",
@@ -100,14 +101,14 @@ const MarketingAgent = () => {
     car_id: "",
     currency_id: "",
     model: "",
-    color: "",
+    description: "", // ADDED: New optional field
+    color: [], // CHANGED: Now an array instead of string
     year: "",
     engine: "",
     power: "",
     fuel_type: "",
     milage: "",
     country: "",
-    commercial_comission: "",
     quantity: "",
     price: "",
     wholesale_price: "",
@@ -119,6 +120,10 @@ const MarketingAgent = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("New");
   const [showFilter, setShowFilter] = useState(false);
+  
+  // ADDED: State for managing color inputs
+  const [colorInput, setColorInput] = useState("");
+  const [editColorInput, setEditColorInput] = useState("");
 
   const isFieldEmpty = (value) => value === "" || value == null;
 
@@ -164,8 +169,12 @@ const MarketingAgent = () => {
       }
       
       const data = await response.json();
-      console.log("Cars fetched successfully:", data.length);
-      setCars(Array.isArray(data) ? data : []);
+      console.log("Cars fetched successfully:", Array.isArray(data) ? data.length : 0);
+      const normalized = (Array.isArray(data) ? data : []).map(car => {
+        const colors = parseColors(car.color);
+        return { ...car, colors, color: colors[0] || car.color };
+      });
+      setCars(normalized);
     } catch (error) {
       console.error("Error fetching cars:", error);
       throw error;
@@ -194,20 +203,41 @@ const MarketingAgent = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // ADDED: Helper functions for managing color array
+  const addColor = () => {
+    if (colorInput.trim() && !formData.color.includes(colorInput.trim())) {
+      setFormData({ ...formData, color: [...formData.color, colorInput.trim()] });
+      setColorInput("");
+    }
+  };
+
+  const removeColor = (colorToRemove) => {
+    setFormData({ ...formData, color: formData.color.filter(c => c !== colorToRemove) });
+  };
+
+  const addEditColor = () => {
+    if (editColorInput.trim() && !editForm.color.includes(editColorInput.trim())) {
+      setEditForm({ ...editForm, color: [...editForm.color, editColorInput.trim()] });
+      setEditColorInput("");
+    }
+  };
+
+  const removeEditColor = (colorToRemove) => {
+    setEditForm({ ...editForm, color: editForm.color.filter(c => c !== colorToRemove) });
+  };
+
   const handleAddCar = async (e) => {
     e.preventDefault();
 
     const requiredFields = [
       "currency_id",
       "model",
-      "color",
       "year",
       "engine",
       "power",
       "fuel_type",
       "milage",
       "country",
-      "commercial_comission",
       "quantity",
       "price",
       "wholesale_price",
@@ -222,6 +252,12 @@ const MarketingAgent = () => {
       }
     }
 
+    // CHANGED: Validate color array instead of single color
+    if (!formData.color || formData.color.length === 0) {
+      alert("Veuillez ajouter au moins une couleur");
+      return;
+    }
+
     try {
       const formDataToSend = new FormData();
 
@@ -229,8 +265,15 @@ const MarketingAgent = () => {
       formDataToSend.append("currency_id", parseInt(formData.currency_id));
       formDataToSend.append("model", formData.model);
       
-      // ✅ IMPORTANT: API expects "color" as an array
-      formDataToSend.append("color", JSON.stringify([formData.color]));
+      // ADDED: Include description if provided
+      if (formData.description) {
+        formDataToSend.append("description", formData.description);
+      }
+      
+      // ✅ IMPORTANT: API expects "color" as an array - send each color separately
+      formData.color.forEach(color => {
+        formDataToSend.append("color", color);
+      });
       
       formDataToSend.append("year", parseInt(formData.year));
       formDataToSend.append("engine", formData.engine);
@@ -259,14 +302,14 @@ const MarketingAgent = () => {
         setFormData({
           currency_id: "",
           model: "",
-          color: "",
+          description: "",
+          color: [], // CHANGED: Reset to empty array
           year: "",
           engine: "",
           power: "",
           fuel_type: "",
           milage: "",
           country: "",
-          commercial_comission: "",
           quantity: "",
           price: "",
           wholesale_price: "",
@@ -274,6 +317,7 @@ const MarketingAgent = () => {
           arriving_date: "",
           images: [],
         });
+        setColorInput(""); // ADDED: Reset color input
         fetchCars();
       } else {
         const error = await response.json().catch(() => ({}));
@@ -324,18 +368,20 @@ const MarketingAgent = () => {
 
   const selectCarToEdit = (car) => {
     setSelectedCar(car.id);
+    // CHANGED: Parse colors into array
+    const colors = parseColors(car.color);
     setEditForm({
       car_id: car.id,
       currency_id: car.currency_id || "",
       model: car.model || "",
-      color: car.color || "",
+      description: car.description || "",
+      color: colors, // CHANGED: Use parsed colors array
       year: car.year || "",
       engine: car.engine || "",
       power: car.power || "",
       fuel_type: car.fuel_type || "",
       milage: car.milage || "",
       country: car.country || "",
-      commercial_comission: car.commercial_comission || "",
       quantity: car.quantity || "",
       price: car.price || "",
       wholesale_price: car.wholesale_price || "",
@@ -343,6 +389,7 @@ const MarketingAgent = () => {
       arriving_date: car.arriving_date || "",
       images: [],
     });
+    setEditColorInput(""); // ADDED: Reset edit color input
   };
 
   const handleEditChange = (e) => {
@@ -360,7 +407,15 @@ const MarketingAgent = () => {
       // ✅ Only append fields that have values
       if (editForm.currency_id) formDataToSend.append("currency_id", editForm.currency_id);
       if (editForm.model) formDataToSend.append("model", editForm.model);
-      if (editForm.color) formDataToSend.append("color", JSON.stringify([editForm.color]));
+      if (editForm.description) formDataToSend.append("description", editForm.description);
+      
+      // CHANGED: Handle color array
+      if (editForm.color && editForm.color.length > 0) {
+        editForm.color.forEach(color => {
+          formDataToSend.append("color", color);
+        });
+      }
+      
       if (editForm.year) formDataToSend.append("year", editForm.year);
       if (editForm.engine) formDataToSend.append("engine", editForm.engine);
       if (editForm.power) formDataToSend.append("power", editForm.power);
@@ -385,6 +440,7 @@ const MarketingAgent = () => {
       if (response.ok) {
         alert("Voiture modifiée !");
         setSelectedCar(null);
+        setEditColorInput(""); // ADDED: Reset edit color input
         fetchCars();
       } else {
         let errorDetails = "Échec de la modification";
@@ -409,6 +465,7 @@ const MarketingAgent = () => {
 
   const handleCancelEdit = () => {
     setSelectedCar(null);
+    setEditColorInput(""); // ADDED: Reset edit color input
   };
 
   const handleLogout = () => {
@@ -546,14 +603,57 @@ const MarketingAgent = () => {
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                 required
               />
+              
+              {/* ADDED: Description field */}
               <input
-                name="color"
-                value={formData.color}
+                name="description"
+                value={formData.description}
                 onChange={handleChange}
-                placeholder="Couleur *"
+                placeholder="Description (facultatif)"
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
-                required
               />
+              
+              {/* CHANGED: Color management with array */}
+              <div className="md:col-span-3">
+                <label className="block text-sm text-emerald-400 mb-2">Couleurs * (Ajoutez plusieurs couleurs)</label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={colorInput}
+                    onChange={(e) => setColorInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addColor())}
+                    placeholder="Entrez une couleur"
+                    className="flex-1 bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={addColor}
+                    className="bg-emerald-600 hover:bg-emerald-700 px-4 rounded-xl"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </div>
+                {formData.color.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.color.map((color, idx) => (
+                      <span
+                        key={idx}
+                        className="bg-neutral-800 px-3 py-1 rounded-full text-sm flex items-center gap-2"
+                      >
+                        {color}
+                        <button
+                          type="button"
+                          onClick={() => removeColor(color)}
+                          className="text-red-400 hover:text-red-500"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
               <input
                 name="year"
                 value={formData.year}
@@ -611,16 +711,6 @@ const MarketingAgent = () => {
                 value={formData.country}
                 onChange={handleChange}
                 placeholder="Pays *"
-                className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
-                required
-              />
-              <input
-                name="commercial_comission"
-                value={formData.commercial_comission}
-                onChange={handleChange}
-                placeholder="Commission *"
-                type="number"
-                step="0.01"
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                 required
               />
@@ -915,13 +1005,57 @@ const MarketingAgent = () => {
                         placeholder="Modèle"
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
+                      
+                      {/* ADDED: Description field */}
                       <input
-                        name="color"
-                        value={editForm.color}
+                        name="description"
+                        value={editForm.description}
                         onChange={handleEditChange}
-                        placeholder="Couleur"
+                        placeholder="Description"
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
+                      
+                      {/* CHANGED: Color management with array */}
+                      <div className="md:col-span-3">
+                        <label className="block text-sm text-emerald-400 mb-2">Couleurs (Modifiez ou ajoutez)</label>
+                        <div className="flex gap-2 mb-2">
+                          <input
+                            type="text"
+                            value={editColorInput}
+                            onChange={(e) => setEditColorInput(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addEditColor())}
+                            placeholder="Entrez une couleur"
+                            className="flex-1 bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={addEditColor}
+                            className="bg-emerald-600 hover:bg-emerald-700 px-4 rounded-xl"
+                          >
+                            <Plus size={20} />
+                          </button>
+                        </div>
+                        {editForm.color.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {editForm.color.map((color, idx) => (
+                              <span
+                                key={idx}
+                                className="bg-neutral-800 px-3 py-1 rounded-full text-sm flex items-center gap-2"
+                              >
+                                {color}
+                                <button
+                                  type="button"
+                                  onClick={() => removeEditColor(color)}
+                                  className="text-red-400 hover:text-red-500"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
                       <input
                         name="year"
                         value={editForm.year}
@@ -973,15 +1107,6 @@ const MarketingAgent = () => {
                         value={editForm.country}
                         onChange={handleEditChange}
                         placeholder="Pays"
-                        className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                      <input
-                        name="commercial_comission"
-                        value={editForm.commercial_comission}
-                        onChange={handleEditChange}
-                        placeholder="Commission"
-                        type="number"
-                        step="0.01"
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                       <input
