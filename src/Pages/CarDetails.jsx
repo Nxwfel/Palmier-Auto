@@ -49,7 +49,6 @@ const CarDetails = () => {
         const currency = currencies.find((c) => c.id === car.currency_id);
         const exchangeRate = currency?.exchange_rate_to_dzd || 1;
         const priceInDZD = car.price * exchangeRate;
-        // Removed wholesale_priceInDZD calculation
 
         // 3. Fetch images
         const imageRes = await fetch(`${API_BASE_URL}/cars/${car.id}/images`);
@@ -95,7 +94,7 @@ const CarDetails = () => {
           hex: getColorHexByName(name),
         }));
 
-        setCar({ ...car, priceInDZD, currency }); // Removed wholesale_priceInDZD
+        setCar({ ...car, priceInDZD, currency });
         setImages(resolvedImages);
         setColors(colorOptions);
         setSelectedColor(colorOptions[0] || null);
@@ -351,7 +350,38 @@ const CarDetails = () => {
               {car.country && ` • Origine: ${car.country}`}
             </p>
 
-            {/* PRICE DISPLAY - Changed to regular price */}
+            {/* ✅ NEW: DESCRIPTION SECTION */}
+            {car.description && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200"
+              >
+                <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4 mr-1.5 text-blue-600" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                    />
+                  </svg>
+                  Description
+                </h4>
+                <p className="text-gray-700 text-sm leading-relaxed">
+                  {car.description}
+                </p>
+              </motion.div>
+            )}
+
+            {/* PRICE DISPLAY */}
             <motion.h3
               className="text-4xl font-bold text-gray-900 mt-6"
               initial={{ opacity: 0 }}
@@ -359,9 +389,8 @@ const CarDetails = () => {
               transition={{ delay: 0.3 }}
             >
               {car.priceInDZD
-                ? `${(car.priceInDZD / 1_000_0).toFixed(1).replace('.', ',')} Millions DZD`
+                ? `${(car.priceInDZD / 1_000_000).toFixed(1).replace('.', ',')} Millions DZD`
                 : "Prix indisponible"}
-             
             </motion.h3>
 
             {/* COLORS */}
