@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { parseColors } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, File, Car, LetterTextIcon, Printer, Download } from "lucide-react";
+import { Search, Plus, File, FileArchiveIcon, Car, LetterTextIcon, Printer, Upload, Trash2, Image as ImageIcon } from "lucide-react";
 import QrCode from "../assets/qr_client.png";
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
@@ -21,7 +21,7 @@ const Commercials = () => {
     wilaya: "", 
     address: "",
     nin: "",
-    passport_number: "" // ADDED: New required field
+    passport_number: ""
   });
 
   const [newOrder, setNewOrder] = useState({
@@ -33,6 +33,7 @@ const Commercials = () => {
 
   const [searchOrders, setSearchOrders] = useState("");
   const [searchCars, setSearchCars] = useState("");
+  const [searchClients, setSearchClients] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -47,6 +48,12 @@ const Commercials = () => {
   const [requestModel, setRequestModel] = useState("");
   const [requestDetails, setRequestDetails] = useState("");
   const [requestSent, setRequestSent] = useState(false);
+
+  // Paperwork/Images state
+  const [selectedClientForImages, setSelectedClientForImages] = useState(null);
+  const [clientImages, setClientImages] = useState([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [viewingImages, setViewingImages] = useState(false);
 
   // Contract generation
   const [showContractPrompt, setShowContractPrompt] = useState(false);
@@ -114,7 +121,7 @@ const Commercials = () => {
       const res = await fetch(`${API_BASE_URL}/cars/all`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({}) // Already correct - POST with empty body
+        body: JSON.stringify({})
       });
       if (res.status === 401) return navigate('/commercialslogin');
       if (!res.ok) throw new Error("Failed to fetch cars");
@@ -139,8 +146,91 @@ const Commercials = () => {
     }
   };
 
+  // Fetch client images
+  const fetchClientImages = async (clientId) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/clients/${clientId}/images`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 401) return navigate('/commercialslogin');
+      if (!res.ok) throw new Error("Failed to fetch images");
+      const data = await res.json();
+      setClientImages(data || []);
+      setViewingImages(true);
+    } catch (err) {
+      alert("❌ Erreur lors du chargement des images: " + err.message);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Upload client image
+  const handleUploadClientImage = async (clientId, file) => {
+    if (!file) {
+      alert("⚠️ Veuillez sélectionner un fichier");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      setUploadingImage(true);
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/clients/images?client_id=${clientId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+
+      if (res.status === 401) return navigate('/commercialslogin');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Upload failed");
+      }
+
+      alert("✅ Image téléchargée avec succès !");
+      fetchClientImages(clientId);
+    } catch (err) {
+      console.error("Upload Image Error:", err);
+      alert("❌ Erreur téléchargement image :\n" + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Delete client image
+  const handleDeleteClientImage = async (clientId, imageId) => {
+    if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer cette image ?")) return;
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/clients/images?client_id=${clientId}&image_id=${imageId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.status === 401) return navigate('/commercialslogin');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Delete failed");
+      }
+
+      alert("✅ Image supprimée avec succès !");
+      fetchClientImages(clientId);
+    } catch (err) {
+      console.error("Delete Image Error:", err);
+      alert("❌ Erreur suppression image :\n" + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddClient = async () => {
-    // UPDATED: Added passport_number validation
     const { name, surname, phone, password, wilaya, address, nin, passport_number } = newClient;
     if (!name || !surname || !phone || !password || !wilaya || !address || !nin || !passport_number) {
       alert("Veuillez remplir tous les champs (y compris le NIN et le numéro de passeport) !");
@@ -169,7 +259,7 @@ const Commercials = () => {
           name,
           surname,
           nin: parsedNIN,
-          passport_number: parsedPassport, // ADDED: New required field
+          passport_number: parsedPassport,
           phone_number: phone,
           password,
           wilaya,
@@ -272,7 +362,7 @@ const Commercials = () => {
     }
   };
 
-const generateContract = () => {
+  const generateContract = () => {
     if (!lastOrderData) return;
     const { client, car, color, price, priceInDZD, paymentAmount, date } = lastOrderData;
     const totalPrice = priceInDZD ? Math.round(priceInDZD) : 0;
@@ -284,7 +374,6 @@ const generateContract = () => {
     const formattedRemaining = remainingBalance.toLocaleString('fr-DZ');
     const contractDate = date;
     
-    // Use the imported QR code directly - it should be the path or base64
     const qrCodeSrc = QrCode;
     
     const contractHTML = `
@@ -630,7 +719,6 @@ const generateContract = () => {
         printWindow.document.write(contractHTML);
         printWindow.document.close();
         
-        // Wait for images to load before allowing print
         printWindow.onload = function() {
             const qrImg = printWindow.document.querySelector('.qr-code img');
             if (qrImg) {
@@ -667,7 +755,6 @@ const generateContract = () => {
         throw new Error(errorData.detail || errorData.message || `HTTP ${res.status}`);
       }
       
-      // Update the lastOrderData if we're editing the most recent order
       const updatedOrder = await res.json();
       if (lastOrderData && lastOrderData.orderId === orderId) {
         const client = clients.find(c => c.id === updatedOrder.client_id);
@@ -687,7 +774,6 @@ const generateContract = () => {
       setEditForm({ payment_amount: "", delivery_status: "" });
       fetchOrders();
       
-      // Ask if they want to regenerate the contract
       if (window.confirm("Voulez-vous régénérer le contrat avec les nouvelles informations?")) {
         generateContract();
       }
@@ -705,7 +791,6 @@ const generateContract = () => {
 
   const handlePrintContract = async (order) => {
     try {
-      // Find the client and car details for this order
       const client = clients.find(c => c.id === order.client_id);
       const car = cars.find(c => c.id === order.car_id);
       
@@ -716,7 +801,6 @@ const generateContract = () => {
       
       const priceInfo = getCarPriceInfo(car);
       
-      // Update lastOrderData with the current order's information
       setLastOrderData({
         client,
         car,
@@ -728,7 +812,6 @@ const generateContract = () => {
         date: order.created_at ? new Date(order.created_at).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ')
       });
       
-      // Wait a moment for state to update, then generate contract
       setTimeout(() => {
         generateContract();
       }, 100);
@@ -738,6 +821,7 @@ const generateContract = () => {
       alert("❌ Erreur lors de la génération du contrat");
     }
   };
+
   const handleDeleteOrder = async (orderId) => {
     if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer cette commande ?")) return;
     try {
@@ -769,7 +853,6 @@ const generateContract = () => {
 
       alert("✅ Commande supprimée avec succès !");
 
-      // Clear the lastOrderData if we're deleting the most recent order
       if (lastOrderData && lastOrderData.orderId === orderId) {
         setLastOrderData(null);
       }
@@ -861,6 +944,14 @@ const generateContract = () => {
     );
   }, [groupedCars, searchCars]);
 
+  const filteredClients = useMemo(() => {
+    return clients.filter(c =>
+      (c.name?.toLowerCase() || "").includes(searchClients.toLowerCase()) ||
+      (c.surname?.toLowerCase() || "").includes(searchClients.toLowerCase()) ||
+      (c.phone_number?.toLowerCase() || "").includes(searchClients.toLowerCase())
+    );
+  }, [clients, searchClients]);
+
   return (
     <div className="h-screen w-screen font-main flex bg-gradient-to-br from-neutral-950 to-neutral-900 text-white overflow-hidden">
       
@@ -892,6 +983,43 @@ const generateContract = () => {
         </div>
       )}
 
+      {/* Client Images Modal */}
+      {viewingImages && selectedClientForImages && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setViewingImages(false)}>
+          <div className="bg-neutral-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 border border-neutral-700" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Documents - {selectedClientForImages.name} {selectedClientForImages.surname}</h2>
+                <p className="text-neutral-400 text-sm">NIN: {selectedClientForImages.nin} | Passeport: {selectedClientForImages.passport_number}</p>
+              </div>
+              <button onClick={() => setViewingImages(false)} className="text-4xl text-neutral-400 hover:text-white">&times;</button>
+            </div>
+            
+            {clientImages.length === 0 ? (
+              <p className="text-center text-neutral-400 py-8">Aucun document téléchargé</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {clientImages.map((img, idx) => (
+                  <div key={idx} className="relative group">
+                    <img 
+                      src={img.url || img.image_url} 
+                      alt={`Document ${idx + 1}`} 
+                      className="w-full h-48 object-cover rounded-lg border border-neutral-700"
+                    />
+                    <button
+                      onClick={() => handleDeleteClientImage(selectedClientForImages.id, img.id)}
+                      className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-neutral-900 border-r border-neutral-800 p-4 transform transition-transform duration-300 ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="flex flex-col h-full">
@@ -906,6 +1034,7 @@ const generateContract = () => {
               { id: "addClient", icon: Plus, label: "Ajouter Client" },
               { id: "orders", icon: File, label: "Commandes" },
               { id: "cars", icon: Car, label: "Voitures" },
+              { id: "paperwork", icon: FileArchiveIcon, label: "Papiers Clients" },
               { id: "requests", icon: LetterTextIcon, label: "Demande Admin" }
             ].map(({ label, id, icon: Icon }) => (
               <button
@@ -964,7 +1093,6 @@ const generateContract = () => {
                   required
                   min="1"
                 />
-                {/* ADDED: Passport number field */}
                 <input
                   type="number"
                   placeholder="Numéro de Passeport"
@@ -1222,6 +1350,72 @@ const generateContract = () => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Paperwork/Client Documents Tab */}
+        {activeTab === "paperwork" && (
+          <div>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold">Documents Clients</h2>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
+                <input 
+                  value={searchClients} 
+                  onChange={e => setSearchClients(e.target.value)} 
+                  placeholder="Rechercher client..." 
+                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64" 
+                />
+              </div>
+            </div>
+            
+            <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+              {filteredClients.map(client => (
+                <div key={client.id} className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
+                  <div className="mb-4">
+                    <h3 className="text-xl font-bold">{client.name} {client.surname}</h3>
+                    <p className="text-sm text-neutral-400">NIN: {client.nin}</p>
+                    <p className="text-sm text-neutral-400">Passeport: {client.passport_number || 'N/A'}</p>
+                    <p className="text-sm text-neutral-400">{client.phone_number}</p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 bg-neutral-800 p-3 rounded-lg cursor-pointer hover:bg-neutral-700 transition">
+                      <Upload size={20} className="text-emerald-400" />
+                      <span className="flex-1">Télécharger document</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingImage}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleUploadClientImage(client.id, file);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
+                    
+                    <button
+                      onClick={() => {
+                        setSelectedClientForImages(client);
+                        fetchClientImages(client.id);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 p-3 rounded-lg transition"
+                    >
+                      <ImageIcon size={20} />
+                      Voir documents
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {filteredClients.length === 0 && (
+              <p className="text-center text-neutral-400 py-8">Aucun client trouvé</p>
+            )}
           </div>
         )}
 

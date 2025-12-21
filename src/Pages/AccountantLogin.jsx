@@ -17,31 +17,104 @@ const AccountantLogin = () => {
     setLoading(true);
 
     try {
-      // ✅ Correct API URL — NO trailing spaces
       const response = await fetch("https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com/users/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          phone_number: phoneNumber, // ← matches OpenAPI "loginUser" schema
+          phone_number: phoneNumber,
           password: password,
         }),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        // ✅ Save JWT token (FastAPI typically returns { "access_token": "...", "token_type": "bearer" })
-        localStorage.setItem("authToken", data.access_token);
-        navigate("/accountant");
-      } else {
-        // ✅ Handle FastAPI-style errors (your spec uses Pydantic validation)
-        setError(data.detail || "Numéro de téléphone ou mot de passe incorrect");
+      // First check if response is ok (2xx status)
+      if (!response.ok) {
+        // Handle error responses
+        let errorMessage = "Numéro de téléphone ou mot de passe incorrect";
+        
+        try {
+          const errorData = await response.json();
+          // FastAPI validation errors come as an array in 'detail'
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg).join(", ");
+          } else if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (parseError) {
+          // If JSON parsing fails, use default error message
+          console.error("Failed to parse error response:", parseError);
+        }
+        
+        setError(errorMessage);
+        setLoading(false);
+        return;
       }
+
+      // Parse successful response
+      const data = await response.json();
+      console.log("Login response:", data); // For debugging
+
+      // ✅ Handle multiple possible token response formats
+      let token = null;
+      
+      // Format 1: { "access_token": "...", "token_type": "bearer" }
+      if (data.access_token) {
+        token = data.access_token;
+      }
+      // Format 2: { "token": "..." }
+      else if (data.token) {
+        token = data.token;
+      }
+      // Format 3: Token directly in response (string)
+      else if (typeof data === 'string') {
+        token = data;
+      }
+      // Format 4: { "jwt": "..." } or { "authToken": "..." }
+      else if (data.jwt) {
+        token = data.jwt;
+      } else if (data.authToken) {
+        token = data.authToken;
+      }
+
+      // Validate we got a token
+      if (!token) {
+        console.error("No token found in response:", data);
+        setError("Erreur serveur: Aucun token reçu. Veuillez contacter l'administrateur.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Store token with the EXACT key used in other components
+      localStorage.setItem("authToken", token);
+      
+      // Verify token was stored
+      const storedToken = localStorage.getItem("authToken");
+      if (!storedToken) {
+        console.error("Failed to store token in localStorage");
+        setError("Erreur: Impossible de sauvegarder la session.");
+        setLoading(false);
+        return;
+      }
+
+      console.log("✅ Token stored successfully");
+      
+      // Navigate to accountant dashboard
+      navigate("/accountant");
+
     } catch (err) {
-      setError("Erreur réseau. Veuillez vérifier votre connexion.");
-      console.error("Login failed:", err);
+      console.error("Login error:", err);
+      
+      // Provide specific error messages based on error type
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError("Erreur réseau. Impossible de se connecter au serveur.");
+      } else if (err.name === 'SyntaxError') {
+        setError("Erreur: Réponse serveur invalide.");
+      } else {
+        setError("Erreur de connexion. Veuillez réessayer.");
+      }
     } finally {
       setLoading(false);
     }
@@ -118,7 +191,7 @@ const AccountantLogin = () => {
           <motion.button
             whileTap={{ scale: 0.97 }}
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 font-semibold text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 font-semibold text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
             {loading ? "Connexion..." : "Se connecter"}
           </motion.button>

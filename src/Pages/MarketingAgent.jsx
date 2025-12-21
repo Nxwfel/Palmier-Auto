@@ -5,11 +5,9 @@ import { parseColors } from "../lib/utils";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
-// ✅ FIXED: Better error handling and token management
 const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem("authToken");
   
-  // ✅ Debug logging
   console.log("Making request to:", url);
   console.log("Token exists:", !!token);
   
@@ -17,12 +15,11 @@ const apiFetch = async (url, options = {}) => {
     ...(options.headers || {}),
   };
   
-  // ✅ Only add Authorization if token exists and Content-Type isn't multipart/form-data
   if (token && !url.includes("/users/login")) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  // ✅ Don't set Content-Type for FormData - browser handles it
+  // Don't set Content-Type for FormData - browser handles it
   if (!(options.body instanceof FormData)) {
     headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
@@ -33,12 +30,10 @@ const apiFetch = async (url, options = {}) => {
       headers,
     });
 
-    // ✅ Better 401 handling - only redirect if not already on login page
     if (response.status === 401) {
       console.error("401 Unauthorized - Token may be invalid or expired");
       localStorage.removeItem("authToken");
       
-      // Only redirect if we're not already trying to login
       if (!url.includes("/users/login") && window.location.pathname !== "/marketinglogin") {
         const currentPath = window.location.pathname;
         const redirectParam = `?redirect=${encodeURIComponent(currentPath)}`;
@@ -71,8 +66,8 @@ const MarketingAgent = () => {
   const [formData, setFormData] = useState({
     currency_id: "",
     model: "",
-    description: "", // ADDED: New optional field
-    color: [], // CHANGED: Now an array instead of string
+    description: "",
+    color: [],
     year: "",
     engine: "",
     power: "",
@@ -101,8 +96,8 @@ const MarketingAgent = () => {
     car_id: "",
     currency_id: "",
     model: "",
-    description: "", // ADDED: New optional field
-    color: [], // CHANGED: Now an array instead of string
+    description: "",
+    color: [],
     year: "",
     engine: "",
     power: "",
@@ -121,14 +116,12 @@ const MarketingAgent = () => {
   const [activeTab, setActiveTab] = useState("New");
   const [showFilter, setShowFilter] = useState(false);
   
-  // ADDED: State for managing color inputs
   const [colorInput, setColorInput] = useState("");
   const [editColorInput, setEditColorInput] = useState("");
 
   const isFieldEmpty = (value) => value === "" || value == null;
 
   useEffect(() => {
-    // ✅ Check if user is authenticated before fetching
     const token = localStorage.getItem("authToken");
     if (!token) {
       console.error("No auth token found");
@@ -144,7 +137,6 @@ const MarketingAgent = () => {
       setLoading(true);
       setError(null);
       
-      // ✅ Fetch sequentially to better identify which call fails
       await fetchCurrencies();
       await fetchCars();
       
@@ -203,7 +195,6 @@ const MarketingAgent = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ADDED: Helper functions for managing color array
   const addColor = () => {
     if (colorInput.trim() && !formData.color.includes(colorInput.trim())) {
       setFormData({ ...formData, color: [...formData.color, colorInput.trim()] });
@@ -252,7 +243,6 @@ const MarketingAgent = () => {
       }
     }
 
-    // CHANGED: Validate color array instead of single color
     if (!formData.color || formData.color.length === 0) {
       alert("Veuillez ajouter au moins une couleur");
       return;
@@ -261,16 +251,13 @@ const MarketingAgent = () => {
     try {
       const formDataToSend = new FormData();
 
-      // ✅ According to your OpenAPI spec, the field names should match exactly
       formDataToSend.append("currency_id", parseInt(formData.currency_id));
       formDataToSend.append("model", formData.model);
       
-      // ADDED: Include description if provided
       if (formData.description) {
         formDataToSend.append("description", formData.description);
       }
       
-      // ✅ IMPORTANT: API expects "color" as an array - send each color separately
       formData.color.forEach(color => {
         formDataToSend.append("color", color);
       });
@@ -287,7 +274,6 @@ const MarketingAgent = () => {
       formDataToSend.append("shipping_date", formData.shipping_date);
       formDataToSend.append("arriving_date", formData.arriving_date);
       
-      // Add images if any
       formData.images.forEach(file => {
         formDataToSend.append("images", file);
       });
@@ -303,7 +289,7 @@ const MarketingAgent = () => {
           currency_id: "",
           model: "",
           description: "",
-          color: [], // CHANGED: Reset to empty array
+          color: [],
           year: "",
           engine: "",
           power: "",
@@ -317,7 +303,7 @@ const MarketingAgent = () => {
           arriving_date: "",
           images: [],
         });
-        setColorInput(""); // ADDED: Reset color input
+        setColorInput("");
         fetchCars();
       } else {
         const error = await response.json().catch(() => ({}));
@@ -368,14 +354,13 @@ const MarketingAgent = () => {
 
   const selectCarToEdit = (car) => {
     setSelectedCar(car.id);
-    // CHANGED: Parse colors into array
     const colors = parseColors(car.color);
     setEditForm({
       car_id: car.id,
       currency_id: car.currency_id || "",
       model: car.model || "",
       description: car.description || "",
-      color: colors, // CHANGED: Use parsed colors array
+      color: colors,
       year: car.year || "",
       engine: car.engine || "",
       power: car.power || "",
@@ -389,7 +374,7 @@ const MarketingAgent = () => {
       arriving_date: car.arriving_date || "",
       images: [],
     });
-    setEditColorInput(""); // ADDED: Reset edit color input
+    setEditColorInput("");
   };
 
   const handleEditChange = (e) => {
@@ -402,35 +387,86 @@ const MarketingAgent = () => {
     try {
       const formDataToSend = new FormData();
       
+      // ✅ CRITICAL FIX: Always include car_id
       formDataToSend.append("car_id", editForm.car_id);
       
-      // ✅ Only append fields that have values
-      if (editForm.currency_id) formDataToSend.append("currency_id", editForm.currency_id);
-      if (editForm.model) formDataToSend.append("model", editForm.model);
-      if (editForm.description) formDataToSend.append("description", editForm.description);
+      // ✅ FIX: Convert numbers properly and only send non-empty fields
+      if (editForm.currency_id && editForm.currency_id !== "") {
+        formDataToSend.append("currency_id", parseInt(editForm.currency_id));
+      }
       
-      // CHANGED: Handle color array
+      if (editForm.model && editForm.model.trim() !== "") {
+        formDataToSend.append("model", editForm.model.trim());
+      }
+      
+      if (editForm.description && editForm.description.trim() !== "") {
+        formDataToSend.append("description", editForm.description.trim());
+      }
+      
+      // ✅ CRITICAL FIX: Handle color array properly
       if (editForm.color && editForm.color.length > 0) {
         editForm.color.forEach(color => {
           formDataToSend.append("color", color);
         });
       }
       
-      if (editForm.year) formDataToSend.append("year", editForm.year);
-      if (editForm.engine) formDataToSend.append("engine", editForm.engine);
-      if (editForm.power) formDataToSend.append("power", editForm.power);
-      if (editForm.fuel_type) formDataToSend.append("fuel_type", editForm.fuel_type);
-      if (editForm.milage) formDataToSend.append("milage", editForm.milage);
-      if (editForm.country) formDataToSend.append("country", editForm.country);
-      if (editForm.quantity) formDataToSend.append("quantity", editForm.quantity);
-      if (editForm.price) formDataToSend.append("price", editForm.price);
-      if (editForm.wholesale_price) formDataToSend.append("wholesale_price", editForm.wholesale_price);
-      if (editForm.shipping_date) formDataToSend.append("shipping_date", editForm.shipping_date);
-      if (editForm.arriving_date) formDataToSend.append("arriving_date", editForm.arriving_date);
+      if (editForm.year && editForm.year !== "") {
+        formDataToSend.append("year", parseInt(editForm.year));
+      }
       
-      editForm.images.forEach(file => {
-        formDataToSend.append("images", file);
-      });
+      if (editForm.engine && editForm.engine.trim() !== "") {
+        formDataToSend.append("engine", editForm.engine.trim());
+      }
+      
+      if (editForm.power && editForm.power.trim() !== "") {
+        formDataToSend.append("power", editForm.power.trim());
+      }
+      
+      if (editForm.fuel_type && editForm.fuel_type.trim() !== "") {
+        formDataToSend.append("fuel_type", editForm.fuel_type.trim());
+      }
+      
+      if (editForm.milage && editForm.milage !== "") {
+        formDataToSend.append("milage", parseFloat(editForm.milage));
+      }
+      
+      if (editForm.country && editForm.country.trim() !== "") {
+        formDataToSend.append("country", editForm.country.trim());
+      }
+      
+      if (editForm.quantity && editForm.quantity !== "") {
+        formDataToSend.append("quantity", parseInt(editForm.quantity));
+      }
+      
+      if (editForm.price && editForm.price !== "") {
+        formDataToSend.append("price", parseFloat(editForm.price));
+      }
+      
+      if (editForm.wholesale_price && editForm.wholesale_price !== "") {
+        formDataToSend.append("wholesale_price", parseFloat(editForm.wholesale_price));
+      }
+      
+      if (editForm.shipping_date && editForm.shipping_date !== "") {
+        formDataToSend.append("shipping_date", editForm.shipping_date);
+      }
+      
+      if (editForm.arriving_date && editForm.arriving_date !== "") {
+        formDataToSend.append("arriving_date", editForm.arriving_date);
+      }
+      
+      // Add images if any
+      if (editForm.images && editForm.images.length > 0) {
+        editForm.images.forEach(file => {
+          formDataToSend.append("images", file);
+        });
+      }
+
+      // ✅ DEBUG: Log what we're sending
+      console.log("Editing car with ID:", editForm.car_id);
+      console.log("FormData contents:");
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(`${key}:`, value);
+      }
 
       const response = await apiFetch(`${API_BASE_URL}/cars/`, {
         method: "PUT",
@@ -438,24 +474,42 @@ const MarketingAgent = () => {
       });
 
       if (response.ok) {
-        alert("Voiture modifiée !");
+        alert("Voiture modifiée avec succès !");
         setSelectedCar(null);
-        setEditColorInput(""); // ADDED: Reset edit color input
+        setEditColorInput("");
         fetchCars();
       } else {
+        // ✅ Better error handling
+        const contentType = response.headers.get("content-type");
         let errorDetails = "Échec de la modification";
-        try {
-          const error = await response.json();
-          errorDetails = error.detail || JSON.stringify(error);
-        } catch {
+        
+        if (contentType && contentType.includes("application/json")) {
+          try {
+            const error = await response.json();
+            console.error("Edit error response:", error);
+            
+            // Handle FastAPI validation errors
+            if (Array.isArray(error.detail)) {
+              errorDetails = error.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+            } else if (error.detail) {
+              errorDetails = error.detail;
+            } else if (error.message) {
+              errorDetails = error.message;
+            }
+          } catch (parseError) {
+            console.error("Failed to parse error JSON:", parseError);
+          }
+        } else {
           try {
             const errorText = await response.text();
-            errorDetails = errorText || errorDetails;
-          } catch {
-            errorDetails = response.statusText || errorDetails;
+            console.error("Edit error text:", errorText);
+            errorDetails = errorText || `HTTP ${response.status}: ${response.statusText}`;
+          } catch (textError) {
+            errorDetails = `HTTP ${response.status}: ${response.statusText}`;
           }
         }
-        alert(`Erreur: ${errorDetails}`);
+        
+        alert(`Erreur lors de la modification:\n\n${errorDetails}`);
       }
     } catch (error) {
       console.error("Edit error:", error);
@@ -465,7 +519,7 @@ const MarketingAgent = () => {
 
   const handleCancelEdit = () => {
     setSelectedCar(null);
-    setEditColorInput(""); // ADDED: Reset edit color input
+    setEditColorInput("");
   };
 
   const handleLogout = () => {
@@ -518,7 +572,9 @@ const MarketingAgent = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 1 }}
             onClick={() => switchTab("New")}
-            className="w-[90%] p-[2vh] text-[2vh] cursor-pointer bg-emerald-600 rounded-lg text-center flex justify-start items-center gap-[0.2vw]"
+            className={`w-[90%] p-[2vh] text-[2vh] cursor-pointer ${
+              activeTab === "New" ? "bg-emerald-600" : "bg-neutral-800 hover:bg-neutral-700"
+            } rounded-lg text-center flex justify-start items-center gap-[0.2vw] transition-colors`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
@@ -529,7 +585,9 @@ const MarketingAgent = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 1 }}
             onClick={() => switchTab("Modify")}
-            className="w-[90%] p-[2vh] text-[2vh] cursor-pointer bg-emerald-600 rounded-lg text-center flex justify-start items-center gap-[0.2vw]"
+            className={`w-[90%] p-[2vh] text-[2vh] cursor-pointer ${
+              activeTab === "Modify" ? "bg-emerald-600" : "bg-neutral-800 hover:bg-neutral-700"
+            } rounded-lg text-center flex justify-start items-center gap-[0.2vw] transition-colors`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
@@ -541,7 +599,7 @@ const MarketingAgent = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 1 }}
           onClick={handleLogout}
-          className="w-[90%] p-[2vh] text-[2vh] cursor-pointer bg-red-600 rounded-lg text-center flex justify-start items-center gap-[0.2vw]"
+          className="w-[90%] p-[2vh] text-[2vh] cursor-pointer bg-red-600 hover:bg-red-700 rounded-lg text-center flex justify-start items-center gap-[0.2vw] transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-[3vh]">
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
@@ -604,7 +662,6 @@ const MarketingAgent = () => {
                 required
               />
               
-              {/* ADDED: Description field */}
               <input
                 name="description"
                 value={formData.description}
@@ -613,7 +670,6 @@ const MarketingAgent = () => {
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
               />
               
-              {/* CHANGED: Color management with array */}
               <div className="md:col-span-3">
                 <label className="block text-sm text-emerald-400 mb-2">Couleurs * (Ajoutez plusieurs couleurs)</label>
                 <div className="flex gap-2 mb-2">
@@ -1006,7 +1062,6 @@ const MarketingAgent = () => {
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                       
-                      {/* ADDED: Description field */}
                       <input
                         name="description"
                         value={editForm.description}
@@ -1015,7 +1070,6 @@ const MarketingAgent = () => {
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                       
-                      {/* CHANGED: Color management with array */}
                       <div className="md:col-span-3">
                         <label className="block text-sm text-emerald-400 mb-2">Couleurs (Modifiez ou ajoutez)</label>
                         <div className="flex gap-2 mb-2">

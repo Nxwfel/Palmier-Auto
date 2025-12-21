@@ -1290,11 +1290,11 @@ export default function AdminSuperPanel() {
         setCurrencies(currencyMap);
         if (data.length === 0) {
           const defaultCurrencies = [
-            { code: "dzd", name: "Algerian Dinar", rate: 1 },
-            { code: "eur", name: "Euro", rate: 145 },
-            { code: "usd", name: "US Dollar", rate: 135 },
-            { code: "cad", name: "Canadian Dollar", rate: 98 },
-            { code: "aed", name: "UAE Dirham", rate: 36.8 },
+            { code: "dzd", name: "Algerian Dinar" },
+            { code: "eur", name: "Euro" },
+            { code: "usd", name: "US Dollar" },
+            { code: "cad", name: "Canadian Dollar" },
+            { code: "aed", name: "UAE Dirham"},
           ];
           for (let i = 0; i < defaultCurrencies.length; i++) {
             if (!isMounted) break;

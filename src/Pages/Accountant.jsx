@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Car, DollarSign, TrendingUp, Users } from "lucide-react";
+import { Car, DollarSign, Users, Upload, Trash2, Image as ImageIcon, Search } from "lucide-react";
 
-// ✅ FIXED: Trimmed URL
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 const Accountant = () => {
@@ -18,9 +17,15 @@ const Accountant = () => {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(false);
 
-  // ✅ Auth-aware fetch
+  // Client papers state
+  const [selectedClientForImages, setSelectedClientForImages] = useState(null);
+  const [clientImages, setClientImages] = useState([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [viewingImages, setViewingImages] = useState(false);
+  const [searchClients, setSearchClients] = useState("");
+
   const apiFetch = async (url, options = {}) => {
-    const token = localStorage.getItem("authToken"); // ✅ correct key
+    const token = localStorage.getItem("authToken");
     if (!token) throw new Error("No auth token");
     const res = await fetch(url, {
       ...options,
@@ -49,7 +54,7 @@ const Accountant = () => {
       const [commsRes, clientsRes, ordersRes, carsRes, expRes, earnRes] = await Promise.all([
         apiFetch(`${API_BASE_URL}/commercials/`),
         apiFetch(`${API_BASE_URL}/clients/`),
-        apiFetch(`${API_BASE_URL}/orders/client/`), // ✅ client-accessible orders
+        apiFetch(`${API_BASE_URL}/orders/`),
         apiFetch(`${API_BASE_URL}/cars/all`, { method: "POST", body: JSON.stringify({}) }),
         apiFetch(`${API_BASE_URL}/expenses/monthly`),
         apiFetch(`${API_BASE_URL}/earnings/monthly`),
@@ -73,7 +78,6 @@ const Accountant = () => {
         other: expensesData.other || 0,
       });
 
-      // ✅ Sum monthly earnings (array of {commercial_id, year, month, amount})
       const total = Array.isArray(earningsData)
         ? earningsData.reduce((sum, e) => sum + (e.amount || 0), 0)
         : 0;
@@ -90,24 +94,113 @@ const Accountant = () => {
     fetchAllData();
   }, []);
 
-  // ✅ Compute stats per commercial
+  // Fetch client images
+  const fetchClientImages = async (clientId) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/clients/${clientId}/images`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 401) {
+        setAuthError(true);
+        return;
+      }
+      if (!res.ok) throw new Error("Failed to fetch images");
+      const data = await res.json();
+      setClientImages(data || []);
+      setViewingImages(true);
+    } catch (err) {
+      alert("❌ Erreur lors du chargement des images: " + err.message);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Upload client image
+  const handleUploadClientImage = async (clientId, file) => {
+    if (!file) {
+      alert("⚠️ Veuillez sélectionner un fichier");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      setUploadingImage(true);
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/clients/images?client_id=${clientId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+
+      if (res.status === 401) {
+        setAuthError(true);
+        return;
+      }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Upload failed");
+      }
+
+      alert("✅ Image téléchargée avec succès !");
+      fetchClientImages(clientId);
+    } catch (err) {
+      console.error("Upload Image Error:", err);
+      alert("❌ Erreur téléchargement image :\n" + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Delete client image
+  const handleDeleteClientImage = async (clientId, imageId) => {
+    if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer cette image ?")) return;
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/clients/images?client_id=${clientId}&image_id=${imageId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.status === 401) {
+        setAuthError(true);
+        return;
+      }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Delete failed");
+      }
+
+      alert("✅ Image supprimée avec succès !");
+      fetchClientImages(clientId);
+    } catch (err) {
+      console.error("Delete Image Error:", err);
+      alert("❌ Erreur suppression image :\n" + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getCommercialStats = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     return commercials.map(commercial => {
-      // Clients assigned to this commercial
       const assignedClients = clients.filter(c => c.commercial_id === commercial.id);
       const clientIds = assignedClients.map(c => c.id);
 
-      // Orders from those clients (today only)
       const todayOrders = orders.filter(o =>
         clientIds.includes(o.client_id) &&
         o.created_at &&
         new Date(o.created_at) >= today
       );
 
-      // Activities: all orders from this commercial’s clients
       const activities = orders
         .filter(o => clientIds.includes(o.client_id))
         .map(o => {
@@ -151,7 +244,13 @@ const Accountant = () => {
     { title: "Commercials", value: commercials.length, icon: <Users />, color: "bg-purple-600" },
   ];
 
-  if (loading) {
+  const filteredClients = clients.filter(c =>
+    (c.name?.toLowerCase() || "").includes(searchClients.toLowerCase()) ||
+    (c.surname?.toLowerCase() || "").includes(searchClients.toLowerCase()) ||
+    (c.phone_number?.toLowerCase() || "").includes(searchClients.toLowerCase())
+  );
+
+  if (loading && !viewingImages) {
     return (
       <div className="min-h-screen w-screen bg-neutral-950 text-white flex items-center justify-center">
         <div className="text-2xl">Chargement...</div>
@@ -187,8 +286,59 @@ const Accountant = () => {
 
   return (
     <div className="min-h-screen w-screen font-main bg-neutral-950 text-white flex overflow-hidden">
+      {/* Client Images Modal */}
+      <AnimatePresence>
+        {viewingImages && selectedClientForImages && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+            onClick={() => setViewingImages(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-neutral-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 border border-neutral-700"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">Documents - {selectedClientForImages.name} {selectedClientForImages.surname}</h2>
+                  <p className="text-neutral-400 text-sm">NIN: {selectedClientForImages.nin} | Passeport: {selectedClientForImages.passport_number}</p>
+                </div>
+                <button onClick={() => setViewingImages(false)} className="text-4xl text-neutral-400 hover:text-white">&times;</button>
+              </div>
+              
+              {clientImages.length === 0 ? (
+                <p className="text-center text-neutral-400 py-8">Aucun document téléchargé</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {clientImages.map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <img 
+                        src={img.url || img.image_url} 
+                        alt={`Document ${idx + 1}`} 
+                        className="w-full h-48 object-cover rounded-lg border border-neutral-700"
+                      />
+                      <button
+                        onClick={() => handleDeleteClientImage(selectedClientForImages.id, img.id)}
+                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" onClick={toggleMenu} strokeWidth={1.5} stroke="currentColor" className="size-[4vh] cursor-pointer absolute mt-5 ml-5">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" onClick={toggleMenu} strokeWidth={1.5} stroke="currentColor" className="size-[4vh] cursor-pointer absolute mt-5 ml-5 z-30">
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
       </svg>
 
@@ -205,6 +355,7 @@ const Accountant = () => {
           {[
             { id: "Jour", label: "Nouvelles du jour", icon: "📅" },
             { id: "Commercials", label: "Commercials", icon: "👥" },
+            { id: "Clients", label: "Papiers Clients", icon: "📄" },
             { id: "Finance", label: "Finance", icon: "💰" },
           ].map(({ id, label, icon }) => (
             <motion.button
@@ -359,6 +510,78 @@ const Accountant = () => {
                 </motion.div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Client Papers Tab */}
+        {activeTab === "Clients" && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <h1 className="text-4xl font-bold">Documents Clients</h1>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
+                <input 
+                  value={searchClients} 
+                  onChange={e => setSearchClients(e.target.value)} 
+                  placeholder="Rechercher client..." 
+                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64 outline-none" 
+                />
+              </div>
+            </div>
+            
+            <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+              {filteredClients.map(client => (
+                <motion.div
+                  key={client.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800"
+                >
+                  <div className="mb-4">
+                    <h3 className="text-xl font-bold">{client.name} {client.surname}</h3>
+                    <p className="text-sm text-neutral-400">NIN: {client.nin}</p>
+                    <p className="text-sm text-neutral-400">Passeport: {client.passport_number || 'N/A'}</p>
+                    <p className="text-sm text-neutral-400">{client.phone_number}</p>
+                    <p className="text-sm text-neutral-400">📍 {client.wilaya}</p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 bg-neutral-800 p-3 rounded-lg cursor-pointer hover:bg-neutral-700 transition">
+                      <Upload size={20} className="text-emerald-400" />
+                      <span className="flex-1">Télécharger document</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingImage}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleUploadClientImage(client.id, file);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
+                    
+                    <button
+                      onClick={() => {
+                        setSelectedClientForImages(client);
+                        fetchClientImages(client.id);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 p-3 rounded-lg transition"
+                    >
+                      <ImageIcon size={20} />
+                      Voir documents
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            
+            {filteredClients.length === 0 && (
+              <p className="text-center text-neutral-400 py-8">Aucun client trouvé</p>
+            )}
           </div>
         )}
 
