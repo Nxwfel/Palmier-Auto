@@ -634,7 +634,6 @@ const Commercials = () => {
 
     <div class="price-highlight">
         المبلغ الإجمالي والنهائي: ${formattedTotal} دج 
-        ${price}
         <br>
         <small style="font-size: 10pt;">(متضمناً جميع تكاليف النقل والتأمين دون حقوق الجمركة)</small>
     </div>

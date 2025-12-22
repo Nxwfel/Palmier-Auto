@@ -189,7 +189,7 @@ const OrderForm = () => {
           <h2 className="text-xl font-semibold text-gray-800">Détails de la commande</h2>
           <p className="text-gray-600 mt-1">{car.model} - {car.year}</p>
           <p className="text-gray-600">Couleur: <span style={{ color: selectedColor.hex, fontWeight: 'bold' }}>{selectedColor.name}</span></p>
-          <p className="text-gray-600 mt-1">Prix: {(car.priceInDZD / 1_000_000).toFixed(1).replace('.', ',')} M DZD</p>
+          <p className="text-gray-600 mt-1">Prix: {(car.priceInDZD / 1_000_0).toFixed(1).replace('.', ',')} M DZD</p>
         </div>
 
         {error && (

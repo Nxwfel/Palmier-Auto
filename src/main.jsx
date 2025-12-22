@@ -20,7 +20,8 @@ import ProtectedRoute from './Components/ProtectedRoute.jsx'
 import CommercialsProtectedRoute from './Components/CommercialsProtectedRoute.jsx'
 import AccountantProtectedRoute from './Components/AccountantProtectedRoute.jsx'
 import MarketingProtectedRoute from './Components/MarketingProtectedRoute.jsx'
-import OrderForm from './Pages/OrderForm.jsx' // Import the OrderForm component
+import OrderForm from './Pages/OrderForm.jsx'
+import Footer from './Pages/Footer.jsx'
 import './index.css'
 
 createRoot(document.getElementById('root')).render(
@@ -29,6 +30,7 @@ createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path='/' element={<App/>} />
         <Route path='/auth' element={<AuthPage/>} />
+        <Route path='/Contact' element={<Footer/>} />
         <Route element={<ProtectedRoute />}>
           <Route path="/admin" element={<AdminSuperPanel />} />
         </Route>

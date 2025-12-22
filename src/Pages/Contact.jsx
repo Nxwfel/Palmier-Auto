@@ -1,5 +1,9 @@
 import React, { useState } from 'react'
 import Map from '../assets/map.jpeg'
+import { Link } from 'react-router-dom'
+import { Facebook, Instagram, Mail } from 'lucide-react'
+import { motion } from 'framer-motion'
+
 const Contact = () => {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -23,26 +27,36 @@ const Contact = () => {
   <p className='text-sm text-neutral-500 mt-1 mb-4'>Votre concessionnaire automobile de confiance</p>
   
   {/* Dealership Contact */}
-  <div className='mb-6'>
-    <h4 className='font-semibold mb-2 text-amber-400'>Siège Social</h4>
+  <div className='mb-6 flex flex-col justify-start items-start'>
+    <h4 className='font-semibold mb-2 text-amber-400'>Siège Social Principale</h4>
     <div className='space-y-2 text-sm'>
       <p><span className='font-medium'>Adresse:</span><br/>622 logts bechar 08000 Colomb-Béchar, Algeria</p>
       <p><span className='font-medium'>Téléphone:</span><br/>0773 96 41 96</p>
       <p><span className='font-medium'>Email:</span><br/>Palmier.auto@gmail.com</p>
     </div>
+    <h4 className='font-semibold mb-2 text-amber-400'>Notre Bureaus:</h4>
+    <Link to={'/Contact'}>
+    <div className="flex justify-center items-center gap-12 h-full">
+  <div
+    className="bg-gradient-to-b from-stone-300/40 to-transparent p-[4px] rounded-[16px]"
+  >
+    <button
+      className="group p-[4px] rounded-[12px] bg-gradient-to-b from-white to-stone-200/40 shadow-[0_1px_3px_rgba(0,0,0,0.5)] active:shadow-[0_0px_1px_rgba(0,0,0,0.5)] active:scale-[0.995]"
+    >
+      <div
+        className="bg-gradient-to-b from-stone-200/40 to-white/80 rounded-[8px] px-2 py-2"
+      >
+        <div className="flex gap-2 items-center">
+          <span className="font-semibold text-amber-400">Consultez</span>
+        </div>
+      </div>
+    </button>
+  </div>
+</div>
+</Link>
+
   </div>
   
-  {/* Contact Form */}
-  <div>
-    <h4 className='font-semibold mb-2 text-amber-400'>Commandez une voiture non disponible</h4>
-    <form onSubmit={handleSubmit} className='flex flex-col gap-2'>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder='Votre nom' className='px-3 py-2 rounded border border-neutral-200 bg-neutral-50' />
-      <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder='Votre message' rows={3} className='px-3 py-2 rounded border border-neutral-200 bg-neutral-50' />
-      <button type='submit' className='mt-2 px-4 py-2 bg-amber-400 hover:bg-amber-500 text-white rounded transition-colors'>
-        Envoyer
-      </button>
-    </form>
-  </div>
 </div>
       <div 
             style={{backgroundImage:`url(${Map})` , backgroundPosition:'center'}}
@@ -53,10 +67,42 @@ const Contact = () => {
         <div className='h-full flex flex-col justify-start items-start '>
             <h1 className='font-main text-[4vh] text-black'>Palmier-Auto</h1>
             <p className='font-main text-[1vh] text-neutral-400 max-w-[20vw]'>
-              Palmier Auto est une entreprise spécialisée dans l’importation et la distribution de véhicules provenant des quatre coins du monde. Grâce à des partenariats solides établis en Europe, en Asie, en Amérique du Nord et au Moyen-Orient, Palmier Auto offre à ses clients un large choix de voitures alliant performance, fiabilité et élégance.</p>
+              Palmier Auto est une entreprise spécialisée dans l'importation et la distribution de véhicules provenant des quatre coins du monde. Grâce à des partenariats solides établis en Europe, en Asie, en Amérique du Nord et au Moyen-Orient, Palmier Auto offre à ses clients un large choix de voitures alliant performance, fiabilité et élégance.</p>
         </div>
-        <div className='h-full flex gap-[2vw] mt-[7vh] mr-[7vw] font-main'>
-           <a href="https://www.facebook.com/profile.php?id=61574967869777"><p className='cursor-pointer'>Facebook</p></a>
+        <div className='h-full flex max-md:flex-col gap-[2vw] mt-[7vh] mr-[7vw] font-main'>
+           <motion.a 
+             href="https://www.facebook.com/profile.php?id=61574967869777"
+             target="_blank"
+             rel="noopener noreferrer"
+             whileHover={{ scale: 1.1, y: -2 }}
+             whileTap={{ scale: 0.95 }}
+             className='flex items-center gap-2 cursor-pointer text-neutral-700 hover:text-amber-400 transition-colors duration-200'
+           >
+             <Facebook size={20} />
+             <span>Facebook</span>
+           </motion.a>
+           
+           <motion.a 
+             href="https://www.instagram.com/palmier.auto"
+             target="_blank"
+             rel="noopener noreferrer"
+             whileHover={{ scale: 1.1, y: -2 }}
+             whileTap={{ scale: 0.95 }}
+             className='flex items-center gap-2 cursor-pointer text-neutral-700 hover:text-amber-400 transition-colors duration-200'
+           >
+             <Instagram size={20} />
+             <span>Instagram</span>
+           </motion.a>
+           
+           <motion.a 
+             href="mailto:Palmier.auto@gmail.com"
+             whileHover={{ scale: 1.1, y: -2 }}
+             whileTap={{ scale: 0.95 }}
+             className='flex items-center gap-2 cursor-pointer text-neutral-700 hover:text-amber-400 transition-colors duration-200'
+           >
+             <Mail size={20} />
+             <span>Email</span>
+           </motion.a>
         </div>
         <div className='h-full flex flex-col mt-[3vh] p-4 font-main'>
             <p>Copyrights 2025 c</p>

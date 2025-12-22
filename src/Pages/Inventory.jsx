@@ -12,6 +12,7 @@ const Inventory = () => {
   const [error, setError] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
+  
   // Filter states
   const [filters, setFilters] = useState({
     model: "",
@@ -33,6 +34,17 @@ const Inventory = () => {
     return map;
   }, [currencies]);
 
+  // Helper function to parse colors (handles array or comma-separated string)
+  const parseColors = (colorData) => {
+    if (!colorData) return [];
+    if (Array.isArray(colorData)) return colorData;
+    if (typeof colorData === 'string') {
+      // Split by comma, trim whitespace, filter empty
+      return colorData.split(',').map(c => c.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
   // Fetch car images
   const fetchCarImages = async (carId) => {
     try {
@@ -47,9 +59,7 @@ const Inventory = () => {
 
       const data = await response.json();
       
-      // API returns: { "car_id": 1, "images": ["/cars_images/1/2.png", ...] }
       if (data.images && Array.isArray(data.images) && data.images.length > 0) {
-        // Convert relative path to full URL
         const imagePath = data.images[0];
         return `${API_BASE_URL}${imagePath}`;
       }
@@ -129,26 +139,21 @@ const Inventory = () => {
   // Format price in DZD (in millions)
   const formatPriceInMillions = (priceInDZD) => {
     if (priceInDZD == null || priceInDZD === 0) return "Prix non disponible";
-    const millions = priceInDZD / 1_000_0;
+    const millions = priceInDZD / 1_000_000;
     return `${millions.toFixed(1)} Millions DZD`;
   };
 
   // Get car image
   const getCarImage = (car) => {
-    // First try from our fetched images (already formatted with full URL)
     if (carImages[car.id]) {
       return carImages[car.id];
     }
     
-    // Then try from car data itself (if images are included in the car object)
     if (Array.isArray(car.images) && car.images.length > 0) {
       const img = car.images[0];
       if (typeof img === "string") {
-        // Check if it's already a full URL
         if (img.startsWith("http")) return img;
-        // Check if it's a relative path
         if (img.startsWith("/")) return `${API_BASE_URL}${img}`;
-        // Check if it's a base64 string
         if (img.startsWith("data:image")) return img;
       }
       if (img?.url) return img.url;
@@ -157,45 +162,85 @@ const Inventory = () => {
     return "/placeholder-car.jpg";
   };
 
+  // Get unique values for dropdowns with proper color handling
   const getUniqueValues = (key) => {
+    if (key === 'color') {
+      // Extract all colors from all cars
+      const allColors = new Set();
+      cars.forEach(car => {
+        const colors = parseColors(car.color);
+        colors.forEach(c => allColors.add(c));
+      });
+      return Array.from(allColors).sort();
+    }
+    
     const values = [...new Set(cars.map(car => car[key]).filter(Boolean))];
     return values.sort();
   };
 
-  // Apply filters to cars
+  // ✅ FIXED: Apply filters to cars with proper color handling
   const filteredCars = useMemo(() => {
     return cars.filter(car => {
+      // Calculate price in DZD
       const currency = currencyMap.get(car.currency_id);
       const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : 0;
       const priceInMillions = priceInDZD / 1_000_000;
 
-      if (filters.model && !car.model?.toLowerCase().includes(filters.model.toLowerCase())) {
-        return false;
+      // ✅ Model filter - case insensitive partial match
+      if (filters.model && filters.model.trim() !== "") {
+        const modelMatch = car.model?.toLowerCase().includes(filters.model.toLowerCase().trim());
+        if (!modelMatch) return false;
       }
-      if (filters.color && car.color?.toLowerCase() !== filters.color.toLowerCase()) {
-        return false;
+
+      // ✅ FIXED: Color filter - check if selected color is in car's color array
+      if (filters.color && filters.color.trim() !== "") {
+        const carColors = parseColors(car.color);
+        const hasColor = carColors.some(c => 
+          c.toLowerCase() === filters.color.toLowerCase().trim()
+        );
+        if (!hasColor) return false;
       }
-      if (filters.yearMin && car.year < parseInt(filters.yearMin)) {
-        return false;
+
+      // ✅ Year range filters
+      if (filters.yearMin && filters.yearMin !== "") {
+        const yearMin = parseInt(filters.yearMin);
+        if (!isNaN(yearMin) && car.year < yearMin) return false;
       }
-      if (filters.yearMax && car.year > parseInt(filters.yearMax)) {
-        return false;
+      
+      if (filters.yearMax && filters.yearMax !== "") {
+        const yearMax = parseInt(filters.yearMax);
+        if (!isNaN(yearMax) && car.year > yearMax) return false;
       }
-      if (filters.engine && !car.engine?.toLowerCase().includes(filters.engine.toLowerCase())) {
-        return false;
+
+      // ✅ Engine filter - case insensitive partial match
+      if (filters.engine && filters.engine.trim() !== "") {
+        const engineMatch = car.engine?.toLowerCase().includes(filters.engine.toLowerCase().trim());
+        if (!engineMatch) return false;
       }
-      if (filters.fuelType && car.fuel_type?.toLowerCase() !== filters.fuelType.toLowerCase()) {
-        return false;
+
+      // ✅ FIXED: Fuel type filter - exact match but case insensitive
+      if (filters.fuelType && filters.fuelType.trim() !== "") {
+        const fuelMatch = car.fuel_type?.toLowerCase() === filters.fuelType.toLowerCase().trim();
+        if (!fuelMatch) return false;
       }
-      if (filters.country && car.country?.toLowerCase() !== filters.country.toLowerCase()) {
-        return false;
+
+      // ✅ FIXED: Country filter - exact match but case insensitive
+      if (filters.country && filters.country.trim() !== "") {
+        const countryMatch = car.country?.toLowerCase() === filters.country.toLowerCase().trim();
+        if (!countryMatch) return false;
       }
-      if (filters.priceMin && priceInMillions < parseFloat(filters.priceMin)) {
-        return false;
+
+      // ✅ Price range filters (in millions)
+      if (filters.priceMin && filters.priceMin !== "") {
+        const priceMin = parseFloat(filters.priceMin);
+        if (!isNaN(priceMin) && priceInMillions < priceMin) return false;
       }
-      if (filters.priceMax && priceInMillions > parseFloat(filters.priceMax)) {
-        return false;
+      
+      if (filters.priceMax && filters.priceMax !== "") {
+        const priceMax = parseFloat(filters.priceMax);
+        if (!isNaN(priceMax) && priceInMillions > priceMax) return false;
       }
+
       return true;
     });
   }, [cars, filters, currencyMap]);
@@ -220,6 +265,12 @@ const Inventory = () => {
 
   const activeFilterCount = Object.values(filters).filter(v => v !== "").length;
 
+  // Get display color for car (first color if multiple)
+  const getDisplayColor = (car) => {
+    const colors = parseColors(car.color);
+    return colors.length > 0 ? colors[0] : car.color || "N/A";
+  };
+
   return (
     <div className="min-h-screen w-screen bg-neutral-100 flex flex-col px-[5vw] py-[4vh]">
       {/* Header */}
@@ -230,6 +281,7 @@ const Inventory = () => {
           transition={{ duration: 0.6 }}
           whileHover={{ scale: 1.03 }}
           className="font-main cursor-pointer font-thin text-[2.2vw] max-md:text-[6vw] text-neutral-800"
+          onClick={() => navigate('/')}
         >
           Palmier Auto
         </motion.h1>
@@ -370,6 +422,7 @@ const Inventory = () => {
                       value={filters.priceMin}
                       onChange={(e) => handleFilterChange("priceMin", e.target.value)}
                       placeholder="Min"
+                      step="0.1"
                       className="w-1/2 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
@@ -377,6 +430,7 @@ const Inventory = () => {
                       value={filters.priceMax}
                       onChange={(e) => handleFilterChange("priceMax", e.target.value)}
                       placeholder="Max"
+                      step="0.1"
                       className="w-1/2 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -430,6 +484,7 @@ const Inventory = () => {
               const currency = currencyMap.get(car.currency_id);
               const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : null;
               const formattedPrice = formatPriceInMillions(priceInDZD);
+              const displayColor = getDisplayColor(car);
 
               return (
                 <motion.div
@@ -450,7 +505,7 @@ const Inventory = () => {
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                    {car.quantity && (
+                    {car.quantity && car.quantity > 0 && (
                       <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
                         <p className="text-xs font-main text-neutral-700">Stock: {car.quantity}</p>
                       </div>
@@ -461,7 +516,7 @@ const Inventory = () => {
                       {car.model} {car.year ? `(${car.year})` : ""}
                     </h1>
                     <p className="font-main text-[0.9vw] max-md:text-[3vw] text-neutral-500">
-                      {car.color} • {car.fuel_type}
+                      {displayColor} • {car.fuel_type}
                     </p>
                     <p className="font-main font-semibold text-[1vw] max-md:text-[3.5vw] text-blue-600 mt-2">
                       {formattedPrice}

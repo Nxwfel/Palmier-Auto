@@ -389,7 +389,7 @@ const CarDetails = () => {
               transition={{ delay: 0.3 }}
             >
               {car.priceInDZD
-                ? `${(car.priceInDZD / 1_000_000).toFixed(1).replace('.', ',')} Millions DZD`
+                ? `${(car.priceInDZD / 1_000_0).toFixed(1).replace('.', ',')} Millions DZD`
                 : "Prix indisponible"}
             </motion.h3>
 
