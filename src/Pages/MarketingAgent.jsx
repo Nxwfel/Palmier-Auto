@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Car, Trash2, Edit, X } from "lucide-react";
+import { Plus, Car, Trash2, Edit, X, Upload, Image as ImageIcon } from "lucide-react";
 import { parseColors } from "../lib/utils";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
@@ -119,6 +119,10 @@ const MarketingAgent = () => {
   const [colorInput, setColorInput] = useState("");
   const [editColorInput, setEditColorInput] = useState("");
 
+  // Image preview states
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [editImagePreviews, setEditImagePreviews] = useState([]);
+
   const isFieldEmpty = (value) => value === "" || value == null;
 
   useEffect(() => {
@@ -217,6 +221,78 @@ const MarketingAgent = () => {
     setEditForm({ ...editForm, color: editForm.color.filter(c => c !== colorToRemove) });
   };
 
+  // Handle image selection for new car
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    
+    if (files.length === 0) return;
+
+    // Create preview URLs
+    const newPreviews = files.map(file => ({
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name
+    }));
+
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, ...files]
+    }));
+  };
+
+  // Remove image from new car form
+  const removeImage = (index) => {
+    setImagePreviews(prev => {
+      const newPreviews = [...prev];
+      // Revoke the URL to free memory
+      URL.revokeObjectURL(newPreviews[index].url);
+      newPreviews.splice(index, 1);
+      return newPreviews;
+    });
+
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Handle image selection for edit car
+  const handleEditImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    
+    if (files.length === 0) return;
+
+    // Create preview URLs
+    const newPreviews = files.map(file => ({
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name
+    }));
+
+    setEditImagePreviews(prev => [...prev, ...newPreviews]);
+    setEditForm(prev => ({
+      ...prev,
+      images: [...prev.images, ...files]
+    }));
+  };
+
+  // Remove image from edit car form
+  const removeEditImage = (index) => {
+    setEditImagePreviews(prev => {
+      const newPreviews = [...prev];
+      // Revoke the URL to free memory
+      URL.revokeObjectURL(newPreviews[index].url);
+      newPreviews.splice(index, 1);
+      return newPreviews;
+    });
+
+    setEditForm(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
   const handleAddCar = async (e) => {
     e.preventDefault();
 
@@ -274,9 +350,12 @@ const MarketingAgent = () => {
       formDataToSend.append("shipping_date", formData.shipping_date);
       formDataToSend.append("arriving_date", formData.arriving_date);
       
+      // Append all images
       formData.images.forEach(file => {
         formDataToSend.append("images", file);
       });
+
+      console.log(`Adding car with ${formData.images.length} images`);
 
       const response = await apiFetch(`${API_BASE_URL}/cars/`, {
         method: "POST",
@@ -285,6 +364,11 @@ const MarketingAgent = () => {
 
       if (response.ok) {
         alert("Voiture ajoutée avec succès!");
+        
+        // Clean up preview URLs
+        imagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
+        
+        // Reset form
         setFormData({
           currency_id: "",
           model: "",
@@ -304,6 +388,7 @@ const MarketingAgent = () => {
           images: [],
         });
         setColorInput("");
+        setImagePreviews([]);
         fetchCars();
       } else {
         const error = await response.json().catch(() => ({}));
@@ -375,6 +460,7 @@ const MarketingAgent = () => {
       images: [],
     });
     setEditColorInput("");
+    setEditImagePreviews([]);
   };
 
   const handleEditChange = (e) => {
@@ -387,10 +473,8 @@ const MarketingAgent = () => {
     try {
       const formDataToSend = new FormData();
       
-      // ✅ CRITICAL FIX: Always include car_id
       formDataToSend.append("car_id", editForm.car_id);
       
-      // ✅ FIX: Convert numbers properly and only send non-empty fields
       if (editForm.currency_id && editForm.currency_id !== "") {
         formDataToSend.append("currency_id", parseInt(editForm.currency_id));
       }
@@ -403,7 +487,6 @@ const MarketingAgent = () => {
         formDataToSend.append("description", editForm.description.trim());
       }
       
-      // ✅ CRITICAL FIX: Handle color array properly
       if (editForm.color && editForm.color.length > 0) {
         editForm.color.forEach(color => {
           formDataToSend.append("color", color);
@@ -454,19 +537,15 @@ const MarketingAgent = () => {
         formDataToSend.append("arriving_date", editForm.arriving_date);
       }
       
-      // Add images if any
+      // Append all new images
       if (editForm.images && editForm.images.length > 0) {
         editForm.images.forEach(file => {
           formDataToSend.append("images", file);
         });
+        console.log(`Editing car with ${editForm.images.length} new images`);
       }
 
-      // ✅ DEBUG: Log what we're sending
       console.log("Editing car with ID:", editForm.car_id);
-      console.log("FormData contents:");
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log(`${key}:`, value);
-      }
 
       const response = await apiFetch(`${API_BASE_URL}/cars/`, {
         method: "PUT",
@@ -475,11 +554,15 @@ const MarketingAgent = () => {
 
       if (response.ok) {
         alert("Voiture modifiée avec succès !");
+        
+        // Clean up preview URLs
+        editImagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
+        
         setSelectedCar(null);
         setEditColorInput("");
+        setEditImagePreviews([]);
         fetchCars();
       } else {
-        // ✅ Better error handling
         const contentType = response.headers.get("content-type");
         let errorDetails = "Échec de la modification";
         
@@ -488,7 +571,6 @@ const MarketingAgent = () => {
             const error = await response.json();
             console.error("Edit error response:", error);
             
-            // Handle FastAPI validation errors
             if (Array.isArray(error.detail)) {
               errorDetails = error.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
             } else if (error.detail) {
@@ -518,8 +600,12 @@ const MarketingAgent = () => {
   };
 
   const handleCancelEdit = () => {
+    // Clean up preview URLs
+    editImagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
+    
     setSelectedCar(null);
     setEditColorInput("");
+    setEditImagePreviews([]);
   };
 
   const handleLogout = () => {
@@ -532,6 +618,14 @@ const MarketingAgent = () => {
     setActiveTab(tab);
     setMenuOpen(false);
   };
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
+      editImagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -806,50 +900,64 @@ const MarketingAgent = () => {
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                 required
               />
+              
+              {/* Enhanced Image Upload Section */}
               <div className="md:col-span-3">
-                <label className="block text-sm text-emerald-400 mb-2">Photos (facultatif)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files);
-                    setFormData(prev => ({ ...prev, images: files }));
-                  }}
-                  className="w-full bg-neutral-800 text-sm p-2 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
-                />
-                {formData.images.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs text-neutral-400 mb-2">
-                      {formData.images.length} image{formData.images.length > 1 ? 's' : ''} sélectionnée{formData.images.length > 1 ? 's' : ''}
+                <label className="block text-sm text-emerald-400 mb-2 flex items-center gap-2">
+                  <ImageIcon size={18} />
+                  Photos (Ajoutez plusieurs photos)
+                </label>
+                
+                <div className="border-2 border-dashed border-neutral-700 rounded-xl p-4 hover:border-emerald-500 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageChange}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    className="flex flex-col items-center justify-center cursor-pointer"
+                  >
+                    <Upload size={40} className="text-neutral-500 mb-2" />
+                    <span className="text-sm text-neutral-400">
+                      Cliquez pour ajouter des images ou glissez-les ici
+                    </span>
+                    <span className="text-xs text-neutral-500 mt-1">
+                      PNG, JPG, WEBP jusqu'à 10MB chacune
+                    </span>
+                  </label>
+                </div>
+
+                {imagePreviews.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm text-emerald-400 mb-3 flex items-center gap-2">
+                      <ImageIcon size={16} />
+                      {imagePreviews.length} image{imagePreviews.length > 1 ? 's' : ''} sélectionnée{imagePreviews.length > 1 ? 's' : ''}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.images.slice(0, 4).map((file, i) => (
-                        <div key={i} className="relative w-16 h-16">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {imagePreviews.map((preview, i) => (
+                        <div key={i} className="relative group">
                           <img
-                            src={URL.createObjectURL(file)}
-                            alt={`preview ${i}`}
-                            className="w-full h-full object-cover rounded border border-neutral-700"
+                            src={preview.url}
+                            alt={`preview ${i + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border-2 border-neutral-700 group-hover:border-emerald-500 transition-colors"
                           />
                           <button
                             type="button"
-                            onClick={() => {
-                              setFormData(prev => ({
-                                ...prev,
-                                images: prev.images.filter((_, idx) => idx !== i)
-                              }));
-                            }}
-                            className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                            onClick={() => removeImage(i)}
+                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg transition-colors"
+                            title="Supprimer cette image"
                           >
                             ×
                           </button>
+                          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg truncate">
+                            {preview.name}
+                          </div>
                         </div>
                       ))}
-                      {formData.images.length > 4 && (
-                        <div className="w-16 h-16 bg-neutral-800 rounded flex items-center justify-center text-xs">
-                          +{formData.images.length - 4}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -858,7 +966,7 @@ const MarketingAgent = () => {
 
             <button
               type="submit"
-              className="mt-5 bg-emerald-600 hover:bg-emerald-700 transition px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium"
+              className="mt-5 bg-emerald-600 hover:bg-emerald-700 transition px-6 py-3 rounded-xl flex items-center gap-2 text-sm font-medium shadow-lg"
             >
               <Plus size={18} /> Ajouter la voiture
             </button>
@@ -1196,51 +1304,63 @@ const MarketingAgent = () => {
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                       
+                      {/* Enhanced Image Upload Section for Edit */}
                       <div className="md:col-span-3">
-                        <label className="block text-sm text-emerald-400 mb-2">Ajouter/Remplacer photos (facultatif)</label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={(e) => {
-                            const files = Array.from(e.target.files);
-                            setEditForm(prev => ({ ...prev, images: files }));
-                          }}
-                          className="w-full bg-neutral-800 text-sm p-2 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
-                        />
+                        <label className="block text-sm text-emerald-400 mb-2 flex items-center gap-2">
+                          <ImageIcon size={18} />
+                          Ajouter de nouvelles photos
+                        </label>
                         
-                        {editForm.images.length > 0 && (
-                          <div className="mt-3">
-                            <p className="text-xs text-neutral-400 mb-2">
-                              {editForm.images.length} nouvelle{editForm.images.length > 1 ? 's' : ''} image{editForm.images.length > 1 ? 's' : ''}
+                        <div className="border-2 border-dashed border-neutral-700 rounded-xl p-4 hover:border-emerald-500 transition-colors">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleEditImageChange}
+                            className="hidden"
+                            id="edit-image-upload"
+                          />
+                          <label
+                            htmlFor="edit-image-upload"
+                            className="flex flex-col items-center justify-center cursor-pointer"
+                          >
+                            <Upload size={40} className="text-neutral-500 mb-2" />
+                            <span className="text-sm text-neutral-400">
+                              Cliquez pour ajouter de nouvelles images
+                            </span>
+                            <span className="text-xs text-neutral-500 mt-1">
+                              Ces images seront ajoutées aux images existantes
+                            </span>
+                          </label>
+                        </div>
+
+                        {editImagePreviews.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-sm text-emerald-400 mb-3 flex items-center gap-2">
+                              <ImageIcon size={16} />
+                              {editImagePreviews.length} nouvelle{editImagePreviews.length > 1 ? 's' : ''} image{editImagePreviews.length > 1 ? 's' : ''}
                             </p>
-                            <div className="flex flex-wrap gap-2">
-                              {editForm.images.slice(0, 4).map((file, i) => (
-                                <div key={i} className="relative w-16 h-16">
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                              {editImagePreviews.map((preview, i) => (
+                                <div key={i} className="relative group">
                                   <img
-                                    src={URL.createObjectURL(file)}
-                                    alt={`preview ${i}`}
-                                    className="w-full h-full object-cover rounded border border-neutral-700"
+                                    src={preview.url}
+                                    alt={`preview ${i + 1}`}
+                                    className="w-full h-24 object-cover rounded-lg border-2 border-neutral-700 group-hover:border-emerald-500 transition-colors"
                                   />
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setEditForm(prev => ({
-                                        ...prev,
-                                        images: prev.images.filter((_, idx) => idx !== i)
-                                      }));
-                                    }}
-                                    className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                    onClick={() => removeEditImage(i)}
+                                    className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full w-6 h-6 flex items-center justify-center text-white shadow-lg transition-colors"
+                                    title="Supprimer cette image"
                                   >
                                     ×
                                   </button>
+                                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg truncate">
+                                    {preview.name}
+                                  </div>
                                 </div>
                               ))}
-                              {editForm.images.length > 4 && (
-                                <div className="w-16 h-16 bg-neutral-800 rounded flex items-center justify-center text-xs">
-                                  +{editForm.images.length - 4}
-                                </div>
-                              )}
                             </div>
                           </div>
                         )}
@@ -1251,7 +1371,7 @@ const MarketingAgent = () => {
                       <button type="button" onClick={handleCancelEdit} className="bg-neutral-700 hover:bg-neutral-600 transition px-4 py-2 rounded-xl text-sm">
                         Annuler
                       </button>
-                      <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 transition px-4 py-2 rounded-xl text-sm flex items-center gap-2">
+                      <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 transition px-6 py-3 rounded-xl text-sm flex items-center gap-2 font-medium shadow-lg">
                         <Edit size={18} /> Enregistrer
                       </button>
                     </div>
