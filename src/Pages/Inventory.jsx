@@ -184,7 +184,7 @@ const Inventory = () => {
       // Calculate price in DZD
       const currency = currencyMap.get(car.currency_id);
       const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : 0;
-      const priceInMillions = priceInDZD / 1_000_000;
+      const priceInMillions = priceInDZD / 1_000_0;
 
       // ✅ Model filter - case insensitive partial match
       if (filters.model && filters.model.trim() !== "") {
