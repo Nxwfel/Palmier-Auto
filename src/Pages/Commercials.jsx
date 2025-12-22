@@ -574,7 +574,7 @@ const Commercials = () => {
         </div>
         <div class="info-row">
             <div class="info-label">بطاقة التعريف:</div>
-            <div class="info-value">222210100000000000</div>
+            <div class="info-value">109920263007000003</div>
         </div>
         <div class="info-row">
             <div class="info-label">الصفة:</div>
