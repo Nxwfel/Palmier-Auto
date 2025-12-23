@@ -15,6 +15,8 @@ import {
   Upload,
   Trash2,
   Image as ImageIcon,
+  Download,
+  Eye,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
@@ -46,6 +48,7 @@ const UserAccount = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const notifRef = useRef(null);
 
   const [token, setToken] = useState(localStorage.getItem("authToken"));
@@ -70,13 +73,20 @@ const UserAccount = () => {
   }, []);
 
   const apiFetch = async (url, options = {}) => {
+    const headers = {
+      ...options.headers,
+    };
+
+    // Only add Content-Type for non-FormData requests
+    if (!(options.body instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    headers["Authorization"] = `Bearer ${token}`;
+
     const res = await fetch(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
+      headers,
     });
 
     if (res.status === 401 || res.status === 403) {
@@ -110,6 +120,7 @@ const UserAccount = () => {
           body: JSON.stringify({ client_id: null }),
         });
         const profile = await profileRes.json();
+        console.log("Fetched profile:", profile);
         setUserProfile(profile);
 
         // Fetch orders
@@ -141,14 +152,28 @@ const UserAccount = () => {
     try {
       const res = await apiFetch(`${API_BASE_URL}/clients/client/images`);
       if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to fetch images:", errorText);
         throw new Error("Failed to fetch images");
       }
       const data = await res.json();
       console.log("Fetched client images:", data);
-      setClientImages(Array.isArray(data) ? data : []);
+      
+      // Handle different possible response formats
+      let imagesArray = [];
+      if (Array.isArray(data)) {
+        imagesArray = data;
+      } else if (data.images && Array.isArray(data.images)) {
+        imagesArray = data.images;
+      } else if (data.data && Array.isArray(data.data)) {
+        imagesArray = data.data;
+      }
+      
+      setClientImages(imagesArray);
     } catch (err) {
       console.error("Error fetching client images:", err);
-      // Don't set error state - this is optional data
+      // Set empty array on error
+      setClientImages([]);
     }
   };
 
@@ -156,6 +181,19 @@ const UserAccount = () => {
   const handleUploadImage = async (file) => {
     if (!file) {
       alert("⚠️ Veuillez sélectionner un fichier");
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert("⚠️ Format de fichier non supporté. Utilisez JPG, PNG, GIF ou WEBP.");
+      return;
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("⚠️ Le fichier est trop volumineux. Taille maximale: 10 MB");
       return;
     }
 
@@ -169,6 +207,8 @@ const UserAccount = () => {
 
     try {
       setUploadingImage(true);
+      console.log(`Uploading image for client_id: ${userProfile.id}`);
+      
       const res = await fetch(`${API_BASE_URL}/clients/images?client_id=${userProfile.id}`, {
         method: "POST",
         headers: { 
@@ -185,14 +225,18 @@ const UserAccount = () => {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || "Upload failed");
+        console.error("Upload error response:", errData);
+        throw new Error(errData.detail || `Upload failed: ${res.status}`);
       }
 
+      const result = await res.json();
+      console.log("Upload success:", result);
+      
       alert("✅ Document téléchargé avec succès !");
       await fetchClientImages();
     } catch (err) {
       console.error("Upload Image Error:", err);
-      alert("❌ Erreur lors du téléchargement :\n" + err.message);
+      alert("❌ Erreur lors du téléchargement:\n" + err.message);
     } finally {
       setUploadingImage(false);
     }
@@ -209,6 +253,8 @@ const UserAccount = () => {
 
     try {
       setLoading(true);
+      console.log(`Deleting image ${imageId} for client ${userProfile.id}`);
+      
       const res = await fetch(
         `${API_BASE_URL}/clients/images?client_id=${userProfile.id}&image_id=${imageId}`,
         {
@@ -227,14 +273,15 @@ const UserAccount = () => {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || "Delete failed");
+        console.error("Delete error response:", errData);
+        throw new Error(errData.detail || `Delete failed: ${res.status}`);
       }
 
       alert("✅ Document supprimé avec succès !");
       await fetchClientImages();
     } catch (err) {
       console.error("Delete Image Error:", err);
-      alert("❌ Erreur lors de la suppression :\n" + err.message);
+      alert("❌ Erreur lors de la suppression:\n" + err.message);
     } finally {
       setLoading(false);
     }
@@ -322,6 +369,24 @@ const UserAccount = () => {
       case "showroom": return "En showroom";
       default: return status;
     }
+  };
+
+  const getImageUrl = (img) => {
+    // Try different possible property names
+    const url = img.url || img.image_url || img.path || img.image_path;
+    
+    // If URL starts with /, prepend API base URL
+    if (url && url.startsWith('/')) {
+      return `${API_BASE_URL}${url}`;
+    }
+    
+    // If it's already a full URL, return as is
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      return url;
+    }
+    
+    // Otherwise, construct full URL
+    return url ? `${API_BASE_URL}/${url}` : null;
   };
 
   const billing = orders.map((order) => {
@@ -440,6 +505,39 @@ const UserAccount = () => {
                 ))
               )}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Image Viewer Modal */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="relative max-w-4xl max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="absolute -top-12 right-0 p-2 text-white hover:text-red-400 transition-colors"
+              >
+                <X className="w-8 h-8" />
+              </button>
+              <img
+                src={selectedImage}
+                alt="Document"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              />
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -602,15 +700,19 @@ const UserAccount = () => {
                     <div className="flex-1">
                       <h3 className="text-lg font-medium mb-2">Ajouter un document</h3>
                       <p className="text-sm text-gray-400">
-                        Formats acceptés: JPG, PNG, PDF. Taille max: 10 MB
+                        Formats acceptés: JPG, PNG, GIF, WEBP. Taille max: 10 MB
                       </p>
                     </div>
-                    <label className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded-lg cursor-pointer transition-colors">
+                    <label className={`flex items-center gap-2 px-6 py-3 rounded-lg cursor-pointer transition-colors ${
+                      uploadingImage 
+                        ? 'bg-gray-600 cursor-not-allowed' 
+                        : 'bg-emerald-600 hover:bg-emerald-700'
+                    }`}>
                       <Upload size={20} />
-                      <span>Télécharger</span>
+                      <span>{uploadingImage ? 'Téléchargement...' : 'Télécharger'}</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                         className="hidden"
                         disabled={uploadingImage}
                         onChange={(e) => {
@@ -624,8 +726,9 @@ const UserAccount = () => {
                     </label>
                   </div>
                   {uploadingImage && (
-                    <div className="mt-4 text-center text-emerald-400">
-                      Téléchargement en cours...
+                    <div className="mt-4 flex items-center justify-center gap-2 text-emerald-400">
+                      <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Téléchargement en cours...</span>
                     </div>
                   )}
                 </Card>
@@ -645,44 +748,67 @@ const UserAccount = () => {
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {clientImages.map((img, idx) => (
-                      <motion.div
-                        key={img.id || idx}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.1 }}
-                      >
-                        <Card className="relative group">
-                          <div className="aspect-video bg-neutral-800 rounded-lg overflow-hidden mb-4">
-                            <img 
-                              src={img.url || img.image_url} 
-                              alt={`Document ${idx + 1}`} 
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23333" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" fill="%23666" font-size="14">Image</text></svg>';
-                              }}
-                            />
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="text-sm font-medium">Document #{idx + 1}</p>
-                              <p className="text-xs text-gray-500">
-                                {img.created_at 
-                                  ? new Date(img.created_at).toLocaleDateString("fr-FR")
-                                  : "Date inconnue"}
-                              </p>
+                    {clientImages.map((img, idx) => {
+                      const imageUrl = getImageUrl(img);
+                      return (
+                        <motion.div
+                          key={img.id || idx}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: idx * 0.1 }}
+                        >
+                          <Card className="relative group">
+                            <div className="aspect-video bg-neutral-800 rounded-lg overflow-hidden mb-4 relative">
+                              {imageUrl ? (
+                                <>
+                                  <img 
+                                    src={imageUrl} 
+                                    alt={`Document ${idx + 1}`} 
+                                    className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => setSelectedImage(imageUrl)}
+                                    onError={(e) => {
+                                      console.error('Image load error for:', imageUrl);
+                                      e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23333" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" fill="%23666" font-size="12">Image non disponible</text></svg>';
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => setSelectedImage(imageUrl)}
+                                    className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Voir en grand"
+                                  >
+                                    <Eye size={16} className="text-white" />
+                                  </button>
+                                </>
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                                  <div className="text-center">
+                                    <ImageIcon className="w-12 h-12 mx-auto mb-2" />
+                                    <p className="text-xs">Image non disponible</p>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <button
-                              onClick={() => handleDeleteImage(img.id)}
-                              className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                              title="Supprimer"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </Card>
-                      </motion.div>
-                    ))}
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">Document #{idx + 1}</p>
+                                <p className="text-xs text-gray-500">
+                                  {img.created_at 
+                                    ? new Date(img.created_at).toLocaleDateString("fr-FR")
+                                    : "Date inconnue"}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteImage(img.id)}
+                                className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                title="Supprimer"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
 

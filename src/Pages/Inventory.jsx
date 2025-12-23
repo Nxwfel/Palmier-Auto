@@ -1,17 +1,24 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { Search, SlidersHorizontal, X, ChevronRight, Loader2 } from "lucide-react";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
+
+const ITEMS_PER_PAGE = 12;
 
 const Inventory = () => {
   const [cars, setCars] = useState([]);
   const [currencies, setCurrencies] = useState([]);
   const [carImages, setCarImages] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   const navigate = useNavigate();
+  
+  const observerTarget = useRef(null);
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -34,18 +41,17 @@ const Inventory = () => {
     return map;
   }, [currencies]);
 
-  // Helper function to parse colors (handles array or comma-separated string)
+  // Helper function to parse colors
   const parseColors = (colorData) => {
     if (!colorData) return [];
     if (Array.isArray(colorData)) return colorData;
     if (typeof colorData === 'string') {
-      // Split by comma, trim whitespace, filter empty
       return colorData.split(',').map(c => c.trim()).filter(Boolean);
     }
     return [];
   };
 
-  // Fetch car images
+  // Fetch car images with caching
   const fetchCarImages = async (carId) => {
     try {
       const response = await fetch(`${API_BASE_URL}/cars/${carId}/images`, {
@@ -77,12 +83,9 @@ const Inventory = () => {
         setLoading(true);
         setError("");
 
-        // Fetch currencies
         const currencyRes = await fetch(`${API_BASE_URL}/currencies/`, {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         });
 
         if (!currencyRes.ok) {
@@ -92,12 +95,9 @@ const Inventory = () => {
         const currencyData = await currencyRes.json();
         setCurrencies(Array.isArray(currencyData) ? currencyData : currencyData.currencies || []);
 
-        // Fetch cars
         const carRes = await fetch(`${API_BASE_URL}/cars/all`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
         });
 
@@ -109,8 +109,8 @@ const Inventory = () => {
         const carList = Array.isArray(carData) ? carData : carData.cars || [];
         setCars(carList);
 
-        // Fetch images for each car
-        const imagePromises = carList.map(async (car) => {
+        const initialCars = carList.slice(0, ITEMS_PER_PAGE);
+        const imagePromises = initialCars.map(async (car) => {
           if (car.id) {
             const imageUrl = await fetchCarImages(car.id);
             return { id: car.id, imageUrl };
@@ -136,19 +136,14 @@ const Inventory = () => {
     fetchData();
   }, []);
 
-  // Format price in DZD (in millions)
   const formatPriceInMillions = (priceInDZD) => {
-    if (priceInDZD == null || priceInDZD === 0) return "Prix non disponible";
+    if (priceInDZD == null || priceInDZD === 0) return "Prix sur demande";
     const millions = priceInDZD / 1_000_0;
-    return `${millions.toFixed(1)} Millions DZD`;
+    return `${millions.toFixed(1)}M DZD`;
   };
 
-  // Get car image
   const getCarImage = (car) => {
-    if (carImages[car.id]) {
-      return carImages[car.id];
-    }
-    
+    if (carImages[car.id]) return carImages[car.id];
     if (Array.isArray(car.images) && car.images.length > 0) {
       const img = car.images[0];
       if (typeof img === "string") {
@@ -158,14 +153,11 @@ const Inventory = () => {
       }
       if (img?.url) return img.url;
     }
-    
     return "/placeholder-car.jpg";
   };
 
-  // Get unique values for dropdowns with proper color handling
   const getUniqueValues = (key) => {
     if (key === 'color') {
-      // Extract all colors from all cars
       const allColors = new Set();
       cars.forEach(car => {
         const colors = parseColors(car.color);
@@ -173,77 +165,83 @@ const Inventory = () => {
       });
       return Array.from(allColors).sort();
     }
-    
     const values = [...new Set(cars.map(car => car[key]).filter(Boolean))];
     return values.sort();
   };
 
-  // ✅ FIXED: Apply filters to cars with proper color handling
   const filteredCars = useMemo(() => {
     return cars.filter(car => {
-      // Calculate price in DZD
       const currency = currencyMap.get(car.currency_id);
       const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : 0;
-      const priceInMillions = priceInDZD / 1_000_0;
+      const priceInMillions = priceInDZD / 1_000_000;
 
-      // ✅ Model filter - case insensitive partial match
-      if (filters.model && filters.model.trim() !== "") {
-        const modelMatch = car.model?.toLowerCase().includes(filters.model.toLowerCase().trim());
-        if (!modelMatch) return false;
-      }
-
-      // ✅ FIXED: Color filter - check if selected color is in car's color array
-      if (filters.color && filters.color.trim() !== "") {
+      if (filters.model && !car.model?.toLowerCase().includes(filters.model.toLowerCase().trim())) return false;
+      if (filters.color) {
         const carColors = parseColors(car.color);
-        const hasColor = carColors.some(c => 
-          c.toLowerCase() === filters.color.toLowerCase().trim()
-        );
-        if (!hasColor) return false;
+        if (!carColors.some(c => c.toLowerCase() === filters.color.toLowerCase().trim())) return false;
       }
-
-      // ✅ Year range filters
-      if (filters.yearMin && filters.yearMin !== "") {
-        const yearMin = parseInt(filters.yearMin);
-        if (!isNaN(yearMin) && car.year < yearMin) return false;
-      }
-      
-      if (filters.yearMax && filters.yearMax !== "") {
-        const yearMax = parseInt(filters.yearMax);
-        if (!isNaN(yearMax) && car.year > yearMax) return false;
-      }
-
-      // ✅ Engine filter - case insensitive partial match
-      if (filters.engine && filters.engine.trim() !== "") {
-        const engineMatch = car.engine?.toLowerCase().includes(filters.engine.toLowerCase().trim());
-        if (!engineMatch) return false;
-      }
-
-      // ✅ FIXED: Fuel type filter - exact match but case insensitive
-      if (filters.fuelType && filters.fuelType.trim() !== "") {
-        const fuelMatch = car.fuel_type?.toLowerCase() === filters.fuelType.toLowerCase().trim();
-        if (!fuelMatch) return false;
-      }
-
-      // ✅ FIXED: Country filter - exact match but case insensitive
-      if (filters.country && filters.country.trim() !== "") {
-        const countryMatch = car.country?.toLowerCase() === filters.country.toLowerCase().trim();
-        if (!countryMatch) return false;
-      }
-
-      // ✅ Price range filters (in millions)
-      if (filters.priceMin && filters.priceMin !== "") {
-        const priceMin = parseFloat(filters.priceMin);
-        if (!isNaN(priceMin) && priceInMillions < priceMin) return false;
-      }
-      
-      if (filters.priceMax && filters.priceMax !== "") {
-        const priceMax = parseFloat(filters.priceMax);
-        if (!isNaN(priceMax) && priceInMillions > priceMax) return false;
-      }
+      if (filters.yearMin && car.year < parseInt(filters.yearMin)) return false;
+      if (filters.yearMax && car.year > parseInt(filters.yearMax)) return false;
+      if (filters.fuelType && car.fuel_type?.toLowerCase() !== filters.fuelType.toLowerCase().trim()) return false;
+      if (filters.country && car.country?.toLowerCase() !== filters.country.toLowerCase().trim()) return false;
+      if (filters.priceMin && priceInMillions < parseFloat(filters.priceMin)) return false;
+      if (filters.priceMax && priceInMillions > parseFloat(filters.priceMax)) return false;
 
       return true;
     });
   }, [cars, filters, currencyMap]);
+
+  const displayedCars = useMemo(() => {
+    return filteredCars.slice(0, displayCount);
+  }, [filteredCars, displayCount]);
+
+  const loadMoreImages = useCallback(async (startIndex, endIndex) => {
+    const carsToLoadImages = filteredCars.slice(startIndex, endIndex);
+    const newImagePromises = carsToLoadImages
+      .filter(car => car.id && !carImages[car.id])
+      .map(async (car) => {
+        const imageUrl = await fetchCarImages(car.id);
+        return { id: car.id, imageUrl };
+      });
+
+    if (newImagePromises.length > 0) {
+      const imageResults = await Promise.all(newImagePromises);
+      const newImageMap = { ...carImages };
+      imageResults.forEach(({ id, imageUrl }) => {
+        if (imageUrl) newImageMap[id] = imageUrl;
+      });
+      setCarImages(newImageMap);
+    }
+  }, [filteredCars, carImages]);
+
+  const loadMore = useCallback(async () => {
+    if (displayCount >= filteredCars.length || loadingMore) return;
+
+    setLoadingMore(true);
+    const newDisplayCount = Math.min(displayCount + ITEMS_PER_PAGE, filteredCars.length);
+    await loadMoreImages(displayCount, newDisplayCount);
+    setDisplayCount(newDisplayCount);
+    setLoadingMore(false);
+  }, [displayCount, filteredCars.length, loadingMore, loadMoreImages]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && displayCount < filteredCars.length) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) observer.observe(currentTarget);
+    return () => { if (currentTarget) observer.unobserve(currentTarget); };
+  }, [loadMore, loadingMore, displayCount, filteredCars.length]);
+
+  useEffect(() => {
+    setDisplayCount(ITEMS_PER_PAGE);
+  }, [filters]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -251,283 +249,324 @@ const Inventory = () => {
 
   const resetFilters = () => {
     setFilters({
-      model: "",
-      color: "",
-      yearMin: "",
-      yearMax: "",
-      engine: "",
-      fuelType: "",
-      country: "",
-      priceMin: "",
-      priceMax: ""
+      model: "", color: "", yearMin: "", yearMax: "", engine: "",
+      fuelType: "", country: "", priceMin: "", priceMax: ""
     });
   };
 
   const activeFilterCount = Object.values(filters).filter(v => v !== "").length;
-
-  // Get display color for car (first color if multiple)
   const getDisplayColor = (car) => {
     const colors = parseColors(car.color);
     return colors.length > 0 ? colors[0] : car.color || "N/A";
   };
+  const hasMore = displayCount < filteredCars.length;
 
   return (
-    <div className="min-h-screen w-screen bg-neutral-100 flex flex-col px-[5vw] py-[4vh]">
+    <div className="min-h-screen w-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100 flex flex-col">
       {/* Header */}
-      <div className="z-20 h-[10vh] w-full flex justify-between items-center">
-        <motion.h1
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          whileHover={{ scale: 1.03 }}
-          className="font-main cursor-pointer font-thin text-[2.2vw] max-md:text-[6vw] text-neutral-800"
-          onClick={() => navigate('/')}
-        >
-          Palmier Auto
-        </motion.h1>
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-neutral-200/50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-12 py-6">
+          <div className="flex justify-between items-center">
+            <motion.h1
+              initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+              whileHover={{ scale: 1.02 }}
+              className="font-main cursor-pointer text-3xl md:text-4xl text-neutral-800 tracking-tight"
+              onClick={() => navigate('/')}
+            >
+              Palmier <span className="text-amber-500">Auto</span>
+            </motion.h1>
+
+            <motion.button
+              initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={() => setShowFilters(!showFilters)}
+              className="hidden md:flex items-center gap-3 px-6 py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-full shadow-lg transition-all relative"
+            >
+              <SlidersHorizontal size={18} />
+              <span className="font-medium">Filtres</span>
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </motion.button>
+          </div>
+
+          <div className="mt-4 md:hidden">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+              <input
+                type="text" value={filters.model}
+                onChange={(e) => handleFilterChange("model", e.target.value)}
+                placeholder="Rechercher un modèle..."
+                className="w-full pl-12 pr-4 py-3 bg-white border border-neutral-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-white rounded-2xl"
+            >
+              <SlidersHorizontal size={18} />
+              <span>Tous les filtres</span>
+              {activeFilterCount > 0 && (
+                <span className="bg-amber-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="h-auto w-full flex flex-col gap-[2vh]">
-        <div className="flex justify-between items-center gap-[2vw] max-md:flex-col max-md:items-start max-md:gap-[1vh]">
+      {/* Filter Panel */}
+      <AnimatePresence>
+        {showFilters && (
           <motion.div
-            initial={{ scale: 1 }}
-            whileHover={{ scale: 1.05 }}
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex justify-center items-center cursor-pointer bg-white px-4 py-2 rounded-full shadow-md gap-2 relative"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowFilters(false)}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="size-5 text-neutral-600"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
-              />
-            </svg>
-            <p className="font-main text-neutral-700 text-[1vw] max-md:text-[3.5vw]">
-              Filtrer
-            </p>
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
-          </motion.div>
-
-          <p className="font-main pr-[3vw] text-neutral-700 text-[1vw] max-md:text-[3.5vw]">
-            Résultat : {filteredCars.length}
-          </p>
-        </div>
-
-        {/* Filter Panel */}
-        <AnimatePresence>
-          {showFilters && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-white rounded-xl shadow-lg overflow-hidden"
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="absolute right-0 top-0 h-full w-full md:w-[450px] bg-white shadow-2xl overflow-y-auto"
             >
-              <div className="p-6 grid grid-cols-3 max-md:grid-cols-1 gap-4">
-                {/* Model Filter */}
+              <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                <h2 className="text-2xl font-main text-neutral-800">Filtres</h2>
+                <button onClick={() => setShowFilters(false)} className="p-2 hover:bg-neutral-100 rounded-full">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
                 <div>
-                  <label className="block text-sm font-main text-neutral-700 mb-2">Modèle</label>
-                  <input
-                    type="text"
-                    value={filters.model}
-                    onChange={(e) => handleFilterChange("model", e.target.value)}
-                    placeholder="Rechercher un modèle..."
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">Modèle</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                    <input type="text" value={filters.model}
+                      onChange={(e) => handleFilterChange("model", e.target.value)}
+                      placeholder="Rechercher..."
+                      className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
                 </div>
 
-                {/* Color Filter */}
                 <div>
-                  <label className="block text-sm font-main text-neutral-700 mb-2">Couleur</label>
-                  <select
-                    value={filters.color}
-                    onChange={(e) => handleFilterChange("color", e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Toutes</option>
-                    {getUniqueValues("color").map(color => (
-                      <option key={color} value={color}>{color}</option>
-                    ))}
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">Couleur</label>
+                  <select value={filters.color} onChange={(e) => handleFilterChange("color", e.target.value)}
+                    className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+                    <option value="">Toutes les couleurs</option>
+                    {getUniqueValues("color").map(color => <option key={color} value={color}>{color}</option>)}
                   </select>
                 </div>
 
-                {/* Year Range */}
                 <div>
-                  <label className="block text-sm font-main text-neutral-700 mb-2">Année</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={filters.yearMin}
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">Année</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="number" value={filters.yearMin}
                       onChange={(e) => handleFilterChange("yearMin", e.target.value)}
                       placeholder="Min"
-                      className="w-1/2 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
-                    <input
-                      type="number"
-                      value={filters.yearMax}
+                    <input type="number" value={filters.yearMax}
                       onChange={(e) => handleFilterChange("yearMax", e.target.value)}
                       placeholder="Max"
-                      className="w-1/2 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
                 </div>
 
-                {/* Fuel Type */}
                 <div>
-                  <label className="block text-sm font-main text-neutral-700 mb-2">Carburant</label>
-                  <select
-                    value={filters.fuelType}
-                    onChange={(e) => handleFilterChange("fuelType", e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Tous</option>
-                    {getUniqueValues("fuel_type").map(fuel => (
-                      <option key={fuel} value={fuel}>{fuel}</option>
-                    ))}
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">Carburant</label>
+                  <select value={filters.fuelType} onChange={(e) => handleFilterChange("fuelType", e.target.value)}
+                    className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+                    <option value="">Tous types</option>
+                    {getUniqueValues("fuel_type").map(fuel => <option key={fuel} value={fuel}>{fuel}</option>)}
                   </select>
                 </div>
 
-                {/* Country */}
                 <div>
-                  <label className="block text-sm font-main text-neutral-700 mb-2">Pays</label>
-                  <select
-                    value={filters.country}
-                    onChange={(e) => handleFilterChange("country", e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Tous</option>
-                    {getUniqueValues("country").map(country => (
-                      <option key={country} value={country}>{country}</option>
-                    ))}
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">Pays d'origine</label>
+                  <select value={filters.country} onChange={(e) => handleFilterChange("country", e.target.value)}
+                    className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+                    <option value="">Tous les pays</option>
+                    {getUniqueValues("country").map(country => <option key={country} value={country}>{country}</option>)}
                   </select>
                 </div>
 
-                {/* Price Range (in Millions DZD) */}
                 <div>
-                  <label className="block text-sm font-main text-neutral-700 mb-2">Prix (Millions DZD)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={filters.priceMin}
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">Prix (Millions DZD)</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="number" value={filters.priceMin}
                       onChange={(e) => handleFilterChange("priceMin", e.target.value)}
-                      placeholder="Min"
-                      step="0.1"
-                      className="w-1/2 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Min" step="0.1"
+                      className="px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
-                    <input
-                      type="number"
-                      value={filters.priceMax}
+                    <input type="number" value={filters.priceMax}
                       onChange={(e) => handleFilterChange("priceMax", e.target.value)}
-                      placeholder="Max"
-                      step="0.1"
-                      className="w-1/2 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Max" step="0.1"
+                      className="px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
                 </div>
 
-                {/* Reset Button */}
-                <div className="col-span-3 max-md:col-span-1 flex justify-end">
-                  <button
-                    onClick={resetFilters}
-                    className="px-6 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded-lg transition-colors font-main"
-                  >
+                <div className="flex gap-3 pt-4">
+                  <button onClick={resetFilters}
+                    className="flex-1 px-6 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl font-medium">
                     Réinitialiser
+                  </button>
+                  <button onClick={() => setShowFilters(false)}
+                    className="flex-1 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium">
+                    Appliquer
                   </button>
                 </div>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-12 py-8">
+        <div className="mb-6 flex justify-between items-center">
+          <p className="text-neutral-600 font-medium">
+            {displayedCars.length} sur {filteredCars.length} véhicule{filteredCars.length !== 1 ? 's' : ''}
+          </p>
+          {activeFilterCount > 0 && (
+            <button onClick={resetFilters} className="text-sm text-amber-600 hover:text-amber-700 font-medium">
+              Effacer les filtres
+            </button>
           )}
-        </AnimatePresence>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6 text-center mt-4">
-          {error}
         </div>
-      )}
 
-      {/* Loading State */}
-      {loading ? (
-        <div className="flex items-center justify-center h-[50vh]">
-          <div className="flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neutral-800"></div>
-            <p className="text-neutral-600 text-xl font-main">Chargement des véhicules...</p>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-6 text-center">
+            {error}
           </div>
-        </div>
-      ) : (
-        <motion.div
-          className="grid grid-cols-4 max-lg:grid-cols-3 max-md:h-fit max-md:flex max-md:flex-col max-md:gap-[2vh] max-md:items-center max-md:justify-center max-md:py-[5vh] max-sm:grid-cols-1 gap-[3vw] mt-[3vh]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6 }}
-        >
-          {filteredCars.length === 0 ? (
-            <div className="col-span-full text-center py-10 text-neutral-600">
-              {activeFilterCount > 0 
-                ? "Aucun véhicule ne correspond aux critères de filtrage."
-                : "Aucun véhicule disponible pour le moment."}
-            </div>
-          ) : (
-            filteredCars.map((car) => {
-              const currency = currencyMap.get(car.currency_id);
-              const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : null;
-              const formattedPrice = formatPriceInMillions(priceInDZD);
-              const displayColor = getDisplayColor(car);
+        )}
 
-              return (
-                <motion.div
-                  key={car.id || car.model + "-" + car.year}
-                  initial={{ scale: 1 }}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  whileTap={{ scale: 1 }}
-                  onClick={() => navigate(`/car/${car.id}`)} 
-                  className="cursor-pointer h-[50vh] max-md:h-[60vh] w-[20vw] max-md:w-[60vw] bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col"
-                >
-                  <div className="h-[60%] bg-neutral-300 relative">
-                    <img
-                      src={getCarImage(car)}
-                      alt={`${car.model} ${car.year}`}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.target.src = "/placeholder-car.jpg";
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                    {car.quantity && car.quantity > 0 && (
-                      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
-                        <p className="text-xs font-main text-neutral-700">Stock: {car.quantity}</p>
-                      </div>
+        {loading ? (
+          <div className="flex items-center justify-center h-[60vh]">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-neutral-600 text-lg font-medium">Chargement de la collection...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            >
+              {filteredCars.length === 0 ? (
+                <div className="col-span-full text-center py-20">
+                  <div className="max-w-md mx-auto">
+                    <div className="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-10 h-10 text-neutral-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-neutral-800 mb-2">Aucun véhicule trouvé</h3>
+                    <p className="text-neutral-600 mb-6">
+                      {activeFilterCount > 0 ? "Essayez d'ajuster vos critères" : "Aucun véhicule disponible"}
+                    </p>
+                    {activeFilterCount > 0 && (
+                      <button onClick={resetFilters}
+                        className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium">
+                        Réinitialiser les filtres
+                      </button>
                     )}
                   </div>
-                  <div className="flex flex-col justify-center h-[40%] p-4">
-                    <h1 className="font-main text-[1.2vw] max-md:text-[4.5vw] text-neutral-800 font-semibold">
-                      {car.model} {car.year ? `(${car.year})` : ""}
-                    </h1>
-                    <p className="font-main text-[0.9vw] max-md:text-[3vw] text-neutral-500">
-                      {displayColor} • {car.fuel_type}
-                    </p>
-                    <p className="font-main font-semibold text-[1vw] max-md:text-[3.5vw] text-blue-600 mt-2">
-                      {formattedPrice}
-                    </p>
+                </div>
+              ) : (
+                displayedCars.map((car, index) => {
+                  const currency = currencyMap.get(car.currency_id);
+                  const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : null;
+                  const formattedPrice = formatPriceInMillions(priceInDZD);
+                  const displayColor = getDisplayColor(car);
+
+                  return (
+                    <motion.div
+                      key={car.id || `${car.model}-${car.year}`}
+                      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      whileHover={{ y: -8 }}
+                      onClick={() => navigate(`/car/${car.id}`)}
+                      className="group cursor-pointer bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all"
+                    >
+                      <div className="relative h-56 overflow-hidden bg-neutral-100">
+                        <img src={getCarImage(car)} alt={`${car.model} ${car.year}`}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          onError={(e) => { e.target.src = "/placeholder-car.jpg"; }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        
+                        {car.quantity > 0 && (
+                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
+                            <p className="text-xs font-semibold text-neutral-700">En stock: {car.quantity}</p>
+                          </div>
+                        )}
+
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-2 bg-white px-6 py-3 rounded-full shadow-xl">
+                            <span className="font-semibold text-neutral-800">Voir détails</span>
+                            <ChevronRight size={18} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-5">
+                        <h3 className="text-lg font-semibold text-neutral-800 mb-1 line-clamp-1 group-hover:text-amber-600 transition-colors">
+                          {car.model}
+                        </h3>
+                        <div className="flex items-center gap-2 text-sm text-neutral-500 mb-3">
+                          <span>{car.year}</span><span>•</span>
+                          <span>{displayColor}</span><span>•</span>
+                          <span>{car.fuel_type}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
+                          <span className="text-xl font-bold text-amber-600">{formattedPrice}</span>
+                          <div className="w-10 h-10 bg-amber-50 rounded-full flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+                            <ChevronRight className="text-amber-600" size={20} />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
+            </motion.div>
+
+            {hasMore && (
+              <div className="mt-12 flex flex-col items-center gap-4">
+                <div ref={observerTarget} className="h-10 w-full" />
+                {loadingMore ? (
+                  <div className="flex items-center gap-3 text-neutral-600">
+                    <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+                    <span className="font-medium">Chargement...</span>
                   </div>
-                </motion.div>
-              );
-            })
-          )}
-        </motion.div>
-      )}
+                ) : (
+                  <button onClick={loadMore}
+                    className="px-8 py-3 bg-white hover:bg-neutral-50 border-2 border-neutral-200 hover:border-amber-500 text-neutral-700 hover:text-amber-600 rounded-xl font-medium shadow-sm hover:shadow-md">
+                    Charger plus de véhicules
+                  </button>
+                )}
+                <p className="text-sm text-neutral-500">
+                  {displayedCars.length} sur {filteredCars.length} véhicules affichés
+                </p>
+              </div>
+            )}
+
+            {!hasMore && filteredCars.length > 0 && (
+              <div className="mt-12 text-center">
+                <div className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-100 rounded-full">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                  <span className="text-neutral-600 font-medium">Vous avez vu tous les véhicules</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };

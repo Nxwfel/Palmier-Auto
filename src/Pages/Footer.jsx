@@ -12,8 +12,9 @@ const Footer = () => {
 
   const fetchLocations = async () => {
     try {
-      const response = await fetch('https://palmier-auto.vercel.app/api/locals')
+      const response = await fetch('https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com/commercials/phone_numbers_wilayas')
       const data = await response.json()
+      console.log('API Response:', data) // Debug log
       setLocations(data)
       setLoading(false)
     } catch (error) {
@@ -80,7 +81,7 @@ const Footer = () => {
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
             {locations.map((location, index) => (
               <motion.div
-                key={location._id}
+                key={location.id || location._id || index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
@@ -91,27 +92,59 @@ const Footer = () => {
                     <MapPin className='text-amber-400' size={20} />
                   </div>
                   <div>
-                    <h4 className='font-semibold text-black'>{location.nom}</h4>
+                    <h4 className='font-semibold text-black'>
+                      {location.name && location.surname 
+                        ? `${location.name} ${location.surname}`
+                        : location.nom || location.name || 'Local Commercial'}
+                    </h4>
                     <span className='text-xs text-amber-400'>Local N°{index + 1}</span>
                   </div>
                 </div>
                 <div className='space-y-2 text-sm text-neutral-600'>
-                  <p className='flex items-start gap-2'>
-                    <MapPin size={14} className='mt-1 flex-shrink-0' />
-                    {location.adresse}
-                  </p>
-                  <p className='flex items-center gap-2'>
-                    <Phone size={14} />
-                    {location.telephone}
-                  </p>
+                  {/* Address - try multiple possible field names */}
+                  {(location.address || location.adresse || location.wilayas) && (
+                    <p className='flex items-start gap-2'>
+                      <MapPin size={14} className='mt-1 flex-shrink-0' />
+                      <span>
+                        {location.address || location.adresse}
+                        {location.wilayas && Array.isArray(location.wilayas) && (
+                          <span className='block text-xs text-amber-500 mt-1'>
+                            Wilayas: {location.wilayas.join(', ')}
+                          </span>
+                        )}
+                      </span>
+                    </p>
+                  )}
+                  
+                  {/* Phone - try multiple possible field names */}
+                  {(location.phone_number || location.telephone) && (
+                    <p className='flex items-center gap-2'>
+                      <Phone size={14} />
+                      <a 
+                        href={`tel:${location.phone_number || location.telephone}`}
+                        className='hover:text-amber-400 transition-colors'
+                      >
+                        {location.phone_number || location.telephone}
+                      </a>
+                    </p>
+                  )}
+                  
+                  {/* Working hours */}
                   <p className='flex items-center gap-2 text-xs'>
                     <Clock size={14} />
-                    Lun-Sam: 9h00 - 18h00
+                    Dim-Sam: 9h00 - 18h00
                   </p>
                 </div>
               </motion.div>
             ))}
           </div>
+          
+          {/* No data message */}
+          {locations.length === 0 && (
+            <div className='text-center py-8 text-neutral-500'>
+              Aucun local commercial disponible pour le moment.
+            </div>
+          )}
         </div>
       </div>
 

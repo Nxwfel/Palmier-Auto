@@ -1,8 +1,10 @@
+// src/Pages/Accountant.jsx
+
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Car, DollarSign, Users, Upload, Trash2, Image as ImageIcon, Search } from "lucide-react";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com"; // Fixed trailing space
 
 const Accountant = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -17,23 +19,31 @@ const Accountant = () => {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(false);
 
-  // Client papers state
+  // --- NEW: Client papers state (likely already present in your full Accountant.jsx) ---
   const [selectedClientForImages, setSelectedClientForImages] = useState(null);
   const [clientImages, setClientImages] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [viewingImages, setViewingImages] = useState(false);
   const [searchClients, setSearchClients] = useState("");
+  // --- END NEW STATE ---
 
+  // --- NEW: Centralized API fetch function (ensure it exists and handles auth correctly) ---
+  // This is crucial and should be consistent with Commercials.jsx
   const apiFetch = async (url, options = {}) => {
     const token = localStorage.getItem("authToken");
     if (!token) throw new Error("No auth token");
+    const headers = {
+        "Authorization": `Bearer ${token}`,
+        ...options.headers,
+    };
+    // Only add Content-Type for non-FormData requests
+    if (!(options.body instanceof FormData)) {
+        headers["Content-Type"] = "application/json";
+    }
+
     const res = await fetch(url, {
       ...options,
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
+      headers,
     });
     if (res.status === 401) {
       localStorage.removeItem("authToken");
@@ -41,6 +51,7 @@ const Accountant = () => {
     }
     return res;
   };
+  // --- END NEW FUNCTION ---
 
   const fetchAllData = async () => {
     try {
@@ -94,98 +105,138 @@ const Accountant = () => {
     fetchAllData();
   }, []);
 
-  // Fetch client images
+  // --- NEW: Fetch client images ---
+  // ✅ Fixed: Fetch client images with proper array handling and auth
   const fetchClientImages = async (clientId) => {
     try {
-      setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/clients/${clientId}/images`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.status === 401) {
+      setLoading(true); // Reuse the main loading state or have a specific one
+      const res = await apiFetch(`${API_BASE_URL}/clients/${clientId}/images`); // Uses apiFetch
+      if (!res.ok) {
+        if (res.status === 401) { // Should be handled by apiFetch, but good to check
+          setAuthError(true); // Or navigate to login
+          return;
+        }
+        throw new Error("Failed to fetch images");
+      }
+      const data = await res.json();
+      console.log("Accountant - Client images response:", data); // Debug log
+
+      // ✅ Handle API response: {client_id: 18, images: ['/path/to/image.png']} or just ['/path/to/image.png']
+      let imagesArray = [];
+      if (Array.isArray(data)) {
+        // Direct array response
+        imagesArray = data.map(img => {
+          if (typeof img === 'string') {
+            const cleanPath = img.startsWith('/') ? img.substring(1) : img;
+            const imageUrl = `${API_BASE_URL}/download_static_files/${cleanPath}`;
+            return { url: imageUrl, image_url: imageUrl, id: cleanPath };
+          }
+          return img;
+        });
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.images)) {
+          // Response with images property: {images: [...]}
+          imagesArray = data.images.map(img => {
+            if (typeof img === 'string') {
+              // Convert path to download_static_files URL
+              const cleanPath = img.startsWith('/') ? img.substring(1) : img;
+              const imageUrl = `${API_BASE_URL}/download_static_files/${cleanPath}`;
+              return { url: imageUrl, image_url: imageUrl, id: cleanPath };
+            }
+            return img;
+          });
+        } else if (data.url || data.image_url) {
+          // Single image object
+          imagesArray = [data];
+        }
+      }
+      console.log("Accountant - Processed images:", imagesArray); // Debug log
+      setClientImages(imagesArray);
+      setViewingImages(true); // Show the modal
+    } catch (err) {
+      if (err.message === "UNAUTHORIZED" || err.message === "No auth token") {
         setAuthError(true);
         return;
       }
-      if (!res.ok) throw new Error("Failed to fetch images");
-      const data = await res.json();
-      setClientImages(data || []);
-      setViewingImages(true);
-    } catch (err) {
       alert("❌ Erreur lors du chargement des images: " + err.message);
-      console.error(err);
+      console.error("Accountant - Fetch Images Error:", err);
     } finally {
-      setLoading(false);
+      setLoading(false); // Reuse the main loading state or have a specific one
     }
   };
+  // --- END NEW FUNCTION ---
 
-  // Upload client image
+  // --- NEW: Upload client image ---
+  // ✅ Fixed: Upload client image with proper auth
   const handleUploadClientImage = async (clientId, file) => {
     if (!file) {
       alert("⚠️ Veuillez sélectionner un fichier");
       return;
     }
-
     const formData = new FormData();
     formData.append('image', file);
 
     try {
       setUploadingImage(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/clients/images?client_id=${clientId}`, {
+      const res = await apiFetch(`${API_BASE_URL}/clients/images?client_id=${clientId}`, { // Uses apiFetch
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
+        body: formData // FormData doesn't need Content-Type header set manually
       });
-
-      if (res.status === 401) {
-        setAuthError(true);
-        return;
-      }
       if (!res.ok) {
+        if (res.status === 401) { // Should be handled by apiFetch
+          setAuthError(true);
+          return;
+        }
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || "Upload failed");
       }
-
       alert("✅ Image téléchargée avec succès !");
-      fetchClientImages(clientId);
+      fetchClientImages(clientId); // Refresh the list after upload
     } catch (err) {
-      console.error("Upload Image Error:", err);
+      if (err.message === "UNAUTHORIZED" || err.message === "No auth token") {
+        setAuthError(true);
+        return;
+      }
+      console.error("Accountant - Upload Image Error:", err);
       alert("❌ Erreur téléchargement image :\n" + err.message);
     } finally {
       setUploadingImage(false);
     }
   };
+  // --- END NEW FUNCTION ---
 
-  // Delete client image
+  // --- NEW: Delete client image ---
+  // ✅ Fixed: Delete client image with proper auth
   const handleDeleteClientImage = async (clientId, imageId) => {
     if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer cette image ?")) return;
 
     try {
-      setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/clients/images?client_id=${clientId}&image_id=${imageId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+      setLoading(true); // Reuse the main loading state or have a specific one
+      const res = await apiFetch(`${API_BASE_URL}/clients/images?client_id=${clientId}&image_id=${imageId}`, { // Uses apiFetch
+        method: "DELETE"
       });
-
-      if (res.status === 401) {
-        setAuthError(true);
-        return;
-      }
       if (!res.ok) {
+        if (res.status === 401) { // Should be handled by apiFetch
+          setAuthError(true);
+          return;
+        }
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || "Delete failed");
       }
-
       alert("✅ Image supprimée avec succès !");
-      fetchClientImages(clientId);
+      fetchClientImages(clientId); // Refresh the list after deletion
     } catch (err) {
-      console.error("Delete Image Error:", err);
+      if (err.message === "UNAUTHORIZED" || err.message === "No auth token") {
+        setAuthError(true);
+        return;
+      }
+      console.error("Accountant - Delete Image Error:", err);
       alert("❌ Erreur suppression image :\n" + err.message);
     } finally {
-      setLoading(false);
+      setLoading(false); // Reuse the main loading state or have a specific one
     }
   };
+  // --- END NEW FUNCTION ---
 
   const getCommercialStats = () => {
     const today = new Date();
@@ -286,7 +337,7 @@ const Accountant = () => {
 
   return (
     <div className="min-h-screen w-screen font-main bg-neutral-950 text-white flex overflow-hidden">
-      {/* Client Images Modal */}
+      {/* --- EXISTING: Client Images Modal (ensure it uses the correct state and delete function) --- */}
       <AnimatePresence>
         {viewingImages && selectedClientForImages && (
           <motion.div
@@ -310,32 +361,47 @@ const Accountant = () => {
                 </div>
                 <button onClick={() => setViewingImages(false)} className="text-4xl text-neutral-400 hover:text-white">&times;</button>
               </div>
-              
+
               {clientImages.length === 0 ? (
                 <p className="text-center text-neutral-400 py-8">Aucun document téléchargé</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {clientImages.map((img, idx) => (
-                    <div key={idx} className="relative group">
-                      <img 
-                        src={img.url || img.image_url} 
-                        alt={`Document ${idx + 1}`} 
-                        className="w-full h-48 object-cover rounded-lg border border-neutral-700"
-                      />
-                      <button
-                        onClick={() => handleDeleteClientImage(selectedClientForImages.id, img.id)}
-                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
+                  {clientImages.map((img, idx) => {
+                    // Extract image ID from path: "clients_images/18/1.png" -> "1"
+                    let imageId = img.id;
+                    if (typeof imageId === 'string' && imageId.includes('/')) {
+                      // Extract just the filename without extension
+                      const parts = imageId.split('/');
+                      imageId = parts[parts.length - 1].split('.')[0];
+                    }
+                    const imageUrl = img.url || img.image_url || '';
+                    return (
+                      <div key={idx} className="relative group">
+                        <img
+                          src={imageUrl}
+                          alt={`Document ${idx + 1}`}
+                          className="w-full h-48 object-cover rounded-lg border border-neutral-700"
+                          onError={(e) => { // Add error handling for image loading
+                             console.error('Image load error:', imageUrl);
+                             e.target.src = 'image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-size="14"%3EImage Error%3C/text%3E%3C/svg%3E';
+                          }}
+                        />
+                        <button
+                          onClick={() => handleDeleteClientImage(selectedClientForImages.id, imageId)} // Use the new delete function
+                          className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+      {/* --- END EXISTING MODAL --- */}
 
       {/* Sidebar */}
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" onClick={toggleMenu} strokeWidth={1.5} stroke="currentColor" className="size-[4vh] cursor-pointer absolute mt-5 ml-5 z-30">
@@ -513,22 +579,22 @@ const Accountant = () => {
           </div>
         )}
 
-        {/* Client Papers Tab */}
+        {/* Client Papers Tab - Ensure the upload and view buttons call the new functions */}
         {activeTab === "Clients" && (
           <div className="space-y-8">
             <div className="flex justify-between items-center">
               <h1 className="text-4xl font-bold">Documents Clients</h1>
               <div className="relative">
                 <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
-                <input 
-                  value={searchClients} 
-                  onChange={e => setSearchClients(e.target.value)} 
-                  placeholder="Rechercher client..." 
-                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64 outline-none" 
+                <input
+                  value={searchClients}
+                  onChange={e => setSearchClients(e.target.value)}
+                  placeholder="Rechercher client..."
+                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64 outline-none"
                 />
               </div>
             </div>
-            
+
             <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
               {filteredClients.map(client => (
                 <motion.div
@@ -544,8 +610,9 @@ const Accountant = () => {
                     <p className="text-sm text-neutral-400">{client.phone_number}</p>
                     <p className="text-sm text-neutral-400">📍 {client.wilaya}</p>
                   </div>
-                  
+
                   <div className="space-y-3">
+                    {/* Upload Button - Calls the new upload function */}
                     <label className="flex items-center gap-2 bg-neutral-800 p-3 rounded-lg cursor-pointer hover:bg-neutral-700 transition">
                       <Upload size={20} className="text-emerald-400" />
                       <span className="flex-1">Télécharger document</span>
@@ -557,17 +624,18 @@ const Accountant = () => {
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            handleUploadClientImage(client.id, file);
-                            e.target.value = '';
+                            handleUploadClientImage(client.id, file); // Call the new function
+                            e.target.value = ''; // Reset input to allow re-uploading the same file
                           }
                         }}
                       />
                     </label>
-                    
+
+                    {/* View Documents Button - Calls the new fetch function */}
                     <button
                       onClick={() => {
-                        setSelectedClientForImages(client);
-                        fetchClientImages(client.id);
+                        setSelectedClientForImages(client); // Set client data for modal
+                        fetchClientImages(client.id);       // Fetch images for this client
                       }}
                       className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 p-3 rounded-lg transition"
                     >
@@ -578,7 +646,7 @@ const Accountant = () => {
                 </motion.div>
               ))}
             </div>
-            
+
             {filteredClients.length === 0 && (
               <p className="text-center text-neutral-400 py-8">Aucun client trouvé</p>
             )}

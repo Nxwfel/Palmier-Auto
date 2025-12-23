@@ -110,6 +110,7 @@ const MarketingAgent = () => {
     shipping_date: "",
     arriving_date: "",
     images: [],
+    existing_images: [], // Track existing images
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -227,8 +228,26 @@ const MarketingAgent = () => {
     
     if (files.length === 0) return;
 
+    // Validate file types and sizes
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/');
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+      
+      if (!isValidType) {
+        alert(`${file.name} n'est pas une image valide`);
+        return false;
+      }
+      if (!isValidSize) {
+        alert(`${file.name} dépasse la taille maximale de 10MB`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
     // Create preview URLs
-    const newPreviews = files.map(file => ({
+    const newPreviews = validFiles.map(file => ({
       file,
       url: URL.createObjectURL(file),
       name: file.name
@@ -237,7 +256,7 @@ const MarketingAgent = () => {
     setImagePreviews(prev => [...prev, ...newPreviews]);
     setFormData(prev => ({
       ...prev,
-      images: [...prev.images, ...files]
+      images: [...prev.images, ...validFiles]
     }));
   };
 
@@ -263,8 +282,26 @@ const MarketingAgent = () => {
     
     if (files.length === 0) return;
 
+    // Validate file types and sizes
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/');
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+      
+      if (!isValidType) {
+        alert(`${file.name} n'est pas une image valide`);
+        return false;
+      }
+      if (!isValidSize) {
+        alert(`${file.name} dépasse la taille maximale de 10MB`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
     // Create preview URLs
-    const newPreviews = files.map(file => ({
+    const newPreviews = validFiles.map(file => ({
       file,
       url: URL.createObjectURL(file),
       name: file.name
@@ -273,7 +310,7 @@ const MarketingAgent = () => {
     setEditImagePreviews(prev => [...prev, ...newPreviews]);
     setEditForm(prev => ({
       ...prev,
-      images: [...prev.images, ...files]
+      images: [...prev.images, ...validFiles]
     }));
   };
 
@@ -440,6 +477,10 @@ const MarketingAgent = () => {
   const selectCarToEdit = (car) => {
     setSelectedCar(car.id);
     const colors = parseColors(car.color);
+    
+    // Process existing images from car.images
+    const existingImages = Array.isArray(car.images) ? car.images : [];
+    
     setEditForm({
       car_id: car.id,
       currency_id: car.currency_id || "",
@@ -458,6 +499,7 @@ const MarketingAgent = () => {
       shipping_date: car.shipping_date || "",
       arriving_date: car.arriving_date || "",
       images: [],
+      existing_images: existingImages,
     });
     setEditColorInput("");
     setEditImagePreviews([]);
@@ -1303,6 +1345,33 @@ const MarketingAgent = () => {
                         type="date"
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
+                      
+                      {/* Display existing images */}
+                      {editForm.existing_images && editForm.existing_images.length > 0 && (
+                        <div className="md:col-span-3">
+                          <label className="block text-sm text-emerald-400 mb-2 flex items-center gap-2">
+                            <ImageIcon size={18} />
+                            Images existantes ({editForm.existing_images.length})
+                          </label>
+                          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
+                            {editForm.existing_images.map((imageUrl, i) => (
+                              <div key={i} className="relative group">
+                                <img
+                                  src={`${API_BASE_URL}${imageUrl}`}
+                                  alt={`existing ${i + 1}`}
+                                  className="w-full h-24 object-cover rounded-lg border-2 border-neutral-700"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg">
+                                  Existante
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Enhanced Image Upload Section for Edit */}
                       <div className="md:col-span-3">

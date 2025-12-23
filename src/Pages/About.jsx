@@ -6,12 +6,12 @@ const About = () => {
   return (
    <div 
    id='about'
-   className='h-screen w-screen bg-white overflow-hidden flex max-md:flex-col justify-start items-end'>
+   className='h-screen w-screen bg-white overflow-hidden flex max-md:flex-col justify-start max-md:justify-center max-md:items-center items-end'>
     <div
     style={{backgroundImage:`url(${Imported})`, backgroundSize:'cover', backgroundPosition:'center'}}
-    className='h-[80%] w-[60%] max-md:w-full max-md:mt-[5vh] mb-[5vh] bg-black items-center justify-center flex rounded-xl ml-[1vw]'>
+    className='h-[80%] max-md:h-[50vh] w-[60%] max-md:w-[90%] max-md:ml-auto max-md:mr-auto max-md:mt-[5vh] mb-[5vh] bg-black items-center justify-center flex rounded-xl ml-[1vw]'>
     </div>
-    <div className='h-[80%] w-[40%] max-md:w-full flex flex-col jutify-start items-start p-10'>
+    <div className='h-[80%] w-[40%] max-md:w-full flex flex-col jutify-start items-start max-md:justify-center max-md:items-center p-10'>
      <h1 className='font-main text-[8vh]'>
       Notre Service
      </h1>
@@ -23,7 +23,7 @@ Notre mission est de rendre l’achat de véhicules internationaux simple, trans
      <motion.button 
            initial={{backgroundColor:'#F2F2F2' , color:'#000000' , scale:1}}
            whileHover={{backgroundColor:'#000' , color:'#FFF' , scale:1.05}}
-           className='px-[3vw] py-[2vh] font-main bg-white text-black cursor-pointer mt-[2vh]'>
+           className='px-[3vw] py-[2vh] font-main bg-white flex max-md:ml-auto max-md:mr-auto text-black cursor-pointer mt-[2vh]'>
             Commandez!
       </motion.button>
       </Link>
