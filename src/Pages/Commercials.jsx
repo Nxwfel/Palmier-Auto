@@ -6,6 +6,43 @@ import { Search, Plus, File, FileArchiveIcon, Car, LetterTextIcon, Printer, Uplo
 import QrCode from "../assets/qr_client.png";
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
+// ✅ Fixed: Centralized API fetch function with proper error handling
+const apiFetch = async (url, options = {}) => {
+  const token = localStorage.getItem('authToken');
+  
+  if (!token) {
+    throw new Error("No authentication token found. Please login again.");
+  }
+
+  const headers = {
+    ...options.headers,
+    'Authorization': `Bearer ${token}`,
+  };
+
+  // Only add Content-Type for non-FormData requests
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    // Check for 401 Unauthorized
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      throw new Error("UNAUTHORIZED");
+    }
+
+    return response;
+  } catch (error) {
+    console.error("API Fetch Error:", error);
+    throw error;
+  }
+};
+
 const Commercials = () => {
   const [activeTab, setActiveTab] = useState("addClient");
   const [clients, setClients] = useState([]);
@@ -58,6 +95,7 @@ const Commercials = () => {
   // Contract generation
   const [showContractPrompt, setShowContractPrompt] = useState(false);
   const [lastOrderData, setLastOrderData] = useState(null);
+  const [commercialInfo, setCommercialInfo] = useState(null);
 
   const navigate = useNavigate();
 
@@ -79,20 +117,60 @@ const Commercials = () => {
     fetchOrders();
     fetchCars();
     fetchCurrencies();
+    fetchCommercialInfo();
   }, []);
+
+  const fetchCommercialInfo = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/commercials/commercial`, {
+        method: "POST"
+      });
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
+        if (res.status === 403) {
+          console.warn("Commercial info not accessible - using default");
+          return; // Gracefully handle 403 - use default info in contract
+        }
+        throw new Error("Failed to fetch commercial info");
+      }
+      
+      const data = await res.json();
+      console.log("Commercial info:", data);
+      setCommercialInfo(data);
+    } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
+      console.warn("Failed to fetch commercial info:", err);
+      // Don't show error to user - just use default info
+    }
+  };
 
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/clients/`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.status === 401) return navigate('/commercialslogin');
-      if (!res.ok) throw new Error("Failed to fetch clients");
+      const res = await apiFetch(`${API_BASE_URL}/clients/`);
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
+        throw new Error("Failed to fetch clients");
+      }
+      
       const data = await res.json();
-      setClients(data || []);
+      setClients(Array.isArray(data) ? data : []);
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       setError("Erreur lors du chargement des clients");
       console.error(err);
     } finally {
@@ -102,64 +180,122 @@ const Commercials = () => {
 
   const fetchOrders = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/orders/`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.status === 401) return navigate('/commercialslogin');
-      if (!res.ok) throw new Error("Failed to fetch orders");
+      const res = await apiFetch(`${API_BASE_URL}/orders/`);
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
+        throw new Error("Failed to fetch orders");
+      }
+      
       const data = await res.json();
-      setOrders(data || []);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       console.error(err);
     }
   };
 
   const fetchCars = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/cars/all`, {
+      const res = await apiFetch(`${API_BASE_URL}/cars/all`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({})
       });
-      if (res.status === 401) return navigate('/commercialslogin');
-      if (!res.ok) throw new Error("Failed to fetch cars");
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
+        throw new Error("Failed to fetch cars");
+      }
+      
       const data = await res.json();
-      setCars(data || []);
+      setCars(Array.isArray(data) ? data : []);
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       console.error(err);
     }
   };
 
   const fetchCurrencies = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/currencies/`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await apiFetch(`${API_BASE_URL}/currencies/`);
+      
       if (!res.ok) throw new Error("Failed to fetch currencies");
+      
       const data = await res.json();
-      setCurrencies(data || []);
+      setCurrencies(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Fetch client images
+  // ✅ Fixed: Fetch client images with proper array handling
   const fetchClientImages = async (clientId) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/clients/${clientId}/images`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.status === 401) return navigate('/commercialslogin');
-      if (!res.ok) throw new Error("Failed to fetch images");
+      const res = await apiFetch(`${API_BASE_URL}/clients/${clientId}/images`);
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
+        throw new Error("Failed to fetch images");
+      }
+      
       const data = await res.json();
-      setClientImages(data || []);
+      console.log("Client images response:", data);
+      
+      // ✅ Handle API response: {client_id: 18, images: ['/path/to/image.png']}
+      let imagesArray = [];
+      
+      if (Array.isArray(data)) {
+        // Direct array response
+        imagesArray = data.map(img => {
+          if (typeof img === 'string') {
+            const cleanPath = img.startsWith('/') ? img.substring(1) : img;
+            const imageUrl = `${API_BASE_URL}/download_static_files/${cleanPath}`;
+            return { url: imageUrl, image_url: imageUrl, id: cleanPath };
+          }
+          return img;
+        });
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.images)) {
+          // Response with images property: {images: [...]}
+          imagesArray = data.images.map(img => {
+            if (typeof img === 'string') {
+              // Convert path to download_static_files URL
+              const cleanPath = img.startsWith('/') ? img.substring(1) : img;
+              const imageUrl = `${API_BASE_URL}/download_static_files/${cleanPath}`;
+              return { url: imageUrl, image_url: imageUrl, id: cleanPath };
+            }
+            return img;
+          });
+        } else if (data.url || data.image_url) {
+          // Single image object
+          imagesArray = [data];
+        }
+      }
+      
+      console.log("Processed images:", imagesArray);
+      setClientImages(imagesArray);
       setViewingImages(true);
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       alert("❌ Erreur lors du chargement des images: " + err.message);
       console.error(err);
     } finally {
@@ -167,7 +303,7 @@ const Commercials = () => {
     }
   };
 
-  // Upload client image
+  // ✅ Fixed: Upload client image with proper auth
   const handleUploadClientImage = async (clientId, file) => {
     if (!file) {
       alert("⚠️ Veuillez sélectionner un fichier");
@@ -179,15 +315,16 @@ const Commercials = () => {
 
     try {
       setUploadingImage(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/clients/images?client_id=${clientId}`, {
+      const res = await apiFetch(`${API_BASE_URL}/clients/images?client_id=${clientId}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
 
-      if (res.status === 401) return navigate('/commercialslogin');
       if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || "Upload failed");
       }
@@ -195,6 +332,10 @@ const Commercials = () => {
       alert("✅ Image téléchargée avec succès !");
       fetchClientImages(clientId);
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       console.error("Upload Image Error:", err);
       alert("❌ Erreur téléchargement image :\n" + err.message);
     } finally {
@@ -202,20 +343,21 @@ const Commercials = () => {
     }
   };
 
-  // Delete client image
+  // ✅ Fixed: Delete client image with proper auth
   const handleDeleteClientImage = async (clientId, imageId) => {
     if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer cette image ?")) return;
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/clients/images?client_id=${clientId}&image_id=${imageId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await apiFetch(`${API_BASE_URL}/clients/images?client_id=${clientId}&image_id=${imageId}`, {
+        method: "DELETE"
       });
 
-      if (res.status === 401) return navigate('/commercialslogin');
       if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || "Delete failed");
       }
@@ -223,6 +365,10 @@ const Commercials = () => {
       alert("✅ Image supprimée avec succès !");
       fetchClientImages(clientId);
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       console.error("Delete Image Error:", err);
       alert("❌ Erreur suppression image :\n" + err.message);
     } finally {
@@ -230,43 +376,47 @@ const Commercials = () => {
     }
   };
 
+  // ✅ Fixed: Add client with proper auth
   const handleAddClient = async () => {
     const { name, surname, phone, password, wilaya, address, nin, passport_number } = newClient;
+    
     if (!name || !surname || !phone || !password || !wilaya || !address || !nin || !passport_number) {
       alert("Veuillez remplir tous les champs (y compris le NIN et le numéro de passeport) !");
       return;
     }
-    const parsedNIN = parseInt(nin, 10);
-    const parsedPassport = parseInt(passport_number, 10);
     
-    if (isNaN(parsedNIN) || parsedNIN <= 0) {
-      alert("Le NIN doit être un nombre entier positif !");
+    // Validate that nin and passport are numeric strings
+    if (!nin || nin.trim() === '' || isNaN(Number(nin))) {
+      alert("Le NIN doit être un nombre valide !");
       return;
     }
     
-    if (isNaN(parsedPassport) || parsedPassport <= 0) {
-      alert("Le numéro de passeport doit être un nombre entier positif !");
+    if (!passport_number || passport_number.trim() === '' || isNaN(Number(passport_number))) {
+      alert("Le numéro de passeport doit être un nombre valide !");
       return;
     }
     
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/clients/`, {
+      const res = await apiFetch(`${API_BASE_URL}/clients/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name,
           surname,
-          nin: parsedNIN,
-          passport_number: parsedPassport,
+          nin: nin.toString(),  // Send as string
+          passport_number: passport_number.toString(),  // Send as string
           phone_number: phone,
           password,
           wilaya,
           address,
         }),
       });
+      
       if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
         const errData = await res.json().catch(() => ({}));
         let errMessage = "Erreur serveur inconnue";
         if (errData.detail && Array.isArray(errData.detail)) {
@@ -278,10 +428,15 @@ const Commercials = () => {
         }
         throw new Error(errMessage);
       }
+      
       alert("✅ Client ajouté avec succès !");
       setNewClient({ name: "", surname: "", phone: "", password: "", wilaya: "", address: "", nin: "", passport_number: "" });
       fetchClients();
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       console.error("Add Client Error:", err);
       alert("❌ Erreur ajout client :\n" + err.message);
     } finally {
@@ -309,17 +464,16 @@ const Commercials = () => {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem("authToken");
-      const res = await fetch(`${API_BASE_URL}/orders/`, {
+      const res = await apiFetch(`${API_BASE_URL}/orders/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
         let errData;
         try { errData = await res.json(); } catch { errData = { detail: await res.text() }; }
         
@@ -337,14 +491,25 @@ const Commercials = () => {
       // Store order data for contract generation
       const client = clients.find(c => c.id === clientId);
       const car = cars.find(c => c.id === carId);
-      const priceInfo = getCarPriceInfo(car);
+      
+      // ✅ Get exchange rate from currency data (from API)
+      const currency = currencyMap.get(car.currency_id);
+      const exchangeRate = currency?.exchange_rate_to_dzd || null;
+      const currencyCode = currency?.code || '???';
+      const originalPrice = car.price || 0;
+      
+      // ✅ Store the price AT THE TIME OF ORDER CREATION (not current car price)
+      // The order price_dzd is the actual price the order was created with
+      const orderPriceDZD = createdOrder.price_dzd || (originalPrice * (exchangeRate || 0));
       
       setLastOrderData({
         client,
         car,
         color: car_color,
-        price: car.price ? `${car.price} ${priceInfo.currencyCode}` : "N/A",
-        priceInDZD: priceInfo.priceInDZD,
+        originalPrice: originalPrice, // Original price in foreign currency
+        currencyCode: currencyCode, // Currency code (USD, EUR, etc)
+        priceInDZD: orderPriceDZD, // The actual order price in DZD (fixed at order time)
+        exchangeRate: exchangeRate, // ✅ Exchange rate from API currencies
         paymentAmount: createdOrder.payment_amount || 0,
         orderId: createdOrder.order_id || createdOrder.id,
         date: new Date().toLocaleDateString('fr-DZ')
@@ -355,6 +520,10 @@ const Commercials = () => {
       setNewOrder({ client_id: null, car_id: null, car_color: "", delivery_status: "shipping" });
       fetchOrders();
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       console.error("❌ Erreur commande:", err);
       alert("❌ Erreur:\n" + (err.message || "Échec réseau"));
     } finally {
@@ -570,15 +739,15 @@ const Commercials = () => {
         </div>
         <div class="info-row">
             <div class="info-label">الممثل:</div>
-            <div class="info-value">السيد نخيلة ياسين</div>
+            <div class="info-value">${commercialInfo ? `${commercialInfo.surname} ${commercialInfo.name}` : 'السيد نخيلة ياسين'}</div>
         </div>
         <div class="info-row">
-            <div class="info-label">بطاقة التعريف:</div>
-            <div class="info-value">109920263007000003</div>
+            <div class="info-label">رقم الهاتف:</div>
+            <div class="info-value">${commercialInfo?.phone_number || 'غير محدد'}</div>
         </div>
         <div class="info-row">
-            <div class="info-label">الصفة:</div>
-            <div class="info-value">مدير الشركة</div>
+            <div class="info-label">العنوان:</div>
+            <div class="info-value">${commercialInfo?.address || 'غير محدد'}</div>
         </div>
     </div>
 
@@ -633,6 +802,12 @@ const Commercials = () => {
     </div>
 
     <div class="price-highlight">
+        ${lastOrderData.originalPrice && lastOrderData.currencyCode !== '???' ? `
+        <div style="font-size: 11pt; margin-bottom: 8px;">
+            السعر الأصلي: ${lastOrderData.originalPrice.toLocaleString('fr-DZ')} ${lastOrderData.currencyCode}
+            ${lastOrderData.exchangeRate ? ` | سعر الصرف: ${Number(lastOrderData.exchangeRate).toLocaleString('fr-DZ')} دج` : ''}
+        </div>
+        ` : ''}
         المبلغ الإجمالي والنهائي: ${formattedTotal} دج 
         <br>
         <small style="font-size: 10pt;">(متضمناً جميع تكاليف النقل والتأمين دون حقوق الجمركة)</small>
@@ -739,15 +914,18 @@ const Commercials = () => {
     if (editForm.payment_amount !== "") body.payment_amount = parseFloat(editForm.payment_amount);
     if (editForm.delivery_status) body.delivery_status = editForm.delivery_status;
 
-    const token = localStorage.getItem('authToken');
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/orders/`, {
+      const res = await apiFetch(`${API_BASE_URL}/orders/`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       });
+      
       if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
         const errorText = await res.text();
         let errorData;
         try { errorData = JSON.parse(errorText); } catch { errorData = { message: errorText }; }
@@ -758,11 +936,12 @@ const Commercials = () => {
       if (lastOrderData && lastOrderData.orderId === orderId) {
         const client = clients.find(c => c.id === updatedOrder.client_id);
         const car = cars.find(c => c.id === updatedOrder.car_id);
-        const priceInfo = getCarPriceInfo(car);
         
+        // ✅ Keep the original order price, don't recalculate from car
         setLastOrderData({
           ...lastOrderData,
           paymentAmount: updatedOrder.payment_amount || 0,
+          priceInDZD: updatedOrder.price_dzd || lastOrderData.priceInDZD, // Preserve order price
           client,
           car
         });
@@ -777,12 +956,12 @@ const Commercials = () => {
         generateContract();
       }
     } catch (err) {
-      console.error("Update Order Error:", err);
-      if (err.message.includes("Failed to fetch")) {
-        alert(`❌ ERREUR CORS...\nPayload: ${JSON.stringify(body)}`);
-      } else {
-        alert("❌ Erreur mise à jour: " + err.message);
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
       }
+      console.error("Update Order Error:", err);
+      alert("❌ Erreur mise à jour: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -798,14 +977,23 @@ const Commercials = () => {
         return;
       }
       
-      const priceInfo = getCarPriceInfo(car);
+      // ✅ Use order's price_dzd (price at time of order) not current car price
+      const orderPriceDZD = order.price_dzd || 0;
+      
+      // ✅ Get currency info and exchange rate from API
+      const currency = currencyMap.get(car.currency_id);
+      const exchangeRate = currency?.exchange_rate_to_dzd || null;
+      const currencyCode = currency?.code || '???';
+      const originalPrice = car.price || 0;
       
       setLastOrderData({
         client,
         car,
         color: order.car_color,
-        price: car.price ? `${car.price} ${priceInfo.currencyCode}` : "N/A",
-        priceInDZD: priceInfo.priceInDZD,
+        originalPrice: originalPrice,
+        currencyCode: currencyCode,
+        priceInDZD: orderPriceDZD, // ✅ Use order's actual price, not car's current price
+        exchangeRate: exchangeRate, // ✅ Exchange rate from API currencies
         paymentAmount: order.payment_amount || 0,
         orderId: order.order_id,
         date: order.created_at ? new Date(order.created_at).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ')
@@ -823,23 +1011,18 @@ const Commercials = () => {
 
   const handleDeleteOrder = async (orderId) => {
     if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer cette commande ?")) return;
+    
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE_URL}/orders/?order_id=${orderId}`, {
+      const res = await apiFetch(`${API_BASE_URL}/orders/?order_id=${orderId}`, {
         method: "DELETE",
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
       });
 
-      if (res.status === 401) {
-        navigate('/commercialslogin');
-        return;
-      }
-
       if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
         const errorText = await res.text();
         let errorData;
         try { 
@@ -858,6 +1041,10 @@ const Commercials = () => {
 
       fetchOrders();
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       console.error("Delete Order Error:", err);
       alert("❌ Erreur lors de la suppression:\n" + err.message);
     } finally {
@@ -873,10 +1060,8 @@ const Commercials = () => {
   const handleSendRequest = async () => {
     if (!requestModel.trim()) return alert("Modèle requis");
     try {
-      const token = localStorage.getItem('authToken');
-      await fetch(`${API_BASE_URL}/requests/`, {
+      await apiFetch(`${API_BASE_URL}/requests/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ model: requestModel, details: requestDetails }),
       });
       setRequestSent(true);
@@ -885,6 +1070,10 @@ const Commercials = () => {
       setTimeout(() => setRequestSent(false), 5000);
       alert("✅ Demande envoyée !");
     } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        navigate('/commercialslogin');
+        return;
+      }
       alert("❌ Échec envoi demande");
     }
   };
@@ -998,21 +1187,37 @@ const Commercials = () => {
               <p className="text-center text-neutral-400 py-8">Aucun document téléchargé</p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {clientImages.map((img, idx) => (
-                  <div key={idx} className="relative group">
-                    <img 
-                      src={img.url || img.image_url} 
-                      alt={`Document ${idx + 1}`} 
-                      className="w-full h-48 object-cover rounded-lg border border-neutral-700"
-                    />
-                    <button
-                      onClick={() => handleDeleteClientImage(selectedClientForImages.id, img.id)}
-                      className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
+                {clientImages.map((img, idx) => {
+                  // Extract image ID from path: "clients_images/18/1.png" -> "1"
+                  let imageId = img.id;
+                  if (typeof imageId === 'string' && imageId.includes('/')) {
+                    // Extract just the filename without extension
+                    const parts = imageId.split('/');
+                    imageId = parts[parts.length - 1].split('.')[0];
+                  }
+                  
+                  const imageUrl = img.url || img.image_url || '';
+                  
+                  return (
+                    <div key={idx} className="relative group">
+                      <img 
+                        src={imageUrl}
+                        alt={`Document ${idx + 1}`} 
+                        className="w-full h-48 object-cover rounded-lg border border-neutral-700"
+                        onError={(e) => {
+                          console.error('Image load error:', imageUrl);
+                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-size="14"%3EImage Error%3C/text%3E%3C/svg%3E';
+                        }}
+                      />
+                      <button
+                        onClick={() => handleDeleteClientImage(selectedClientForImages.id, imageId)}
+                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

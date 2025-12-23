@@ -55,7 +55,7 @@ const CommercialCarsModal = ({
     return price * (currency?.exchange_rate_to_dzd || 1);
   };
 
-  const handleEditCar = (car) => {
+const handleEditCar = (car) => {
     setEditingCarId(car.id);
     setEditCarForm({
       car_id: car.id,
@@ -77,6 +77,7 @@ const CommercialCarsModal = ({
       images: [],
     });
   };
+
 
   const handleEditCarChange = (e) => {
     setEditCarForm({ ...editCarForm, [e.target.name]: e.target.value });
@@ -3500,18 +3501,27 @@ export default function AdminSuperPanel() {
                 <option key={curr.id} value={curr.id}>{curr.name} ({curr.code.toUpperCase()})</option>
               ))}
             </select>
-            <input autoFocus value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Model" className="bg-neutral-800 p-2 rounded text-sm" required />
-            <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Color" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input autoFocus value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Model *" className="bg-neutral-800 p-2 rounded text-sm" required />
+            <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Colors (comma-separated)" className="bg-neutral-800 p-2 rounded text-sm" />
+            
+            {/* ✅ Added Description field - spans full width */}
+            <textarea 
+              value={carForm.description} 
+              onChange={(e) => setCarForm({ ...carForm, description: e.target.value })} 
+              placeholder="Description (optional)" 
+              className="bg-neutral-800 p-2 rounded text-sm md:col-span-3 min-h-[80px]" 
+              rows="3"
+            />
+            
             <input type="number" value={carForm.year} onChange={(e) => setCarForm({ ...carForm, year: e.target.value })} placeholder="Year" className="bg-neutral-800 p-2 rounded text-sm" />
             <input value={carForm.engine} onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })} placeholder="Engine" className="bg-neutral-800 p-2 rounded text-sm" />
             <input value={carForm.power} onChange={(e) => setCarForm({ ...carForm, power: e.target.value })} placeholder="Power" className="bg-neutral-800 p-2 rounded text-sm" />
             <input value={carForm.fuelType} onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })} placeholder="Fuel Type" className="bg-neutral-800 p-2 rounded text-sm" />
             <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Mileage" className="bg-neutral-800 p-2 rounded text-sm" />
             <input value={carForm.country} onChange={(e) => setCarForm({ ...carForm, country: e.target.value })} placeholder="Country" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input type="number" step="0.01" value={carForm.commercial_comission} onChange={(e) => setCarForm({ ...carForm, commercial_comission: e.target.value })} placeholder="Commission" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input type="number" step="0.01" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Price" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input type="number" step="0.01" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Price *" className="bg-neutral-800 p-2 rounded text-sm" required />
             <input type="number" step="0.01" value={carForm.wholesale_price} onChange={(e) => setCarForm({ ...carForm, wholesale_price: e.target.value })} placeholder="Wholesale Price" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input type="number" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="Quantity" className="bg-neutral-800 p-2 rounded text-sm" />
+            <input type="number" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="Quantity *" className="bg-neutral-800 p-2 rounded text-sm" required />
             <label className="flex flex-col gap-1">
               <span className="text-xs text-neutral-400">Purchase Date</span>
               <input type="date" value={carForm.shippingDate} onChange={(e) => setCarForm({ ...carForm, shippingDate: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" />
