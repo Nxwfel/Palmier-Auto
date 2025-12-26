@@ -8,6 +8,7 @@ import {
   CreditCard,
   FilePlus,
   Trash2,
+  Share2,
   Edit2,
   TrendingUp,
   TrendingDown,
@@ -433,14 +434,54 @@ export default function AdminSuperPanel() {
   const [fournisseurForm, setFournisseurForm] = useState({
     name: "", surname: "", phone_number: "", address: "",
   });
+  const [socials , setSocials] = useState([]);
+  useEffect(() => {
+    const fetchSocials = async () => {
+      try {
+        const response = await apiFetch(`${API_BASE}/social_links/`); 
+        const data = await response.json();
+        setSocials(data);
+      } 
+      catch (err) {
+        console.error("Error fetching social links:", err);
+      }
+    }
+    fetchSocials();
+  }
+  ), [];
+  const [socialsform , setSocialsform] = useState({
+    facebook:"" , instagram:"" , whatsapp:""});
+  
+  const handleSocialsChange = (e) => {
+    setSocialsform({ ...socialsform, [e.target.name]: e.target.value });
+  }; 
+  
+  const SubmitSocials = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await apiFetch(`${API_BASE}/social_links/`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(socialsform)
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ API Error:", errorData);
+        throw new Error(errorData.detail || "Failed to update social links");
+      }
+      alert("✅ Social links updated successfully!");
+    } catch (err) {
+      console.error("Update social links error:", err);
+      alert(`❌ Error: ${err.message}`);
+    }
+  };
   const [showAddCar, setShowAddCar] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
   
-  // ✅ FIX: Updated initial car form with description and colors as string
   const initialCarForm = {
     model: "", 
     description: "",
-    color: "", // Will be split into array on submit
+    color: "", 
     year: "", 
     engine: "", 
     power: "", 
@@ -1955,6 +1996,7 @@ export default function AdminSuperPanel() {
           { id: "clients_orders", icon: FilePlus, label: "Clients Orders" },
           { id: "currency", icon: DollarSign, label: "Currency" },
           { id: "car_requests", icon: FilePlus, label: "Car Requests" },
+          { id: "social_media", icon: Share2, label: "Social Media" },
           { id: "transactions", icon: Clock, label: "transactions" },
         ].map(({ id, icon: Icon, label }) => (
           <button
@@ -2079,7 +2121,7 @@ export default function AdminSuperPanel() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-semibold">Gestion des Voitures</h2>
                 <div className="flex items-center gap-3">
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search car..." className="bg-neutral-800 px-3 py-2 rounded-lg text-sm" />
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search car..." className="bg-neutral-800 px-3 py-2 rounded-lg text-sm text-white" />
                   <button onClick={() => handleOpenAdd("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">Ajouter une voiture</button>
                 </div>
               </div>
@@ -3022,6 +3064,53 @@ export default function AdminSuperPanel() {
     </Card>
   </motion.div>
 )}
+
+{tab === "social_media" && (
+  <motion.div
+    key="socialmedia"
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    transition={{ duration: 0.4 }}
+  >
+    <h1 className="text-3xl font-main mb-6">Liens Sociaux</h1>
+    <Card>
+      <form onSubmit={SubmitSocials} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Facebook</label>
+          <input
+            type="text"
+            value={socialsform.facebook}
+            onChange={(e) => setSocialsform({...socialsform, facebook: e.target.value})}
+            className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Instagram</label>
+          <input
+            type="text"
+            value={socialsform.instagram}
+            onChange={(e) => setSocialsform({...socialsform, instagram: e.target.value})}
+            className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Whatsapp</label>
+          <input
+            type="text"
+            value={socialsform.whatsapp}
+            onChange={(e) => setSocialsform({...socialsform, twitter: e.target.value})}
+            className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
+          />
+        </div>
+        <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
+          Mettre à jour
+        </button>
+      </form>
+    </Card>
+  </motion.div>
+)}
+
 {tab === "supplierItems" && (
   <motion.div
     key="supplierItems"

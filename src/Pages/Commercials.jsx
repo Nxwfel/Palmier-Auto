@@ -120,6 +120,18 @@ const Commercials = () => {
     fetchCommercialInfo();
   }, []);
 
+  // Cleanup object URLs when modal closes
+  useEffect(() => {
+    return () => {
+      // Cleanup object URLs when component unmounts
+      clientImages.forEach(img => {
+        if (img.url && img.url.startsWith('blob:')) {
+          URL.revokeObjectURL(img.url);
+        }
+      });
+    };
+  }, [clientImages]);
+
   const fetchCommercialInfo = async () => {
     try {
       const res = await apiFetch(`${API_BASE_URL}/commercials/commercial`, {
@@ -133,7 +145,7 @@ const Commercials = () => {
         }
         if (res.status === 403) {
           console.warn("Commercial info not accessible - using default");
-          return; // Gracefully handle 403 - use default info in contract
+          return;
         }
         throw new Error("Failed to fetch commercial info");
       }
@@ -147,7 +159,6 @@ const Commercials = () => {
         return;
       }
       console.warn("Failed to fetch commercial info:", err);
-      // Don't show error to user - just use default info
     }
   };
 
@@ -240,7 +251,7 @@ const Commercials = () => {
     }
   };
 
-  // ✅ Fixed: Fetch client images with proper array handling
+  // ✅ FIXED: Fetch client images with multiple path format attempts
   const fetchClientImages = async (clientId) => {
     try {
       setLoading(true);
@@ -257,38 +268,117 @@ const Commercials = () => {
       const data = await res.json();
       console.log("Client images response:", data);
       
-      // ✅ Handle API response: {client_id: 18, images: ['/path/to/image.png']}
-      let imagesArray = [];
+      // ✅ Extract image paths/IDs from response
+      let imagePaths = [];
       
       if (Array.isArray(data)) {
-        // Direct array response
-        imagesArray = data.map(img => {
-          if (typeof img === 'string') {
-            const cleanPath = img.startsWith('/') ? img.substring(1) : img;
-            const imageUrl = `${API_BASE_URL}/download_static_files/${cleanPath}`;
-            return { url: imageUrl, image_url: imageUrl, id: cleanPath };
-          }
-          return img;
-        });
+        imagePaths = data.map((img, idx) => ({
+          path: typeof img === 'string' ? img : (img.url || img.path || img.image_url),
+          id: typeof img === 'object' ? (img.id || idx) : idx,
+          created_at: typeof img === 'object' ? img.created_at : null
+        }));
       } else if (data && typeof data === 'object') {
         if (Array.isArray(data.images)) {
-          // Response with images property: {images: [...]}
-          imagesArray = data.images.map(img => {
-            if (typeof img === 'string') {
-              // Convert path to download_static_files URL
-              const cleanPath = img.startsWith('/') ? img.substring(1) : img;
-              const imageUrl = `${API_BASE_URL}/download_static_files/${cleanPath}`;
-              return { url: imageUrl, image_url: imageUrl, id: cleanPath };
-            }
-            return img;
-          });
-        } else if (data.url || data.image_url) {
-          // Single image object
-          imagesArray = [data];
+          imagePaths = data.images.map((img, idx) => ({
+            path: typeof img === 'string' ? img : (img.url || img.path || img.image_url),
+            id: typeof img === 'object' ? (img.id || idx) : idx,
+            created_at: typeof img === 'object' ? img.created_at : null
+          }));
+        } else if (data.url || data.path || data.image_url) {
+          imagePaths = [{
+            path: data.url || data.path || data.image_url,
+            id: data.id || 0,
+            created_at: data.created_at
+          }];
         }
       }
       
-      console.log("Processed images:", imagesArray);
+      console.log("Image paths extracted:", imagePaths);
+      
+      // ✅ Fetch each image - try multiple path formats
+      const imagePromises = imagePaths.map(async (imgInfo) => {
+        try {
+          const path = imgInfo.path;
+          console.log("Original path from API:", path);
+          
+          // If already base64, use directly
+          if (path && path.startsWith('data:')) {
+            return {
+              url: path,
+              image_url: path,
+              id: imgInfo.id,
+              created_at: imgInfo.created_at
+            };
+          }
+          
+          // Try different URL formats
+          const urlsToTry = [];
+          
+          // Format 1: /download_static_files/ + path (with leading slash)
+          if (path.startsWith('/')) {
+            urlsToTry.push(`${API_BASE_URL}/download_static_files${path}`);
+          } else {
+            urlsToTry.push(`${API_BASE_URL}/download_static_files/${path}`);
+          }
+          
+          // Format 2: Direct path from API
+          if (path.startsWith('/')) {
+            urlsToTry.push(`${API_BASE_URL}${path}`);
+          } else {
+            urlsToTry.push(`${API_BASE_URL}/${path}`);
+          }
+          
+          // Format 3: If path has /clients_images/, try without leading slash
+          if (path.includes('clients_images/')) {
+            const cleanPath = path.replace(/^\/+/, '');
+            urlsToTry.push(`${API_BASE_URL}/download_static_files/${cleanPath}`);
+          }
+          
+          console.log("Trying URLs:", urlsToTry);
+          
+          // Try each URL format until one works
+          for (const downloadUrl of urlsToTry) {
+            try {
+              console.log(`Attempting: ${downloadUrl}`);
+              const imgRes = await apiFetch(downloadUrl);
+              
+              if (imgRes.ok) {
+                console.log(`✅ Success with: ${downloadUrl}`);
+                const blob = await imgRes.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                
+                return {
+                  url: objectUrl,
+                  image_url: objectUrl,
+                  id: imgInfo.id,
+                  created_at: imgInfo.created_at,
+                  originalPath: path,
+                  successUrl: downloadUrl
+                };
+              } else {
+                console.log(`❌ Failed (${imgRes.status}): ${downloadUrl}`);
+              }
+            } catch (error) {
+              console.log(`❌ Error with ${downloadUrl}:`, error.message);
+            }
+          }
+          
+          console.error(`All URL formats failed for path: ${path}`);
+          return null;
+        } catch (error) {
+          console.error("Error fetching individual image:", error);
+          return null;
+        }
+      });
+      
+      const imagesArray = (await Promise.all(imagePromises)).filter(Boolean);
+      
+      console.log("Processed images with object URLs:", imagesArray);
+      
+      if (imagesArray.length === 0) {
+        alert("⚠️ Aucune image n'a pu être chargée. Vérifiez les chemins d'accès.");
+      }
+      
       setClientImages(imagesArray);
       setViewingImages(true);
     } catch (err) {
@@ -385,7 +475,6 @@ const Commercials = () => {
       return;
     }
     
-    // Validate that nin and passport are numeric strings
     if (!nin || nin.trim() === '' || isNaN(Number(nin))) {
       alert("Le NIN doit être un nombre valide !");
       return;
@@ -403,8 +492,8 @@ const Commercials = () => {
         body: JSON.stringify({
           name,
           surname,
-          nin: nin.toString(),  // Send as string
-          passport_number: passport_number.toString(),  // Send as string
+          nin: nin.toString(),
+          passport_number: passport_number.toString(),
           phone_number: phone,
           password,
           wilaya,
@@ -488,28 +577,24 @@ const Commercials = () => {
 
       const createdOrder = await res.json();
       
-      // Store order data for contract generation
       const client = clients.find(c => c.id === clientId);
       const car = cars.find(c => c.id === carId);
       
-      // ✅ Get exchange rate from currency data (from API)
       const currency = currencyMap.get(car.currency_id);
       const exchangeRate = currency?.exchange_rate_to_dzd || null;
       const currencyCode = currency?.code || '???';
       const originalPrice = car.price || 0;
       
-      // ✅ Store the price AT THE TIME OF ORDER CREATION (not current car price)
-      // The order price_dzd is the actual price the order was created with
       const orderPriceDZD = createdOrder.price_dzd || (originalPrice * (exchangeRate || 0));
       
       setLastOrderData({
         client,
         car,
         color: car_color,
-        originalPrice: originalPrice, // Original price in foreign currency
-        currencyCode: currencyCode, // Currency code (USD, EUR, etc)
-        priceInDZD: orderPriceDZD, // The actual order price in DZD (fixed at order time)
-        exchangeRate: exchangeRate, // ✅ Exchange rate from API currencies
+        originalPrice: originalPrice,
+        currencyCode: currencyCode,
+        priceInDZD: orderPriceDZD,
+        exchangeRate: exchangeRate,
         paymentAmount: createdOrder.payment_amount || 0,
         orderId: createdOrder.order_id || createdOrder.id,
         date: new Date().toLocaleDateString('fr-DZ')
@@ -937,11 +1022,10 @@ const Commercials = () => {
         const client = clients.find(c => c.id === updatedOrder.client_id);
         const car = cars.find(c => c.id === updatedOrder.car_id);
         
-        // ✅ Keep the original order price, don't recalculate from car
         setLastOrderData({
           ...lastOrderData,
           paymentAmount: updatedOrder.payment_amount || 0,
-          priceInDZD: updatedOrder.price_dzd || lastOrderData.priceInDZD, // Preserve order price
+          priceInDZD: updatedOrder.price_dzd || lastOrderData.priceInDZD,
           client,
           car
         });
@@ -977,10 +1061,8 @@ const Commercials = () => {
         return;
       }
       
-      // ✅ Use order's price_dzd (price at time of order) not current car price
       const orderPriceDZD = order.price_dzd || 0;
       
-      // ✅ Get currency info and exchange rate from API
       const currency = currencyMap.get(car.currency_id);
       const exchangeRate = currency?.exchange_rate_to_dzd || null;
       const currencyCode = currency?.code || '???';
@@ -992,8 +1074,8 @@ const Commercials = () => {
         color: order.car_color,
         originalPrice: originalPrice,
         currencyCode: currencyCode,
-        priceInDZD: orderPriceDZD, // ✅ Use order's actual price, not car's current price
-        exchangeRate: exchangeRate, // ✅ Exchange rate from API currencies
+        priceInDZD: orderPriceDZD,
+        exchangeRate: exchangeRate,
         paymentAmount: order.payment_amount || 0,
         orderId: order.order_id,
         date: order.created_at ? new Date(order.created_at).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ')
@@ -1173,7 +1255,7 @@ const Commercials = () => {
 
       {/* Client Images Modal */}
       {viewingImages && selectedClientForImages && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setViewingImages(false)}>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-40 p-4" onClick={() => setViewingImages(false)}>
           <div className="bg-neutral-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 border border-neutral-700" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-start mb-6">
               <div>
@@ -1188,15 +1270,8 @@ const Commercials = () => {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {clientImages.map((img, idx) => {
-                  // Extract image ID from path: "clients_images/18/1.png" -> "1"
-                  let imageId = img.id;
-                  if (typeof imageId === 'string' && imageId.includes('/')) {
-                    // Extract just the filename without extension
-                    const parts = imageId.split('/');
-                    imageId = parts[parts.length - 1].split('.')[0];
-                  }
-                  
-                  const imageUrl = img.url || img.image_url || '';
+                  const imageUrl = img.url || img.image_url || img.data || '';
+                  let imageId = img.id || idx;
                   
                   return (
                     <div key={idx} className="relative group">
@@ -1206,7 +1281,7 @@ const Commercials = () => {
                         className="w-full h-48 object-cover rounded-lg border border-neutral-700"
                         onError={(e) => {
                           console.error('Image load error:', imageUrl);
-                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-size="14"%3EImage Error%3C/text%3E%3C/svg%3E';
+                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-size="14"%3EImage non disponible%3C/text%3E%3C/svg%3E';
                         }}
                       />
                       <button
@@ -1225,7 +1300,7 @@ const Commercials = () => {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-neutral-900 border-r border-neutral-800 p-4 transform transition-transform duration-300 ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      <div className={`fixed inset-y-0 left-0 z-20 w-64 bg-neutral-900 border-r border-neutral-800 p-4 transform transition-transform duration-300 ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 space-y-3">
             <button onClick={() => setMenuOpen(false)} className="md:hidden mb-4 p-2 hover:bg-neutral-800 rounded">
