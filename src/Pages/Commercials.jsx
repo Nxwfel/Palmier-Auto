@@ -934,7 +934,7 @@ const Commercials = () => {
         </div>
         <div class="term-item">
             <span class="term-number">5-</span>
-            <span>يتعهد الطرف الأول بأن يقوم بتجهيز الأوراق وإرسالها للطرف الثاني خلال 48 يوم عمل من تاريخ استلام المورد لمستحقاته.</span>
+            <span>يتعهد الطرف الأول بأن يقوم بتجهيز الأوراق وإرسالها للطرف الثاني خلال 63 يوم عمل من تاريخ استلام المورد لمستحقاته.</span>
         </div>
         <div class="term-item">
             <span class="term-number">6-</span>
