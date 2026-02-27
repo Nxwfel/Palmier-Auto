@@ -2,13 +2,12 @@ import React from 'react'
 import {motion} from 'framer-motion'
 import {Link} from 'react-router-dom'
 import Imported from '../assets/Tundra.avif'
-import AdComponent from '../Components/AdComponent';
 const About = () => {
   return (
    <div 
    id='about'
    className='h-screen w-screen bg-white overflow-hidden flex max-md:flex-col justify-start max-md:justify-center max-md:items-center items-end'>
-   <AdComponent slot="4" />
+   
     <div
     style={{backgroundImage:`url(${Imported})`, backgroundSize:'cover', backgroundPosition:'center'}}
     className='h-[80%] max-md:h-[50vh] w-[60%] max-md:w-[90%] max-md:ml-auto max-md:mr-auto max-md:mt-[5vh] mb-[5vh] bg-black items-center justify-center flex rounded-xl ml-[1vw]'>
