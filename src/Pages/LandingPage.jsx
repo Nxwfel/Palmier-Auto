@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AdComponent from '../Components/AdComponent';
 import { Link } from 'react-router-dom';
 import {Link as Scorll} from 'react-scroll'
 import Tundra from '../assets/TundraG.png';
@@ -205,6 +206,7 @@ const LandingPage = () => {
           </div>
         </div>
       </div>
+      <AdComponent slot="2" />
 
       {/* Subtle glow */}
       <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-80 h-32 bg-amber-500/5 blur-3xl rounded-full"></div>

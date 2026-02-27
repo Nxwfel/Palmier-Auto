@@ -3,7 +3,7 @@ import Map from '../assets/map.jpeg'
 import { Link } from 'react-router-dom'
 import { Facebook, Instagram, Mail, ExternalLink } from 'lucide-react'
 import { motion } from 'framer-motion'
-
+import AdComponent from '../Components/AdComponent';
 const Contact = () => {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -23,6 +23,7 @@ const Contact = () => {
       id='Contact'
       className='min-h-screen w-screen font-main bg-white flex flex-col justify-end items-start'
     >
+      <AdComponent slot="1" />
       {/* Contact Card */}
       <div className='absolute shadow-xl mb-[20vh] md:mb-[25vh] ml-[5vw] max-md:ml-[2vw] h-auto max-h-[70vh] w-[90vw] sm:w-[60vw] md:w-[40vw] lg:w-[25vw] bg-white rounded-lg z-20 p-4 md:p-6 overflow-y-auto'>
         <h3 className='text-xl md:text-2xl font-semibold text-black'>Palmier Auto</h3>

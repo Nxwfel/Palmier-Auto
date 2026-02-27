@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import Sportage from '../assets/Sportage.jpg';
 import Tundra from '../assets/TundraG.png';
 import Tharu from '../assets/Tharu.jpg';
+import AdComponent from '../Components/AdComponent';
+
 
 const cars = [
   {
@@ -67,6 +69,7 @@ const Inventoryflex = () => {
       id="Inventory"
       className="w-full bg-neutral-900 py-[10vh] px-4 md:px-8"
     >
+      <AdComponent slot="3" />
       {/* Title */}
       <h1 className="font-main font-thin text-3xl md:text-5xl text-white text-center md:text-left">
         Notre Voiture <span className="text-amber-500">Importée</span>

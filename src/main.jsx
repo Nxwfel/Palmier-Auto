@@ -23,7 +23,6 @@ import MarketingProtectedRoute from './Components/MarketingProtectedRoute.jsx'
 import OrderForm from './Pages/OrderForm.jsx'
 import Footer from './Pages/Footer.jsx'
 import './index.css'
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
