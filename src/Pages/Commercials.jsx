@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { parseColors } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, File, FileArchiveIcon, Car, LetterTextIcon, Printer, Upload, Trash2, Image as ImageIcon } from "lucide-react";
+import { Search, Plus, File, FileArchiveIcon, Car, LetterTextIcon, Printer, Upload, Trash2, Image as ImageIcon, Banknote } from "lucide-react";
 import QrCode from "../assets/qr_client.png";
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
@@ -97,6 +97,11 @@ const Commercials = () => {
   const [lastOrderData, setLastOrderData] = useState(null);
   const [commercialInfo, setCommercialInfo] = useState(null);
 
+  // Cash Register
+  const [commercialCashRegister, setCommercialCashRegister] = useState(null);
+  const [cashRequests, setCashRequests] = useState([]);
+  const [newCashRequestAmount, setNewCashRequestAmount] = useState("");
+
   const navigate = useNavigate();
 
   const currencyMap = useMemo(() => {
@@ -118,6 +123,7 @@ const Commercials = () => {
     fetchCars();
     fetchCurrencies();
     fetchCommercialInfo();
+    fetchCashRegisterDetails();
   }, []);
 
   // Cleanup object URLs when modal closes
@@ -162,10 +168,50 @@ const Commercials = () => {
     }
   };
 
+  const fetchCashRegisterDetails = async () => {
+    try {
+      const regRes = await apiFetch(`${API_BASE_URL}/commercials_cash_registers/`);
+      if (regRes.ok) {
+        const regData = await regRes.json();
+        const register = Array.isArray(regData) ? regData[0] : regData;
+        setCommercialCashRegister(register || null);
+      }
+      
+      const reqRes = await apiFetch(`${API_BASE_URL}/cash_registers_requests/own`);
+      if (reqRes.ok) {
+        const reqData = await reqRes.json();
+        setCashRequests(Array.isArray(reqData) ? reqData : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch cash register data:", err);
+    }
+  };
+
+  const handleCreateCashRequest = async () => {
+    if (!newCashRequestAmount || isNaN(newCashRequestAmount) || Number(newCashRequestAmount) <= 0) {
+      alert("Veuillez saisir un montant valide.");
+      return;
+    }
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/cash_registers_requests/?amount=${parseFloat(newCashRequestAmount)}`, {
+        method: "POST"
+      });
+      if (res.ok) {
+        alert("✅ Demande de versement envoyée!");
+        setNewCashRequestAmount("");
+        fetchCashRegisterDetails();
+      } else {
+        throw new Error("Erreur serveur");
+      }
+    } catch (err) {
+      alert("❌ Échec d'envoi de la demande: " + err.message);
+    }
+  };
+
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const res = await apiFetch(`${API_BASE_URL}/clients/`);
+      const res = await apiFetch(`${API_BASE_URL}/commercials/clients`);
       
       if (!res.ok) {
         if (res.status === 401) {
@@ -1314,7 +1360,8 @@ const Commercials = () => {
               { id: "orders", icon: File, label: "Commandes" },
               { id: "cars", icon: Car, label: "Voitures" },
               { id: "paperwork", icon: FileArchiveIcon, label: "Papiers Clients" },
-              { id: "requests", icon: LetterTextIcon, label: "Demande Admin" }
+              { id: "requests", icon: LetterTextIcon, label: "Demande Admin" },
+              { id: "caisse", icon: Banknote, label: "Caisse" }
             ].map(({ label, id, icon: Icon }) => (
               <button
                 key={id}
@@ -1719,6 +1766,76 @@ const Commercials = () => {
               <button onClick={handleSendRequest} className="w-full bg-emerald-600 py-4 rounded-lg font-semibold hover:bg-emerald-700 transition">
                 Envoyer la demande
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Caisse Tab */}
+        {activeTab === "caisse" && (
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold mb-8">Ma Caisse</h2>
+            
+            <div className="bg-neutral-900/80 p-8 rounded-2xl border border-neutral-800 mb-8 flex flex-col md:flex-row gap-6 items-center justify-between">
+              <div>
+                <p className="text-neutral-400 text-lg">Solde Actuel</p>
+                <h3 className="text-4xl font-bold text-emerald-400">
+                  {commercialCashRegister ? commercialCashRegister.balance?.toLocaleString() : "0"} DZD
+                </h3>
+              </div>
+              
+              <div className="flex gap-4 w-full md:w-auto">
+                <input
+                  type="number"
+                  value={newCashRequestAmount}
+                  onChange={e => setNewCashRequestAmount(e.target.value)}
+                  placeholder="Montant (DZD)"
+                  className="bg-neutral-800 p-4 rounded-lg outline-none w-full md:w-48"
+                />
+                <button 
+                  onClick={handleCreateCashRequest}
+                  className="bg-emerald-600 px-6 py-4 rounded-lg font-semibold hover:bg-emerald-700 transition"
+                >
+                  Verser
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-neutral-900/80 p-8 rounded-2xl border border-neutral-800">
+              <h3 className="text-2xl font-bold mb-6">Historique des versements</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-neutral-700 text-neutral-400">
+                      <th className="p-4">Date</th>
+                      <th className="p-4">Montant</th>
+                      <th className="p-4">Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cashRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan="3" className="p-8 text-center text-neutral-500">Aucun versement trouvé</td>
+                      </tr>
+                    ) : (
+                      cashRequests.map(req => (
+                        <tr key={req.id} className="border-b border-neutral-800/50 hover:bg-white/5">
+                          <td className="p-4">{new Date(req.created_at).toLocaleDateString('fr-DZ')}</td>
+                          <td className="p-4 font-semibold">{req.amount?.toLocaleString()} DZD</td>
+                          <td className="p-4">
+                            <span className={`px-3 py-1 rounded-full text-xs ${
+                              req.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                              req.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
+                              'bg-red-500/20 text-red-400'
+                            }`}>
+                              {req.status === 'pending' ? 'En attente' : req.status === 'approved' ? 'Approuvée' : req.status === 'rejected' ? 'Rejetée' : req.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

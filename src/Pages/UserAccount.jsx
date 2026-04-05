@@ -100,7 +100,19 @@ const UserAccount = () => {
     return res;
   };
 
-  const isRead = (notif) => notif.read || notif.is_read || false;
+  const getReadNotifsLocal = () => {
+    try {
+      return JSON.parse(localStorage.getItem('readNotifications') || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const isRead = (notif) => {
+    if (notif.read || notif.is_read) return true;
+    const localRead = getReadNotifsLocal();
+    return localRead.includes(notif.id);
+  };
 
   useEffect(() => {
     if (!token) {
@@ -311,36 +323,35 @@ const UserAccount = () => {
     navigate("/auth");
   };
 
+
+
   const markAsRead = async (id) => {
     try {
+      const localRead = getReadNotifsLocal();
+      if (!localRead.includes(id)) {
+        localRead.push(id);
+        localStorage.setItem('readNotifications', JSON.stringify(localRead));
+      }
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true, is_read: true } : n))
       );
-
-      await apiFetch(`${API_BASE_URL}/notifications/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ read: true }),
-      });
     } catch (err) {
-      console.error("Failed to mark notification as read", err);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: false, is_read: false } : n))
-      );
+      console.error("Failed to mark notification as read locally", err);
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, is_read: true })));
-
-      await apiFetch(`${API_BASE_URL}/notifications/mark-all-read`, {
-        method: "POST",
+      const localRead = getReadNotifsLocal();
+      notifications.forEach((n) => {
+        if (!localRead.includes(n.id)) {
+          localRead.push(n.id);
+        }
       });
+      localStorage.setItem('readNotifications', JSON.stringify(localRead));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, is_read: true })));
     } catch (err) {
-      console.error("Failed to mark all notifications as read", err);
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read: n.read || n.is_read || false }))
-      );
+      console.error("Failed to mark all notifications as read locally", err);
     }
   };
 

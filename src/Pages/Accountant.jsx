@@ -1,5 +1,3 @@
-// src/Pages/Accountant.jsx
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Car, DollarSign, Users, Upload, Trash2, Image as ImageIcon, Search } from "lucide-react";
@@ -33,12 +31,12 @@ const Accountant = () => {
     const token = localStorage.getItem("authToken");
     if (!token) throw new Error("No auth token");
     const headers = {
-        "Authorization": `Bearer ${token}`,
-        ...options.headers,
+      "Authorization": `Bearer ${token}`,
+      ...options.headers,
     };
     // Only add Content-Type for non-FormData requests
     if (!(options.body instanceof FormData)) {
-        headers["Content-Type"] = "application/json";
+      headers["Content-Type"] = "application/json";
     }
 
     const res = await fetch(url, {
@@ -264,7 +262,7 @@ const Accountant = () => {
             paid: `${(o.payment_amount || 0).toLocaleString()} DZD`,
             date: o.created_at ? new Date(o.created_at).toLocaleDateString() : "—",
             status: o.delivery_status === "showroom" ? "Complété" :
-                     o.delivery_status === "arrived" ? "Arrivé" : "En expédition"
+              o.delivery_status === "arrived" ? "Arrivé" : "En expédition"
           };
         });
 
@@ -382,8 +380,8 @@ const Accountant = () => {
                           alt={`Document ${idx + 1}`}
                           className="w-full h-48 object-cover rounded-lg border border-neutral-700"
                           onError={(e) => { // Add error handling for image loading
-                             console.error('Image load error:', imageUrl);
-                             e.target.src = 'image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-size="14"%3EImage Error%3C/text%3E%3C/svg%3E';
+                            console.error('Image load error:', imageUrl);
+                            e.target.src = 'image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-size="14"%3EImage Error%3C/text%3E%3C/svg%3E';
                           }}
                         />
                         <button
@@ -430,9 +428,8 @@ const Accountant = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 1 }}
               onClick={() => setTab(id)}
-              className={`w-full text-left p-3 rounded-lg mb-2 flex items-center gap-3 ${
-                activeTab === id ? "bg-emerald-600" : "text-gray-300 hover:bg-neutral-800"
-              }`}
+              className={`w-full text-left p-3 rounded-lg mb-2 flex items-center gap-3 ${activeTab === id ? "bg-emerald-600" : "text-gray-300 hover:bg-neutral-800"
+                }`}
             >
               <span>{icon}</span>
               <span>{label}</span>
@@ -710,11 +707,10 @@ const Accountant = () => {
                       <div key={i} className="bg-neutral-800/20 p-4 rounded-lg border-l-4 border-emerald-500">
                         <div className="flex justify-between">
                           <div>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              act.status === "Complété" ? "bg-green-500/20 text-green-400" :
-                              act.status === "Arrivé" ? "bg-blue-500/20 text-blue-400" :
-                              "bg-yellow-500/20 text-yellow-400"
-                            }`}>
+                            <span className={`px-2 py-1 rounded text-xs ${act.status === "Complété" ? "bg-green-500/20 text-green-400" :
+                                act.status === "Arrivé" ? "bg-blue-500/20 text-blue-400" :
+                                  "bg-yellow-500/20 text-yellow-400"
+                              }`}>
                               {act.status}
                             </span>
                             <h4 className="font-medium mt-1">{act.car}</h4>

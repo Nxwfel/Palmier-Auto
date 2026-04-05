@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, SlidersHorizontal, X, ChevronRight, Loader2 } from "lucide-react";
+import AdBanner from "../components/AdBanner";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
@@ -17,9 +18,9 @@ const Inventory = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   const navigate = useNavigate();
-  
+
   const observerTarget = useRef(null);
-  
+
   // Filter states
   const [filters, setFilters] = useState({
     model: "",
@@ -64,12 +65,12 @@ const Inventory = () => {
       }
 
       const data = await response.json();
-      
+
       if (data.images && Array.isArray(data.images) && data.images.length > 0) {
         const imagePath = data.images[0];
         return `${API_BASE_URL}${imagePath}`;
       }
-      
+
       return null;
     } catch (err) {
       console.warn(`Error fetching image for car ${carId}:`, err);
@@ -427,6 +428,11 @@ const Inventory = () => {
         )}
       </AnimatePresence>
 
+      {/* Ad Banner */}
+      <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-12 pt-6">
+        <AdBanner />
+      </div>
+
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-12 py-8">
         <div className="mb-6 flex justify-between items-center">
@@ -499,7 +505,7 @@ const Inventory = () => {
                           onError={(e) => { e.target.src = "/placeholder-car.jpg"; }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        
+
                         {car.quantity > 0 && (
                           <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
                             <p className="text-xs font-semibold text-neutral-700">En stock: {car.quantity}</p>

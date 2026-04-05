@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import gsap from "gsap";
+import AdBanner from "../components/AdBanner";
 
 // ✅ CRITICAL: No trailing spaces!
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim(); // Removed trailing spaces
@@ -65,7 +66,7 @@ const CarDetails = () => {
             const fileName = path.split("/").pop();
             const match = fileName.match(/_(\w+)_\d+\./);
             if (match) color = match[1].toLowerCase();
-          } catch {}
+          } catch { }
           return {
             url: new URL(path.trim(), API_BASE_URL).href,
             color: color,
@@ -81,7 +82,7 @@ const CarDetails = () => {
               const parsed = JSON.parse(val);
               if (Array.isArray(parsed)) return parsed.filter(Boolean);
               if (typeof parsed === "string") val = parsed;
-            } catch {}
+            } catch { }
             const cleaned = val.replace(/^\[|\]$/g, "").replace(/['"]/g, "");
             return cleaned.split(",").map((s) => s.trim()).filter(Boolean);
           }
@@ -284,9 +285,8 @@ const CarDetails = () => {
                   <button
                     key={i}
                     onClick={() => setCurrentImageIndex(i)}
-                    className={`w-2 h-2 rounded-full ${
-                      i === currentImageIndex ? "bg-white" : "bg-white/50"
-                    }`}
+                    className={`w-2 h-2 rounded-full ${i === currentImageIndex ? "bg-white" : "bg-white/50"
+                      }`}
                     aria-label={`Voir image ${i + 1}`}
                   />
                 ))}
@@ -306,9 +306,8 @@ const CarDetails = () => {
                 <button
                   key={idx}
                   onClick={() => setCurrentImageIndex(idx)}
-                  className={`aspect-square rounded-lg overflow-hidden border-2 ${
-                    idx === currentImageIndex ? "border-blue-500" : "border-gray-200"
-                  }`}
+                  className={`aspect-square rounded-lg overflow-hidden border-2 ${idx === currentImageIndex ? "border-blue-500" : "border-gray-200"
+                    }`}
                 >
                   <img
                     src={img.url}
@@ -328,11 +327,10 @@ const CarDetails = () => {
             style={{ backgroundColor: selectedColor?.hex || "#E5E7EB" }}
           >
             <span
-              className={`text-lg font-semibold ${
-                ["#111827", "#0A0A0A", "#1E3A8A"].includes((selectedColor?.hex || "").toLowerCase())
+              className={`text-lg font-semibold ${["#111827", "#0A0A0A", "#1E3A8A"].includes((selectedColor?.hex || "").toLowerCase())
                   ? "text-white"
                   : "text-black"
-              }`}
+                }`}
             >
               Aperçu couleur : {selectedColor?.name || "—"}
             </span>
@@ -359,18 +357,18 @@ const CarDetails = () => {
                 className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200"
               >
                 <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-4 w-4 mr-1.5 text-blue-600" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1.5 text-blue-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
                   Description
@@ -403,11 +401,10 @@ const CarDetails = () => {
                       key={c.name}
                       onClick={() => setSelectedColor(c)}
                       whileHover={{ scale: 1.1 }}
-                      className={`h-10 w-10 rounded-full border-2 flex items-center justify-center shadow-md ${
-                        selectedColor?.name === c.name
+                      className={`h-10 w-10 rounded-full border-2 flex items-center justify-center shadow-md ${selectedColor?.name === c.name
                           ? "ring-2 ring-gray-800 scale-110"
                           : "ring-1 ring-gray-300"
-                      }`}
+                        }`}
                       style={{ backgroundColor: c.hex }}
                       title={c.name}
                       aria-label={`Sélectionner la couleur ${c.name}`}
@@ -446,13 +443,13 @@ const CarDetails = () => {
                     ["Quantité", car.quantity != null ? car.quantity : 0],
                     ["Pays d'origine", car.country || "—"],
                   ]
-                  .filter(([, v]) => v && v !== "—")
-                  .map(([label, value], i) => (
-                    <div key={i} className="flex justify-between py-1">
-                      <span className="text-gray-600">{label}</span>
-                      <span className="font-medium">{value}</span>
-                    </div>
-                  ))
+                    .filter(([, v]) => v && v !== "—")
+                    .map(([label, value], i) => (
+                      <div key={i} className="flex justify-between py-1">
+                        <span className="text-gray-600">{label}</span>
+                        <span className="font-medium">{value}</span>
+                      </div>
+                    ))
                 }
               </div>
             </div>
@@ -468,6 +465,11 @@ const CarDetails = () => {
             Réserver cette voiture
           </motion.button>
         </div>
+      </div>
+
+      {/* Ad Banner */}
+      <div className="w-full max-w-7xl mt-8">
+        <AdBanner />
       </div>
     </div>
   );

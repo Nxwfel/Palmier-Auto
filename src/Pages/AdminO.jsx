@@ -18,6 +18,7 @@ import {
   ImageIcon,
   DollarSign,
   LogOut,
+  Banknote,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -818,6 +819,75 @@ export default function AdminSuperPanel() {
   };
 
   const [carRequests, setCarRequests] = useState([]);
+  const [cashRequests, setCashRequests] = useState([]);
+  const [commercialRegisters, setCommercialRegisters] = useState([]);
+
+  useEffect(() => {
+    const fetchCashRegistersData = async () => {
+      try {
+        const reqRes = await apiFetch(`${API_BASE}/cash_registers_requests/`);
+        const reqData = await reqRes.json();
+        setCashRequests(Array.isArray(reqData) ? reqData : []);
+
+        const regRes = await apiFetch(`${API_BASE}/commercials_cash_registers/all`);
+        const regData = await regRes.json();
+        setCommercialRegisters(Array.isArray(regData) ? regData : []);
+      } catch (err) {
+        console.error("Error fetching cash register data:", err);
+      }
+    };
+    fetchCashRegistersData();
+  }, [tab]); // refetch when navigating to tab, or once at start
+
+  const handleAcceptCashRequest = async (id) => {
+    if (!window.confirm("Approve this cash request?")) return;
+    try {
+      const res = await apiFetch(`${API_BASE}/cash_registers_requests/${id}`, {
+        method: "PUT"
+      });
+      if (res.ok) {
+        setCashRequests(prev => prev.filter(r => r.id !== id));
+        // Refresh registers to show updated balance
+        const regRes = await apiFetch(`${API_BASE}/commercials_cash_registers/all`);
+        const regData = await regRes.json();
+        setCommercialRegisters(Array.isArray(regData) ? regData : []);
+        
+        // Refresh general caisse
+        const responseCaiss = await apiFetch(`${API_BASE}/cash_register/`);
+        const dataCaiss = await responseCaiss.json();
+        if (Array.isArray(dataCaiss) && dataCaiss.length > 0) {
+          const totalBalance = dataCaiss.reduce((sum, reg) => sum + (reg.balance || 0), 0);
+          setCaisse({ balance: totalBalance.toFixed(2) });
+        } else {
+          setCaisse({ balance: '0.00' });
+        }
+
+        alert("Request approved and balances updated!");
+      } else {
+        const errorData = await res.json().catch(()=>({}));
+        alert("Failed to approve request: " + (errorData.detail || "Unknown error"));
+      }
+    } catch(err) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  const handleRejectCashRequest = async (id) => {
+    if (!window.confirm("Reject and delete this cash request?")) return;
+    try {
+      const res = await apiFetch(`${API_BASE}/cash_registers_requests/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        setCashRequests(prev => prev.filter(r => r.id !== id));
+        alert("Request rejected.");
+      } else {
+        alert("Failed to reject request.");
+      }
+    } catch(err) {
+      alert("Error: " + err.message);
+    }
+  };
   
   useEffect(() => {
     const fetchCarRequests = async () => {
@@ -1996,6 +2066,7 @@ export default function AdminSuperPanel() {
           { id: "clients_orders", icon: FilePlus, label: "Clients Orders" },
           { id: "currency", icon: DollarSign, label: "Currency" },
           { id: "car_requests", icon: FilePlus, label: "Car Requests" },
+          { id: "cash_registers", icon: Banknote, label: "Cash Registers" },
           { id: "social_media", icon: Share2, label: "Social Media" },
           { id: "transactions", icon: Clock, label: "transactions" },
         ].map(({ id, icon: Icon, label }) => (
@@ -2175,6 +2246,84 @@ export default function AdminSuperPanel() {
               </Card>
             </motion.div>
           )}
+
+          {tab === "cash_registers" && (
+            <motion.div key="cash_registers" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Gestion des Caisses (Commercials)</h2>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                  <h3 className="text-xl font-semibold mb-4 text-emerald-400">Soldes des Commerciaux</h3>
+                  {commercialRegisters.length === 0 ? (
+                    <p className="text-neutral-500">Aucun solde trouvé.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {commercialRegisters.map((reg) => {
+                         const comm = commercials.find((c) => c.id === reg.commercial_id);
+                         return (
+                           <div key={reg.id} className="bg-neutral-800/40 p-4 rounded-xl border border-neutral-700 flex justify-between items-center">
+                              <div>
+                                <h4 className="font-semibold text-white">{comm ? `${comm.name} ${comm.surname}` : `ID: ${reg.commercial_id}`}</h4>
+                                <span className="text-sm text-neutral-400">Dernière mise à jour: {new Date(reg.updated_at || reg.created_at || Date.now()).toLocaleDateString()}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-lg font-bold text-emerald-400">{(reg.balance || 0).toLocaleString()} DZD</span>
+                              </div>
+                           </div>
+                         );
+                      })}
+                    </div>
+                  )}
+                </Card>
+
+                <Card>
+                  <h3 className="text-xl font-semibold mb-4 text-blue-400">Demandes de Versement</h3>
+                  {cashRequests.length === 0 ? (
+                    <p className="text-neutral-500">Aucune demande de versement.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {cashRequests.map((req) => {
+                         const comm = commercials.find((c) => c.id === req.commercial_id);
+                         return (
+                           <div key={req.id} className="bg-neutral-800/40 p-4 rounded-xl border border-neutral-700">
+                             <pre className="text-[10px] text-yellow-400 mb-2 overflow-auto bg-black p-2 rounded">{JSON.stringify(req, null, 2)}</pre>
+                             <div className="flex justify-between items-center mb-3">
+                                <div>
+                                  <h4 className="font-semibold text-white">
+                                    {comm ? `${comm.name} ${comm.surname}` : `Commercial ID: ${req.commercial_id}`}
+                                  </h4>
+                                  <span className="text-xs text-neutral-400">Le {new Date(req.created_at).toLocaleDateString()} à {new Date(req.created_at).toLocaleTimeString()}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-lg font-bold text-blue-400">{(req.amount || 0).toLocaleString()} DZD</span>
+                                </div>
+                             </div>
+                             <div className="flex justify-end gap-2">
+                                <button 
+                                  onClick={() => handleRejectCashRequest(req.id)}
+                                  className="px-3 py-1.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 text-sm font-medium transition"
+                                >
+                                  Refuser
+                                </button>
+                                <button 
+                                  onClick={() => handleAcceptCashRequest(req.id)}
+                                  className="px-3 py-1.5 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-sm font-medium transition"
+                                >
+                                  Approuver
+                                </button>
+                             </div>
+                           </div>
+                         );
+                      })}
+                    </div>
+                  )}
+                </Card>
+              </div>
+            </motion.div>
+          )}
+
           {tab === "transactions" && (
   <motion.div key="transactions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
     <div className="flex items-center justify-between mb-6">
