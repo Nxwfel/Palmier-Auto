@@ -654,6 +654,12 @@ const Commercials = () => {
 
       const orderPriceDZD = createdOrder.price_dzd || (originalPrice * (exchangeRate || 0));
 
+      const newOrderCommercialId = createdOrder.commercials_id || createdOrder.commercial_id || null;
+      // Resolve the commercial who created this order (may be the logged-in user)
+      const newOrderCommercial =
+        commercialsList.find(c => c.id === newOrderCommercialId) ||
+        (commercialInfo?.id === newOrderCommercialId ? commercialInfo : null);
+
       setLastOrderData({
         client,
         car,
@@ -665,7 +671,8 @@ const Commercials = () => {
         paymentAmount: createdOrder.payment_amount || 0,
         orderId: createdOrder.order_id || createdOrder.id,
         date: createdOrder.purchase_date ? new Date(createdOrder.purchase_date).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ'),
-        commercialId: createdOrder.commercials_id || createdOrder.commercial_id || null,
+        commercialId: newOrderCommercialId,
+        resolvedCommercial: newOrderCommercial,
       });
 
       alert("✅ Commande ajoutée !");
@@ -687,17 +694,13 @@ const Commercials = () => {
   const generateContract = () => {
     if (!lastOrderData) return;
     const { client, car, color, price, priceInDZD, paymentAmount, date, commercialId,
-      orderCommercialName, orderCommercialPhone, orderCommercialAddress } = lastOrderData;
+      resolvedCommercial } = lastOrderData;
     const totalPrice = priceInDZD ? Math.round(priceInDZD) : 0;
     const paidAmount = paymentAmount || 0;
     const remainingBalance = totalPrice - paidAmount;
 
-    // Priority: 1) find in commercialsList by id, 2) direct fields from order object,
-    // 3) only use logged-in commercialInfo if the id actually matches
-    let orderCommercial = commercialsList.find(c => c.id === commercialId) || null;
-    if (!orderCommercial && commercialId != null && commercialInfo?.id === commercialId) {
-      orderCommercial = commercialInfo;
-    }
+    // resolvedCommercial is pre-fetched in handlePrintContract / handleAddOrder
+    const orderCommercial = resolvedCommercial || null;
 
     const formattedTotal = totalPrice.toLocaleString('fr-DZ');
     const formattedPaid = paidAmount.toLocaleString('fr-DZ');
@@ -900,23 +903,19 @@ const Commercials = () => {
         </div>
         <div class="info-row">
             <div class="info-label">معرف الممثل:</div>
-            <div class="info-value">${commercialId || orderCommercial?.id || 'غير محدد'}</div>
+            <div class="info-value">${orderCommercial?.id || commercialId || 'غير محدد'}</div>
         </div>
         <div class="info-row">
             <div class="info-label">الممثل:</div>
-            <div class="info-value">${
-              orderCommercial
-                ? `${orderCommercial.surname} ${orderCommercial.name}`
-                : (orderCommercialName || 'غير محدد')
-            }</div>
+            <div class="info-value">${orderCommercial ? `${orderCommercial.surname} ${orderCommercial.name}` : 'غير محدد'}</div>
         </div>
         <div class="info-row">
             <div class="info-label">رقم الهاتف:</div>
-            <div class="info-value">${orderCommercial?.phone_number || orderCommercialPhone || 'غير محدد'}</div>
+            <div class="info-value">${orderCommercial?.phone_number || 'غير محدد'}</div>
         </div>
         <div class="info-row">
             <div class="info-label">العنوان:</div>
-            <div class="info-value">${orderCommercial?.address || orderCommercialAddress || 'غير محدد'}</div>
+            <div class="info-value">${orderCommercial?.address || 'غير محدد'}</div>
         </div>
     </div>
 
@@ -1146,32 +1145,53 @@ const Commercials = () => {
       }
 
       const orderPriceDZD = order.price_dzd || 0;
-
       const currency = currencyMap.get(car.currency_id);
       const exchangeRate = currency?.exchange_rate_to_dzd || null;
       const currencyCode = currency?.code || '???';
       const originalPrice = car.price || 0;
 
+      const orderCommercialId = order.commercials_id || order.commercial_id || null;
+
+      // Step 1: try the already-loaded list
+      let resolvedCommercial = commercialsList.find(c => c.id === orderCommercialId) || null;
+
+      // Step 2: if the logged-in commercial IS the creator, use their info directly
+      if (!resolvedCommercial && commercialInfo?.id === orderCommercialId) {
+        resolvedCommercial = commercialInfo;
+      }
+
+      // Step 3: fetch the specific commercial from the API (works even when
+      //         the full list endpoint is restricted to admins)
+      if (!resolvedCommercial && orderCommercialId != null) {
+        try {
+          const res = await apiFetch(`${API_BASE_URL}/commercials/?commercial_id=${orderCommercialId}`);
+          if (res.ok) {
+            const data = await res.json();
+            // API may return a list or a single object
+            resolvedCommercial = Array.isArray(data)
+              ? data.find(c => c.id === orderCommercialId) || data[0] || null
+              : data;
+          }
+        } catch (fetchErr) {
+          console.warn("Could not fetch commercial by id:", fetchErr);
+        }
+      }
+
       setLastOrderData({
         client,
         car,
         color: order.car_color,
-        originalPrice: originalPrice,
-        currencyCode: currencyCode,
+        originalPrice,
+        currencyCode,
         priceInDZD: orderPriceDZD,
-        exchangeRate: exchangeRate,
+        exchangeRate,
         paymentAmount: order.payment_amount || 0,
         orderId: order.order_id,
-        date: order.purchase_date ? new Date(order.purchase_date).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ'),
-        commercialId: order.commercials_id || order.commercial_id || null,
-        // Capture any denormalized commercial fields the API may include on the order
-        orderCommercialName: (
-          order.commercial_surname && order.commercial_name
-            ? `${order.commercial_surname} ${order.commercial_name}`
-            : (order.commercial_full_name || null)
-        ),
-        orderCommercialPhone: order.commercial_phone || order.commercial_phone_number || null,
-        orderCommercialAddress: order.commercial_address || null,
+        date: order.purchase_date
+          ? new Date(order.purchase_date).toLocaleDateString('fr-DZ')
+          : new Date().toLocaleDateString('fr-DZ'),
+        commercialId: orderCommercialId,
+        resolvedCommercial,
       });
 
       setTimeout(() => {
