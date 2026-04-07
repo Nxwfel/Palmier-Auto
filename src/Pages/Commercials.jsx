@@ -644,6 +644,7 @@ const Commercials = () => {
         paymentAmount: createdOrder.payment_amount || 0,
         orderId: createdOrder.order_id || createdOrder.id,
         date: createdOrder.purchase_date ? new Date(createdOrder.purchase_date).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ'),
+        commercialId: createdOrder.commercials_id || createdOrder.commercial_id || null,
       });
 
       alert("✅ Commande ajoutée !");
@@ -664,7 +665,7 @@ const Commercials = () => {
 
   const generateContract = () => {
     if (!lastOrderData) return;
-    const { client, car, color, price, priceInDZD, paymentAmount, date } = lastOrderData;
+    const { client, car, color, price, priceInDZD, paymentAmount, date, commercialId } = lastOrderData;
     const totalPrice = priceInDZD ? Math.round(priceInDZD) : 0;
     const paidAmount = paymentAmount || 0;
     const remainingBalance = totalPrice - paidAmount;
@@ -867,6 +868,10 @@ const Commercials = () => {
         <div class="info-row">
             <div class="info-label">اسم الشركة:</div>
             <div class="info-value">شركة ن ب سود NB SUD</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">معرف الممثل:</div>
+            <div class="info-value">${commercialId || 'غير محدد'}</div>
         </div>
         <div class="info-row">
             <div class="info-label">الممثل:</div>
@@ -1124,7 +1129,8 @@ const Commercials = () => {
         exchangeRate: exchangeRate,
         paymentAmount: order.payment_amount || 0,
         orderId: order.order_id,
-        date: order.purchase_date ? new Date(order.purchase_date).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ')
+        date: order.purchase_date ? new Date(order.purchase_date).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ'),
+        commercialId: order.commercial_id || null
       });
 
       setTimeout(() => {
@@ -1823,8 +1829,8 @@ const Commercials = () => {
                           <td className="p-4 font-semibold">{req.amount?.toLocaleString()} DZD</td>
                           <td className="p-4">
                             <span className={`px-3 py-1 rounded-full text-xs ${req.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
-                                req.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
-                                  'bg-red-500/20 text-red-400'
+                              req.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
+                                'bg-red-500/20 text-red-400'
                               }`}>
                               {req.status === 'pending' ? 'En attente' : req.status === 'approved' ? 'Approuvée' : req.status === 'rejected' ? 'Rejetée' : req.status}
                             </span>
