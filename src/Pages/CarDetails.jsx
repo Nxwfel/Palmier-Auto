@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import gsap from "gsap";
-import AdBanner from "../components/AdBanner";
+import AdBanner from "../Components/AdBanner";
 
 // ✅ CRITICAL: No trailing spaces!
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim(); // Removed trailing spaces
@@ -328,8 +328,8 @@ const CarDetails = () => {
           >
             <span
               className={`text-lg font-semibold ${["#111827", "#0A0A0A", "#1E3A8A"].includes((selectedColor?.hex || "").toLowerCase())
-                  ? "text-white"
-                  : "text-black"
+                ? "text-white"
+                : "text-black"
                 }`}
             >
               Aperçu couleur : {selectedColor?.name || "—"}
@@ -402,8 +402,8 @@ const CarDetails = () => {
                       onClick={() => setSelectedColor(c)}
                       whileHover={{ scale: 1.1 }}
                       className={`h-10 w-10 rounded-full border-2 flex items-center justify-center shadow-md ${selectedColor?.name === c.name
-                          ? "ring-2 ring-gray-800 scale-110"
-                          : "ring-1 ring-gray-300"
+                        ? "ring-2 ring-gray-800 scale-110"
+                        : "ring-1 ring-gray-300"
                         }`}
                       style={{ backgroundColor: c.hex }}
                       title={c.name}
