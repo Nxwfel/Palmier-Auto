@@ -6,7 +6,7 @@ import AdBanner from "../Components/AdBanner";
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
-const ITEMS_PER_PAGE = 12;
+const ITEMS_PER_PAGE = 13;
 
 const Inventory = () => {
   const [cars, setCars] = useState([]);
