@@ -686,13 +686,18 @@ const Commercials = () => {
 
   const generateContract = () => {
     if (!lastOrderData) return;
-    const { client, car, color, price, priceInDZD, paymentAmount, date, commercialId } = lastOrderData;
+    const { client, car, color, price, priceInDZD, paymentAmount, date, commercialId,
+      orderCommercialName, orderCommercialPhone, orderCommercialAddress } = lastOrderData;
     const totalPrice = priceInDZD ? Math.round(priceInDZD) : 0;
     const paidAmount = paymentAmount || 0;
     const remainingBalance = totalPrice - paidAmount;
 
-    // Find the commercial who actually created this order
-    const orderCommercial = commercialsList.find(c => c.id === commercialId) || commercialInfo;
+    // Priority: 1) find in commercialsList by id, 2) direct fields from order object,
+    // 3) only use logged-in commercialInfo if the id actually matches
+    let orderCommercial = commercialsList.find(c => c.id === commercialId) || null;
+    if (!orderCommercial && commercialId != null && commercialInfo?.id === commercialId) {
+      orderCommercial = commercialInfo;
+    }
 
     const formattedTotal = totalPrice.toLocaleString('fr-DZ');
     const formattedPaid = paidAmount.toLocaleString('fr-DZ');
@@ -899,15 +904,19 @@ const Commercials = () => {
         </div>
         <div class="info-row">
             <div class="info-label">الممثل:</div>
-            <div class="info-value">${orderCommercial ? `${orderCommercial.surname} ${orderCommercial.name}` : 'السيد نخيلة ياسين'}</div>
+            <div class="info-value">${
+              orderCommercial
+                ? `${orderCommercial.surname} ${orderCommercial.name}`
+                : (orderCommercialName || 'غير محدد')
+            }</div>
         </div>
         <div class="info-row">
             <div class="info-label">رقم الهاتف:</div>
-            <div class="info-value">${orderCommercial?.phone_number || 'غير محدد'}</div>
+            <div class="info-value">${orderCommercial?.phone_number || orderCommercialPhone || 'غير محدد'}</div>
         </div>
         <div class="info-row">
             <div class="info-label">العنوان:</div>
-            <div class="info-value">${orderCommercial?.address || 'غير محدد'}</div>
+            <div class="info-value">${orderCommercial?.address || orderCommercialAddress || 'غير محدد'}</div>
         </div>
     </div>
 
@@ -1154,7 +1163,15 @@ const Commercials = () => {
         paymentAmount: order.payment_amount || 0,
         orderId: order.order_id,
         date: order.purchase_date ? new Date(order.purchase_date).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ'),
-        commercialId: order.commercials_id || order.commercial_id || null
+        commercialId: order.commercials_id || order.commercial_id || null,
+        // Capture any denormalized commercial fields the API may include on the order
+        orderCommercialName: (
+          order.commercial_surname && order.commercial_name
+            ? `${order.commercial_surname} ${order.commercial_name}`
+            : (order.commercial_full_name || null)
+        ),
+        orderCommercialPhone: order.commercial_phone || order.commercial_phone_number || null,
+        orderCommercialAddress: order.commercial_address || null,
       });
 
       setTimeout(() => {
