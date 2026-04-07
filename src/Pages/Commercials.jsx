@@ -9,7 +9,7 @@ const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.
 // ✅ Fixed: Centralized API fetch function with proper error handling
 const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem('authToken');
-  
+
   if (!token) {
     throw new Error("No authentication token found. Please login again.");
   }
@@ -51,11 +51,11 @@ const Commercials = () => {
   const [currencies, setCurrencies] = useState([]);
 
   const [newClient, setNewClient] = useState({
-    name: "", 
-    surname: "", 
-    phone: "", 
-    password: "", 
-    wilaya: "", 
+    name: "",
+    surname: "",
+    phone: "",
+    password: "",
+    wilaya: "",
     address: "",
     nin: "",
     passport_number: ""
@@ -143,7 +143,7 @@ const Commercials = () => {
       const res = await apiFetch(`${API_BASE_URL}/commercials/commercial`, {
         method: "POST"
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           navigate('/commercialslogin');
@@ -155,7 +155,7 @@ const Commercials = () => {
         }
         throw new Error("Failed to fetch commercial info");
       }
-      
+
       const data = await res.json();
       console.log("Commercial info:", data);
       setCommercialInfo(data);
@@ -176,7 +176,7 @@ const Commercials = () => {
         const register = Array.isArray(regData) ? regData[0] : regData;
         setCommercialCashRegister(register || null);
       }
-      
+
       const reqRes = await apiFetch(`${API_BASE_URL}/cash_registers_requests/own`);
       if (reqRes.ok) {
         const reqData = await reqRes.json();
@@ -212,7 +212,7 @@ const Commercials = () => {
     try {
       setLoading(true);
       const res = await apiFetch(`${API_BASE_URL}/commercials/clients`);
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           navigate('/commercialslogin');
@@ -220,7 +220,7 @@ const Commercials = () => {
         }
         throw new Error("Failed to fetch clients");
       }
-      
+
       const data = await res.json();
       setClients(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -238,7 +238,7 @@ const Commercials = () => {
   const fetchOrders = async () => {
     try {
       const res = await apiFetch(`${API_BASE_URL}/orders/`);
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           navigate('/commercialslogin');
@@ -246,7 +246,7 @@ const Commercials = () => {
         }
         throw new Error("Failed to fetch orders");
       }
-      
+
       const data = await res.json();
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -264,7 +264,7 @@ const Commercials = () => {
         method: "POST",
         body: JSON.stringify({})
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           navigate('/commercialslogin');
@@ -272,7 +272,7 @@ const Commercials = () => {
         }
         throw new Error("Failed to fetch cars");
       }
-      
+
       const data = await res.json();
       setCars(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -287,9 +287,9 @@ const Commercials = () => {
   const fetchCurrencies = async () => {
     try {
       const res = await apiFetch(`${API_BASE_URL}/currencies/`);
-      
+
       if (!res.ok) throw new Error("Failed to fetch currencies");
-      
+
       const data = await res.json();
       setCurrencies(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -302,7 +302,7 @@ const Commercials = () => {
     try {
       setLoading(true);
       const res = await apiFetch(`${API_BASE_URL}/clients/${clientId}/images`);
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           navigate('/commercialslogin');
@@ -310,13 +310,13 @@ const Commercials = () => {
         }
         throw new Error("Failed to fetch images");
       }
-      
+
       const data = await res.json();
       console.log("Client images response:", data);
-      
+
       // ✅ Extract image paths/IDs from response
       let imagePaths = [];
-      
+
       if (Array.isArray(data)) {
         imagePaths = data.map((img, idx) => ({
           path: typeof img === 'string' ? img : (img.url || img.path || img.image_url),
@@ -338,15 +338,15 @@ const Commercials = () => {
           }];
         }
       }
-      
+
       console.log("Image paths extracted:", imagePaths);
-      
+
       // ✅ Fetch each image - try multiple path formats
       const imagePromises = imagePaths.map(async (imgInfo) => {
         try {
           const path = imgInfo.path;
           console.log("Original path from API:", path);
-          
+
           // If already base64, use directly
           if (path && path.startsWith('data:')) {
             return {
@@ -356,43 +356,43 @@ const Commercials = () => {
               created_at: imgInfo.created_at
             };
           }
-          
+
           // Try different URL formats
           const urlsToTry = [];
-          
+
           // Format 1: /download_static_files/ + path (with leading slash)
           if (path.startsWith('/')) {
             urlsToTry.push(`${API_BASE_URL}/download_static_files${path}`);
           } else {
             urlsToTry.push(`${API_BASE_URL}/download_static_files/${path}`);
           }
-          
+
           // Format 2: Direct path from API
           if (path.startsWith('/')) {
             urlsToTry.push(`${API_BASE_URL}${path}`);
           } else {
             urlsToTry.push(`${API_BASE_URL}/${path}`);
           }
-          
+
           // Format 3: If path has /clients_images/, try without leading slash
           if (path.includes('clients_images/')) {
             const cleanPath = path.replace(/^\/+/, '');
             urlsToTry.push(`${API_BASE_URL}/download_static_files/${cleanPath}`);
           }
-          
+
           console.log("Trying URLs:", urlsToTry);
-          
+
           // Try each URL format until one works
           for (const downloadUrl of urlsToTry) {
             try {
               console.log(`Attempting: ${downloadUrl}`);
               const imgRes = await apiFetch(downloadUrl);
-              
+
               if (imgRes.ok) {
                 console.log(`✅ Success with: ${downloadUrl}`);
                 const blob = await imgRes.blob();
                 const objectUrl = URL.createObjectURL(blob);
-                
+
                 return {
                   url: objectUrl,
                   image_url: objectUrl,
@@ -408,7 +408,7 @@ const Commercials = () => {
               console.log(`❌ Error with ${downloadUrl}:`, error.message);
             }
           }
-          
+
           console.error(`All URL formats failed for path: ${path}`);
           return null;
         } catch (error) {
@@ -416,15 +416,15 @@ const Commercials = () => {
           return null;
         }
       });
-      
+
       const imagesArray = (await Promise.all(imagePromises)).filter(Boolean);
-      
+
       console.log("Processed images with object URLs:", imagesArray);
-      
+
       if (imagesArray.length === 0) {
         alert("⚠️ Aucune image n'a pu être chargée. Vérifiez les chemins d'accès.");
       }
-      
+
       setClientImages(imagesArray);
       setViewingImages(true);
     } catch (err) {
@@ -515,22 +515,22 @@ const Commercials = () => {
   // ✅ Fixed: Add client with proper auth
   const handleAddClient = async () => {
     const { name, surname, phone, password, wilaya, address, nin, passport_number } = newClient;
-    
+
     if (!name || !surname || !phone || !password || !wilaya || !address || !nin || !passport_number) {
       alert("Veuillez remplir tous les champs (y compris le NIN et le numéro de passeport) !");
       return;
     }
-    
+
     if (!nin || nin.trim() === '' || isNaN(Number(nin))) {
       alert("Le NIN doit être un nombre valide !");
       return;
     }
-    
+
     if (!passport_number || passport_number.trim() === '' || isNaN(Number(passport_number))) {
       alert("Le numéro de passeport doit être un nombre valide !");
       return;
     }
-    
+
     try {
       setLoading(true);
       const res = await apiFetch(`${API_BASE_URL}/clients/`, {
@@ -546,7 +546,7 @@ const Commercials = () => {
           address,
         }),
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           navigate('/commercialslogin');
@@ -563,7 +563,7 @@ const Commercials = () => {
         }
         throw new Error(errMessage);
       }
-      
+
       alert("✅ Client ajouté avec succès !");
       setNewClient({ name: "", surname: "", phone: "", password: "", wilaya: "", address: "", nin: "", passport_number: "" });
       fetchClients();
@@ -611,7 +611,7 @@ const Commercials = () => {
         }
         let errData;
         try { errData = await res.json(); } catch { errData = { detail: await res.text() }; }
-        
+
         if (Array.isArray(errData.detail)) {
           const errors = errData.detail
             .map(d => `${d.loc?.join('.')}: ${d.msg}`)
@@ -622,17 +622,17 @@ const Commercials = () => {
       }
 
       const createdOrder = await res.json();
-      
+
       const client = clients.find(c => c.id === clientId);
       const car = cars.find(c => c.id === carId);
-      
+
       const currency = currencyMap.get(car.currency_id);
       const exchangeRate = currency?.exchange_rate_to_dzd || null;
       const currencyCode = currency?.code || '???';
       const originalPrice = car.price || 0;
-      
+
       const orderPriceDZD = createdOrder.price_dzd || (originalPrice * (exchangeRate || 0));
-      
+
       setLastOrderData({
         client,
         car,
@@ -643,7 +643,7 @@ const Commercials = () => {
         exchangeRate: exchangeRate,
         paymentAmount: createdOrder.payment_amount || 0,
         orderId: createdOrder.order_id || createdOrder.id,
-        date: new Date().toLocaleDateString('fr-DZ')
+        date: createdOrder.purchase_date ? new Date(createdOrder.purchase_date).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ'),
       });
 
       alert("✅ Commande ajoutée !");
@@ -668,14 +668,14 @@ const Commercials = () => {
     const totalPrice = priceInDZD ? Math.round(priceInDZD) : 0;
     const paidAmount = paymentAmount || 0;
     const remainingBalance = totalPrice - paidAmount;
-    
+
     const formattedTotal = totalPrice.toLocaleString('fr-DZ');
     const formattedPaid = paidAmount.toLocaleString('fr-DZ');
     const formattedRemaining = remainingBalance.toLocaleString('fr-DZ');
     const contractDate = date;
-    
+
     const qrCodeSrc = QrCode;
-    
+
     const contractHTML = `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -1021,22 +1021,22 @@ const Commercials = () => {
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-        printWindow.document.write(contractHTML);
-        printWindow.document.close();
-        
-        printWindow.onload = function() {
-            const qrImg = printWindow.document.querySelector('.qr-code img');
-            if (qrImg) {
-                qrImg.onload = function() {
-                    console.log('QR Code loaded successfully');
-                };
-                qrImg.onerror = function() {
-                    console.error('Failed to load QR code');
-                };
-            }
-        };
+      printWindow.document.write(contractHTML);
+      printWindow.document.close();
+
+      printWindow.onload = function () {
+        const qrImg = printWindow.document.querySelector('.qr-code img');
+        if (qrImg) {
+          qrImg.onload = function () {
+            console.log('QR Code loaded successfully');
+          };
+          qrImg.onerror = function () {
+            console.error('Failed to load QR code');
+          };
+        }
+      };
     } else {
-        alert("❌ لم يتمكن من فتح نافذة الطباعة. يرجى التحقق من إعدادات المتصفح.");
+      alert("❌ لم يتمكن من فتح نافذة الطباعة. يرجى التحقق من إعدادات المتصفح.");
     }
   };
 
@@ -1051,7 +1051,7 @@ const Commercials = () => {
         method: "PUT",
         body: JSON.stringify(body),
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           navigate('/commercialslogin');
@@ -1062,12 +1062,12 @@ const Commercials = () => {
         try { errorData = JSON.parse(errorText); } catch { errorData = { message: errorText }; }
         throw new Error(errorData.detail || errorData.message || `HTTP ${res.status}`);
       }
-      
+
       const updatedOrder = await res.json();
       if (lastOrderData && lastOrderData.orderId === orderId) {
         const client = clients.find(c => c.id === updatedOrder.client_id);
         const car = cars.find(c => c.id === updatedOrder.car_id);
-        
+
         setLastOrderData({
           ...lastOrderData,
           paymentAmount: updatedOrder.payment_amount || 0,
@@ -1076,12 +1076,12 @@ const Commercials = () => {
           car
         });
       }
-      
+
       alert("✅ Mise à jour réussie");
       setEditingOrderId(null);
       setEditForm({ payment_amount: "", delivery_status: "" });
       fetchOrders();
-      
+
       if (window.confirm("Voulez-vous régénérer le contrat avec les nouvelles informations?")) {
         generateContract();
       }
@@ -1101,19 +1101,19 @@ const Commercials = () => {
     try {
       const client = clients.find(c => c.id === order.client_id);
       const car = cars.find(c => c.id === order.car_id);
-      
+
       if (!client || !car) {
         alert("❌ Impossible de générer le contrat. Données manquantes.");
         return;
       }
-      
+
       const orderPriceDZD = order.price_dzd || 0;
-      
+
       const currency = currencyMap.get(car.currency_id);
       const exchangeRate = currency?.exchange_rate_to_dzd || null;
       const currencyCode = currency?.code || '???';
       const originalPrice = car.price || 0;
-      
+
       setLastOrderData({
         client,
         car,
@@ -1124,13 +1124,13 @@ const Commercials = () => {
         exchangeRate: exchangeRate,
         paymentAmount: order.payment_amount || 0,
         orderId: order.order_id,
-        date: order.created_at ? new Date(order.created_at).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ')
+        date: order.purchase_date ? new Date(order.purchase_date).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ')
       });
-      
+
       setTimeout(() => {
         generateContract();
       }, 100);
-      
+
     } catch (err) {
       console.error("Print Contract Error:", err);
       alert("❌ Erreur lors de la génération du contrat");
@@ -1139,7 +1139,7 @@ const Commercials = () => {
 
   const handleDeleteOrder = async (orderId) => {
     if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer cette commande ?")) return;
-    
+
     try {
       setLoading(true);
       const res = await apiFetch(`${API_BASE_URL}/orders/?order_id=${orderId}`, {
@@ -1153,10 +1153,10 @@ const Commercials = () => {
         }
         const errorText = await res.text();
         let errorData;
-        try { 
-          errorData = JSON.parse(errorText); 
-        } catch { 
-          errorData = { message: errorText }; 
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
         }
         throw new Error(errorData.detail || errorData.message || `HTTP ${res.status}: Suppression échouée`);
       }
@@ -1238,7 +1238,7 @@ const Commercials = () => {
 
   const getRepresentativeCar = (model) => {
     return cars.find(c => c.model === model && c.price != null && c.currency_id != null) ||
-           cars.find(c => c.model === model);
+      cars.find(c => c.model === model);
   };
 
   const getStatusText = (s) => ({
@@ -1270,7 +1270,7 @@ const Commercials = () => {
 
   return (
     <div className="h-screen w-screen font-main flex bg-gradient-to-br from-neutral-950 to-neutral-900 text-white overflow-hidden">
-      
+
       {/* Contract Prompt Modal */}
       {showContractPrompt && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -1278,7 +1278,7 @@ const Commercials = () => {
             <h2 className="text-2xl font-bold mb-4 text-center">✅ Commande Ajoutée!</h2>
             <p className="text-neutral-300 mb-6 text-center">Voulez-vous générer le contrat maintenant?</p>
             <div className="flex gap-4">
-              <button 
+              <button
                 onClick={() => {
                   generateContract();
                   setShowContractPrompt(false);
@@ -1288,7 +1288,7 @@ const Commercials = () => {
                 <Printer size={20} />
                 Générer Contrat
               </button>
-              <button 
+              <button
                 onClick={() => setShowContractPrompt(false)}
                 className="flex-1 bg-neutral-700 hover:bg-neutral-600 py-3 rounded-lg font-semibold"
               >
@@ -1310,7 +1310,7 @@ const Commercials = () => {
               </div>
               <button onClick={() => setViewingImages(false)} className="text-4xl text-neutral-400 hover:text-white">&times;</button>
             </div>
-            
+
             {clientImages.length === 0 ? (
               <p className="text-center text-neutral-400 py-8">Aucun document téléchargé</p>
             ) : (
@@ -1318,12 +1318,12 @@ const Commercials = () => {
                 {clientImages.map((img, idx) => {
                   const imageUrl = img.url || img.image_url || img.data || '';
                   let imageId = img.id || idx;
-                  
+
                   return (
                     <div key={idx} className="relative group">
-                      <img 
+                      <img
                         src={imageUrl}
-                        alt={`Document ${idx + 1}`} 
+                        alt={`Document ${idx + 1}`}
                         className="w-full h-48 object-cover rounded-lg border border-neutral-700"
                         onError={(e) => {
                           console.error('Image load error:', imageUrl);
@@ -1460,7 +1460,7 @@ const Commercials = () => {
             <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
               <h2 className="text-2xl font-semibold mb-6">Nouvelle Commande</h2>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <select 
+                <select
                   value={newOrder.client_id ?? ""}
                   onChange={e => setNewOrder(prev => ({
                     ...prev,
@@ -1475,7 +1475,7 @@ const Commercials = () => {
                   ))}
                 </select>
 
-                <select 
+                <select
                   value={newOrder.car_id ?? ""}
                   onChange={e => {
                     const carId = e.target.value ? Number(e.target.value) : null;
@@ -1497,7 +1497,7 @@ const Commercials = () => {
                 </select>
 
                 {newOrder.car_id && (
-                  <select 
+                  <select
                     value={newOrder.car_color}
                     onChange={e => setNewOrder(prev => ({
                       ...prev,
@@ -1513,8 +1513,8 @@ const Commercials = () => {
                   </select>
                 )}
 
-                <select 
-                  value={newOrder.delivery_status} 
+                <select
+                  value={newOrder.delivery_status}
                   onChange={e => setNewOrder(prev => ({
                     ...prev,
                     delivery_status: e.target.value
@@ -1526,8 +1526,8 @@ const Commercials = () => {
                   <option value="showroom">Showroom</option>
                 </select>
 
-                <button 
-                  onClick={handleAddOrder} 
+                <button
+                  onClick={handleAddOrder}
                   disabled={loading}
                   className="bg-emerald-600 py-4 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50"
                 >
@@ -1571,23 +1571,23 @@ const Commercials = () => {
                         <option value="showroom">Showroom</option>
                       </select>
                       <div className="flex gap-3">
-                        <button 
-                          onClick={() => handleUpdateOrder(order.order_id)} 
+                        <button
+                          onClick={() => handleUpdateOrder(order.order_id)}
                           disabled={loading}
                           className="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg disabled:opacity-50 transition-colors"
                         >
                           Sauvegarder
                         </button>
-                        <button 
-                          onClick={() => handlePrintContract(order)} 
+                        <button
+                          onClick={() => handlePrintContract(order)}
                           disabled={loading}
                           className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
                         >
                           <Printer size={16} />
                           Imprimer
                         </button>
-                        <button 
-                          onClick={() => setEditingOrderId(null)} 
+                        <button
+                          onClick={() => setEditingOrderId(null)}
                           className="flex-1 bg-neutral-700 hover:bg-neutral-600 py-2 rounded-lg transition-colors"
                         >
                           Annuler
@@ -1599,20 +1599,20 @@ const Commercials = () => {
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="text-xl font-bold">{order.car_model}</h3>
                         <div className="flex gap-2">
-                          <button 
+                          <button
                             onClick={() => {
                               setEditingOrderId(order.order_id);
                               setEditForm({
                                 payment_amount: order.payment_amount?.toString() || "",
                                 delivery_status: order.delivery_status || "shipping"
                               });
-                            }} 
+                            }}
                             className="text-blue-400 hover:text-blue-300 transition-colors"
                           >
                             Edit
                           </button>
-                          <button 
-                            onClick={() => handleDeleteOrder(order.order_id)} 
+                          <button
+                            onClick={() => handleDeleteOrder(order.order_id)}
                             disabled={loading}
                             className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -1625,7 +1625,7 @@ const Commercials = () => {
                       <p className="text-sm mt-3">Statut: <span className="text-white font-medium">{getStatusText(order.delivery_status)}</span></p>
                       <p className="text-sm">Prix: <span className="text-green-400 font-medium">{order.price_dzd?.toLocaleString() || 0} DZD</span></p>
                       <p className="text-sm">Payé: <span className="text-blue-400 font-medium">{order.payment_amount?.toLocaleString() || 0} DZD</span></p>
-                      <button 
+                      <button
                         onClick={() => handlePrintContract(order)}
                         disabled={loading}
                         className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
@@ -1648,11 +1648,11 @@ const Commercials = () => {
               <h2 className="text-3xl font-bold">Voitures Disponibles</h2>
               <div className="relative">
                 <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
-                <input 
-                  value={searchCars} 
-                  onChange={e => setSearchCars(e.target.value)} 
-                  placeholder="Rechercher modèle..." 
-                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64" 
+                <input
+                  value={searchCars}
+                  onChange={e => setSearchCars(e.target.value)}
+                  placeholder="Rechercher modèle..."
+                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64"
                 />
               </div>
             </div>
@@ -1686,15 +1686,15 @@ const Commercials = () => {
               <h2 className="text-3xl font-bold">Documents Clients</h2>
               <div className="relative">
                 <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
-                <input 
-                  value={searchClients} 
-                  onChange={e => setSearchClients(e.target.value)} 
-                  placeholder="Rechercher client..." 
-                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64" 
+                <input
+                  value={searchClients}
+                  onChange={e => setSearchClients(e.target.value)}
+                  placeholder="Rechercher client..."
+                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64"
                 />
               </div>
             </div>
-            
+
             <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
               {filteredClients.map(client => (
                 <div key={client.id} className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
@@ -1704,7 +1704,7 @@ const Commercials = () => {
                     <p className="text-sm text-neutral-400">Passeport: {client.passport_number || 'N/A'}</p>
                     <p className="text-sm text-neutral-400">{client.phone_number}</p>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <label className="flex items-center gap-2 bg-neutral-800 p-3 rounded-lg cursor-pointer hover:bg-neutral-700 transition">
                       <Upload size={20} className="text-emerald-400" />
@@ -1723,7 +1723,7 @@ const Commercials = () => {
                         }}
                       />
                     </label>
-                    
+
                     <button
                       onClick={() => {
                         setSelectedClientForImages(client);
@@ -1738,7 +1738,7 @@ const Commercials = () => {
                 </div>
               ))}
             </div>
-            
+
             {filteredClients.length === 0 && (
               <p className="text-center text-neutral-400 py-8">Aucun client trouvé</p>
             )}
@@ -1774,7 +1774,7 @@ const Commercials = () => {
         {activeTab === "caisse" && (
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold mb-8">Ma Caisse</h2>
-            
+
             <div className="bg-neutral-900/80 p-8 rounded-2xl border border-neutral-800 mb-8 flex flex-col md:flex-row gap-6 items-center justify-between">
               <div>
                 <p className="text-neutral-400 text-lg">Solde Actuel</p>
@@ -1782,7 +1782,7 @@ const Commercials = () => {
                   {commercialCashRegister ? commercialCashRegister.balance?.toLocaleString() : "0"} DZD
                 </h3>
               </div>
-              
+
               <div className="flex gap-4 w-full md:w-auto">
                 <input
                   type="number"
@@ -1791,7 +1791,7 @@ const Commercials = () => {
                   placeholder="Montant (DZD)"
                   className="bg-neutral-800 p-4 rounded-lg outline-none w-full md:w-48"
                 />
-                <button 
+                <button
                   onClick={handleCreateCashRequest}
                   className="bg-emerald-600 px-6 py-4 rounded-lg font-semibold hover:bg-emerald-700 transition"
                 >
@@ -1822,11 +1822,10 @@ const Commercials = () => {
                           <td className="p-4">{new Date(req.created_at).toLocaleDateString('fr-DZ')}</td>
                           <td className="p-4 font-semibold">{req.amount?.toLocaleString()} DZD</td>
                           <td className="p-4">
-                            <span className={`px-3 py-1 rounded-full text-xs ${
-                              req.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
-                              req.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
-                              'bg-red-500/20 text-red-400'
-                            }`}>
+                            <span className={`px-3 py-1 rounded-full text-xs ${req.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                                req.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
+                                  'bg-red-500/20 text-red-400'
+                              }`}>
                               {req.status === 'pending' ? 'En attente' : req.status === 'approved' ? 'Approuvée' : req.status === 'rejected' ? 'Rejetée' : req.status}
                             </span>
                           </td>
