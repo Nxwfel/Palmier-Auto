@@ -30,8 +30,8 @@ const apiFetch = async (url, options = {}) => {
       headers,
     });
 
-    // Check for 401 Unauthorized
-    if (response.status === 401) {
+    // Check for 401 or 403 Unauthorized/Forbidden
+    if (response.status === 401 || response.status === 403) {
       localStorage.removeItem('authToken');
       throw new Error("UNAUTHORIZED");
     }
@@ -49,6 +49,7 @@ const Commercials = () => {
   const [orders, setOrders] = useState([]);
   const [cars, setCars] = useState([]);
   const [currencies, setCurrencies] = useState([]);
+  const [commercialsList, setCommercialsList] = useState([]);
 
   const [newClient, setNewClient] = useState({
     name: "",
@@ -123,8 +124,21 @@ const Commercials = () => {
     fetchCars();
     fetchCurrencies();
     fetchCommercialInfo();
+    fetchCommercialsList();
     fetchCashRegisterDetails();
   }, []);
+
+  const fetchCommercialsList = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/commercials/`);
+      if (res.ok) {
+        const data = await res.json();
+        setCommercialsList(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch commercials list", err);
+    }
+  };
 
   // Cleanup object URLs when modal closes
   useEffect(() => {
@@ -173,8 +187,15 @@ const Commercials = () => {
       const regRes = await apiFetch(`${API_BASE_URL}/commercials_cash_registers/`);
       if (regRes.ok) {
         const regData = await regRes.json();
-        const register = Array.isArray(regData) ? regData[0] : regData;
-        setCommercialCashRegister(register || null);
+        // Handle both array response and single object response
+        let register = null;
+        if (Array.isArray(regData)) {
+          register = regData.length > 0 ? regData[0] : null;
+        } else if (regData && typeof regData === 'object' && !Array.isArray(regData)) {
+          // Single object — only use it if it has a meaningful id or balance
+          register = (regData.id !== undefined || regData.balance !== undefined) ? regData : null;
+        }
+        setCommercialCashRegister(register);
       }
 
       const reqRes = await apiFetch(`${API_BASE_URL}/cash_registers_requests/own`);
@@ -670,6 +691,9 @@ const Commercials = () => {
     const paidAmount = paymentAmount || 0;
     const remainingBalance = totalPrice - paidAmount;
 
+    // Find the commercial who actually created this order
+    const orderCommercial = commercialsList.find(c => c.id === commercialId) || commercialInfo;
+
     const formattedTotal = totalPrice.toLocaleString('fr-DZ');
     const formattedPaid = paidAmount.toLocaleString('fr-DZ');
     const formattedRemaining = remainingBalance.toLocaleString('fr-DZ');
@@ -871,19 +895,19 @@ const Commercials = () => {
         </div>
         <div class="info-row">
             <div class="info-label">معرف الممثل:</div>
-            <div class="info-value">${commercialId || 'غير محدد'}</div>
+            <div class="info-value">${commercialId || orderCommercial?.id || 'غير محدد'}</div>
         </div>
         <div class="info-row">
             <div class="info-label">الممثل:</div>
-            <div class="info-value">${commercialInfo ? `${commercialInfo.surname} ${commercialInfo.name}` : 'السيد نخيلة ياسين'}</div>
+            <div class="info-value">${orderCommercial ? `${orderCommercial.surname} ${orderCommercial.name}` : 'السيد نخيلة ياسين'}</div>
         </div>
         <div class="info-row">
             <div class="info-label">رقم الهاتف:</div>
-            <div class="info-value">${commercialInfo?.phone_number || 'غير محدد'}</div>
+            <div class="info-value">${orderCommercial?.phone_number || 'غير محدد'}</div>
         </div>
         <div class="info-row">
             <div class="info-label">العنوان:</div>
-            <div class="info-value">${commercialInfo?.address || 'غير محدد'}</div>
+            <div class="info-value">${orderCommercial?.address || 'غير محدد'}</div>
         </div>
     </div>
 
@@ -1130,7 +1154,7 @@ const Commercials = () => {
         paymentAmount: order.payment_amount || 0,
         orderId: order.order_id,
         date: order.purchase_date ? new Date(order.purchase_date).toLocaleDateString('fr-DZ') : new Date().toLocaleDateString('fr-DZ'),
-        commercialId: order.commercial_id || null
+        commercialId: order.commercials_id || order.commercial_id || null
       });
 
       setTimeout(() => {
@@ -1785,7 +1809,9 @@ const Commercials = () => {
               <div>
                 <p className="text-neutral-400 text-lg">Solde Actuel</p>
                 <h3 className="text-4xl font-bold text-emerald-400">
-                  {commercialCashRegister ? commercialCashRegister.balance?.toLocaleString() : "0"} DZD
+                  {commercialCashRegister != null
+                    ? (commercialCashRegister.balance ?? 0).toLocaleString()
+                    : "—"} DZD
                 </h3>
               </div>
 
