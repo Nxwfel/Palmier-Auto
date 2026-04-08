@@ -7,10 +7,15 @@ import QrCode from "../assets/qr_client.png";
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
 // ✅ Fixed: Centralized API fetch function with proper error handling
+// ✅ Fixed: Centralized API fetch function with proper error handling and redirects
 const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem('authToken');
 
   if (!token) {
+    // Force redirect to login if token is missing
+    if (window.location.pathname !== '/commercialslogin') {
+      window.location.href = '/commercialslogin';
+    }
     throw new Error("No authentication token found. Please login again.");
   }
 
@@ -30,14 +35,26 @@ const apiFetch = async (url, options = {}) => {
       headers,
     });
 
-    // Check for 401 or 403 Unauthorized/Forbidden
-    if (response.status === 401 || response.status === 403) {
+    // 401: Unauthorized (Session expired/Invalid token)
+    if (response.status === 401) {
       localStorage.removeItem('authToken');
+      window.location.href = '/commercialslogin';
       throw new Error("UNAUTHORIZED");
+    }
+
+    // 403: Forbidden (Role mismatch/Insufficient permissions)
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
     }
 
     return response;
   } catch (error) {
+    // Auto-redirect for any authentication-related error thrown above
+    if (error.message === "UNAUTHORIZED" || error.message.includes("No authentication token found")) {
+      if (window.location.pathname !== '/commercialslogin') {
+        window.location.href = '/commercialslogin';
+      }
+    }
     console.error("API Fetch Error:", error);
     throw error;
   }
@@ -159,10 +176,6 @@ const Commercials = () => {
       });
 
       if (!res.ok) {
-        if (res.status === 401) {
-          navigate('/commercialslogin');
-          return;
-        }
         if (res.status === 403) {
           console.warn("Commercial info not accessible - using default");
           return;
@@ -174,10 +187,6 @@ const Commercials = () => {
       console.log("Commercial info:", data);
       setCommercialInfo(data);
     } catch (err) {
-      if (err.message === "UNAUTHORIZED") {
-        navigate('/commercialslogin');
-        return;
-      }
       console.warn("Failed to fetch commercial info:", err);
     }
   };
@@ -235,10 +244,6 @@ const Commercials = () => {
       const res = await apiFetch(`${API_BASE_URL}/commercials/clients`);
 
       if (!res.ok) {
-        if (res.status === 401) {
-          navigate('/commercialslogin');
-          return;
-        }
         throw new Error("Failed to fetch clients");
       }
 
@@ -511,10 +516,6 @@ const Commercials = () => {
       });
 
       if (!res.ok) {
-        if (res.status === 401) {
-          navigate('/commercialslogin');
-          return;
-        }
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || "Delete failed");
       }
@@ -522,10 +523,6 @@ const Commercials = () => {
       alert("✅ Image supprimée avec succès !");
       fetchClientImages(clientId);
     } catch (err) {
-      if (err.message === "UNAUTHORIZED") {
-        navigate('/commercialslogin');
-        return;
-      }
       console.error("Delete Image Error:", err);
       alert("❌ Erreur suppression image :\n" + err.message);
     } finally {
@@ -569,10 +566,6 @@ const Commercials = () => {
       });
 
       if (!res.ok) {
-        if (res.status === 401) {
-          navigate('/commercialslogin');
-          return;
-        }
         const errData = await res.json().catch(() => ({}));
         let errMessage = "Erreur serveur inconnue";
         if (errData.detail && Array.isArray(errData.detail)) {

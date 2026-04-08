@@ -73,8 +73,19 @@ const UserAccount = () => {
   }, []);
 
   const apiFetch = async (url, options = {}) => {
+    const currentToken = localStorage.getItem("authToken");
+
+    if (!currentToken && !url.includes("/users/login")) {
+      // Force redirect to login if token is missing
+      if (window.location.pathname !== "/auth") {
+        window.location.href = "/auth";
+      }
+      throw new Error("No authentication token found. Please login again.");
+    }
+
     const headers = {
       ...options.headers,
+      "Authorization": `Bearer ${currentToken}`,
     };
 
     // Only add Content-Type for non-FormData requests
@@ -82,22 +93,36 @@ const UserAccount = () => {
       headers["Content-Type"] = "application/json";
     }
 
-    headers["Authorization"] = `Bearer ${token}`;
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
 
-    const res = await fetch(url, {
-      ...options,
-      headers,
-    });
+      // 401: Unauthorized (Session expired/Invalid token)
+      if (response.status === 401) {
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userRole");
+        window.location.href = "/auth";
+        throw new Error("UNAUTHORIZED");
+      }
 
-    if (res.status === 401 || res.status === 403) {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("userRole");
-      setToken(null);
-      navigate("/auth");
-      throw new Error("Unauthorized");
+      // 403: Forbidden (Role mismatch/Insufficient permissions)
+      if (response.status === 403) {
+        throw new Error("FORBIDDEN");
+      }
+
+      return response;
+    } catch (error) {
+      // Auto-redirect for any authentication-related error thrown above
+      if (error.message === "UNAUTHORIZED" || error.message.includes("No authentication token found")) {
+        if (window.location.pathname !== "/auth") {
+          window.location.href = "/auth";
+        }
+      }
+      console.error("API Fetch Error:", error);
+      throw error;
     }
-
-    return res;
   };
 
   const getReadNotifsLocal = () => {

@@ -363,37 +363,57 @@ const Modal = ({ open, onClose, title, children }) => (
   </AnimatePresence>
 );
 
-// ✅ Centralized Auth-Aware Fetch (handles both JSON and FormData)
+// ✅ Centralized Auth-Aware Fetch (handles both JSON and FormData) with proper redirects
 const apiFetch = async (url, options = {}) => {
-  try {
-    const token = localStorage.getItem("authToken");
-    const headers = {
-      ...(token && { "Authorization": `Bearer ${token}` }),
-      ...options.headers,
-    };
-    
-    // Only set Content-Type for JSON, not for FormData (let browser handle it)
-    if (!(options.body instanceof FormData)) {
-      headers["Content-Type"] = "application/json";
+  const token = localStorage.getItem("authToken");
+
+  if (!token && !url.includes("/users/login")) {
+    if (window.location.pathname !== "/adminlogin") {
+      window.location.href = "/adminlogin";
     }
-    
+    throw new Error("No authentication token found. Please login again.");
+  }
+
+  const headers = {
+    ...(token && { "Authorization": `Bearer ${token}` }),
+    ...options.headers,
+  };
+  
+  // Only set Content-Type for JSON, not for FormData (let browser handle it)
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  try {
     const response = await fetch(url, { 
       ...options, 
       headers,
       timeout: 30000 
     });
     
+    // 401: Unauthorized (Session expired/Invalid token)
     if (response.status === 401) {
       localStorage.removeItem("authToken");
       window.location.href = "/adminlogin";
-      throw new Error("Unauthorized");
+      throw new Error("UNAUTHORIZED");
     }
+
+    // 403: Forbidden (Role mismatch/Insufficient permissions)
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
     return response;
   } catch (error) {
+    // Auto-redirect for any authentication-related error thrown above
+    if (error.message === "UNAUTHORIZED" || error.message.includes("No authentication token found")) {
+      if (window.location.pathname !== "/adminlogin") {
+        window.location.href = "/adminlogin";
+      }
+    }
     console.error("API Fetch Error:", {
       url,
       message: error.message,
-      stack: error.stack
     });
     throw error;
   }

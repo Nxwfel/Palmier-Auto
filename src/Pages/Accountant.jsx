@@ -26,28 +26,56 @@ const Accountant = () => {
   // --- END NEW STATE ---
 
   // --- NEW: Centralized API fetch function (ensure it exists and handles auth correctly) ---
-  // This is crucial and should be consistent with Commercials.jsx
   const apiFetch = async (url, options = {}) => {
     const token = localStorage.getItem("authToken");
-    if (!token) throw new Error("No auth token");
+    
+    if (!token) {
+      // Force redirect to login if token is missing
+      if (window.location.pathname !== "/accountantlogin") {
+        window.location.href = "/accountantlogin";
+      }
+      throw new Error("No authentication token found. Please login again.");
+    }
+
     const headers = {
-      "Authorization": `Bearer ${token}`,
       ...options.headers,
+      "Authorization": `Bearer ${token}`,
     };
+
     // Only add Content-Type for non-FormData requests
     if (!(options.body instanceof FormData)) {
       headers["Content-Type"] = "application/json";
     }
 
-    const res = await fetch(url, {
-      ...options,
-      headers,
-    });
-    if (res.status === 401) {
-      localStorage.removeItem("authToken");
-      throw new Error("Unauthorized");
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      // 401: Unauthorized (Session expired/Invalid token)
+      if (response.status === 401) {
+        localStorage.removeItem("authToken");
+        window.location.href = "/accountantlogin";
+        throw new Error("UNAUTHORIZED");
+      }
+
+      // 403: Forbidden (Role mismatch/Insufficient permissions)
+      if (response.status === 403) {
+        throw new Error("FORBIDDEN");
+      }
+
+      return response;
+    } catch (error) {
+      // Auto-redirect for any authentication-related error thrown above
+      if (error.message === "UNAUTHORIZED" || error.message.includes("No authentication token found")) {
+        if (window.location.pathname !== "/accountantlogin") {
+          window.location.href = "/accountantlogin";
+        }
+      }
+      console.error("API Fetch Error:", error);
+      throw error;
     }
-    return res;
   };
   // --- END NEW FUNCTION ---
 

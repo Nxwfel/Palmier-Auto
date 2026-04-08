@@ -8,18 +8,20 @@ const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.
 const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem("authToken");
   
-  console.log("Making request to:", url);
-  console.log("Token exists:", !!token);
+  if (!token && !url.includes("/users/login")) {
+    // Force redirect to login if token is missing
+    if (window.location.pathname !== "/marketinglogin") {
+      window.location.href = "/marketinglogin";
+    }
+    throw new Error("No authentication token found. Please login again.");
+  }
   
   const headers = {
-    ...(options.headers || {}),
+    ...(token && { "Authorization": `Bearer ${token}` }),
+    ...options.headers,
   };
   
-  if (token && !url.includes("/users/login")) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  // Don't set Content-Type for FormData - browser handles it
+  // Only set Content-Type for JSON, not for FormData (let browser handle it)
   if (!(options.body instanceof FormData)) {
     headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
@@ -30,8 +32,8 @@ const apiFetch = async (url, options = {}) => {
       headers,
     });
 
+    // 401: Unauthorized (Session expired/Invalid token)
     if (response.status === 401) {
-      console.error("401 Unauthorized - Token may be invalid or expired");
       localStorage.removeItem("authToken");
       
       if (!url.includes("/users/login") && window.location.pathname !== "/marketinglogin") {
@@ -39,7 +41,12 @@ const apiFetch = async (url, options = {}) => {
         const redirectParam = `?redirect=${encodeURIComponent(currentPath)}`;
         window.location.href = `/marketinglogin${redirectParam}`;
       }
-      throw new Error("Session expired");
+      throw new Error("UNAUTHORIZED");
+    }
+
+    // 403: Forbidden (Role mismatch/Insufficient permissions)
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
     }
 
     return response;
