@@ -4,10 +4,8 @@ import { parseColors } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, File, FileArchiveIcon, Car, LetterTextIcon, Printer, Upload, Trash2, Image as ImageIcon, Banknote } from "lucide-react";
 import QrCode from "../assets/qr_client.png";
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 
-// ✅ Fixed: Centralized API fetch function with proper error handling
-// ✅ Fixed: Centralized API fetch function with proper error handling and redirects
+const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem('authToken');
 
