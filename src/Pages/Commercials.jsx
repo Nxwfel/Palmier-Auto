@@ -682,16 +682,19 @@ const Commercials = () => {
     }
   };
 
-  const generateContract = () => {
-    if (!lastOrderData) return;
+  const generateContract = (orderData) => {
+    const data = orderData || lastOrderData;
+    if (!data) return;
     const { client, car, color, price, priceInDZD, paymentAmount, date, commercialId,
-      resolvedCommercial } = lastOrderData;
+      resolvedCommercial } = data;
     const totalPrice = priceInDZD ? Math.round(priceInDZD) : 0;
     const paidAmount = paymentAmount || 0;
     const remainingBalance = totalPrice - paidAmount;
 
-    // resolvedCommercial is pre-fetched in handlePrintContract / handleAddOrder
-    const orderCommercial = resolvedCommercial || null;
+    // resolvedCommercial is passed in directly to avoid stale-state reads
+    const orderCommercial = resolvedCommercial ||
+      commercialsList.find(c => c.id === commercialId) ||
+      (commercialInfo?.id === commercialId ? commercialInfo : null);
 
     const formattedTotal = totalPrice.toLocaleString('fr-DZ');
     const formattedPaid = paidAmount.toLocaleString('fr-DZ');
@@ -1185,9 +1188,22 @@ const Commercials = () => {
         resolvedCommercial,
       });
 
-      setTimeout(() => {
-        generateContract();
-      }, 100);
+      generateContract({
+        client,
+        car,
+        color: order.car_color,
+        originalPrice,
+        currencyCode,
+        priceInDZD: orderPriceDZD,
+        exchangeRate,
+        paymentAmount: order.payment_amount || 0,
+        orderId: order.order_id,
+        date: order.purchase_date
+          ? new Date(order.purchase_date).toLocaleDateString('fr-DZ')
+          : new Date().toLocaleDateString('fr-DZ'),
+        commercialId: orderCommercialId,
+        resolvedCommercial,
+      });
 
     } catch (err) {
       console.error("Print Contract Error:", err);
