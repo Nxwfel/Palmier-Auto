@@ -1,9 +1,80 @@
-// src/Pages/Commercials.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { parseColors } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, File, FileArchiveIcon, Car, LetterTextIcon, Printer, Upload, Trash2, Image as ImageIcon, Banknote } from "lucide-react";
 import QrCode from "../assets/qr_client.png";
+
+const SearchableSelect = ({ options, value, onChange, placeholder }) => {
+  const [search, setSearch] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = useMemo(() => {
+    if (!search) return options;
+    return options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()));
+  }, [options, search]);
+
+  const selectedOption = options.find(o => o.value === value);
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      <div
+        className="bg-neutral-800 p-4 rounded-lg cursor-pointer flex justify-between items-center border border-transparent focus-within:border-emerald-500 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className={selectedOption ? "text-white truncate pr-4 text-sm md:text-base" : "text-neutral-400 text-sm md:text-base"}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <svg className="w-5 h-5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-2 bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl shadow-black/50">
+          <div className="p-3 border-b border-neutral-700 sticky top-0 bg-neutral-800 rounded-t-lg z-10">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher..."
+              className="w-full bg-neutral-900 border border-neutral-700 p-3 rounded-lg outline-none text-white focus:border-emerald-500 transition-colors"
+              onClick={e => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-60 overflow-y-auto custom-scrollbar">
+            {filteredOptions.length === 0 ? (
+              <div className="p-4 text-center text-neutral-500">Aucun résultat</div>
+            ) : (
+              filteredOptions.map(opt => (
+                <div
+                  key={opt.value}
+                  className={`p-3 mx-1 my-1 rounded-md text-sm cursor-pointer hover:bg-emerald-600 transition-colors ${opt.value === value ? 'bg-emerald-600 font-medium' : ''}`}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                    setSearch("");
+                  }}
+                >
+                  {opt.label}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
 const apiFetch = async (url, options = {}) => {
@@ -1509,12 +1580,23 @@ const Commercials = () => {
             </form>
 
             <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
-              <h2 className="text-2xl font-semibold mb-4">Clients enregistrés</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-semibold text-white">Clients enregistrés</h2>
+                <div className="relative flex-1 max-w-sm ml-4">
+                  <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
+                  <input
+                    value={searchClients}
+                    onChange={e => setSearchClients(e.target.value)}
+                    placeholder="Rechercher client..."
+                    className="bg-neutral-800 pl-12 pr-4 py-2 rounded-lg w-full outline-none border border-neutral-700 focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+              </div>
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {clients.length === 0 ? (
-                  <p className="text-neutral-500">Aucun client</p>
+                {filteredClients.length === 0 ? (
+                  <p className="text-neutral-500 p-4 text-center">Aucun client trouvé</p>
                 ) : (
-                  clients.map(c => (
+                  filteredClients.map(c => (
                     <div key={c.id} className="bg-neutral-800 p-4 rounded-lg">
                       <p className="font-medium text-lg">{c.name} {c.surname} <span className="text-emerald-400 text-sm">#{c.id}</span></p>
                       <p className="text-sm text-neutral-400">NIN: {c.nin}</p>
@@ -1534,57 +1616,27 @@ const Commercials = () => {
             <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
               <h2 className="text-2xl font-semibold mb-6">Nouvelle Commande</h2>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <select
+                <SearchableSelect
                   value={newOrder.client_id ?? ""}
-                  onChange={e => setNewOrder(prev => ({
-                    ...prev,
-                    client_id: e.target.value ? Number(e.target.value) : null
-                  }))}
-                  className="bg-neutral-800 p-4 rounded-lg"
-                  required
-                >
-                  <option value="">Sélectionner un client</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} {c.surname}</option>
-                  ))}
-                </select>
+                  onChange={val => setNewOrder(prev => ({ ...prev, client_id: val ? Number(val) : null }))}
+                  placeholder="Sélectionner un client"
+                  options={clients.map(c => ({ value: c.id, label: `${c.name} ${c.surname} - ${c.phone_number}` }))}
+                />
 
-                <select
+                <SearchableSelect
                   value={newOrder.car_id ?? ""}
-                  onChange={e => {
-                    const carId = e.target.value ? Number(e.target.value) : null;
-                    setNewOrder(prev => ({
-                      ...prev,
-                      car_id: carId,
-                      car_color: ""
-                    }));
-                  }}
-                  className="bg-neutral-800 p-4 rounded-lg"
-                  required
-                >
-                  <option value="">Sélectionner une voiture</option>
-                  {cars.filter(c => c.quantity > 0).map(car => (
-                    <option key={car.id} value={car.id}>
-                      {car.model} - {car.year} ({car.color})
-                    </option>
-                  ))}
-                </select>
+                  onChange={val => setNewOrder(prev => ({ ...prev, car_id: val ? Number(val) : null, car_color: "" }))}
+                  placeholder="Sélectionner une voiture"
+                  options={cars.filter(c => c.quantity > 0).map(car => ({ value: car.id, label: `${car.model} - ${car.year} (${car.color})` }))}
+                />
 
                 {newOrder.car_id && (
-                  <select
+                  <SearchableSelect
                     value={newOrder.car_color}
-                    onChange={e => setNewOrder(prev => ({
-                      ...prev,
-                      car_color: e.target.value
-                    }))}
-                    className="bg-neutral-800 p-4 rounded-lg"
-                    required
-                  >
-                    <option value="">Sélectionner la couleur</option>
-                    {getAvailableColors(newOrder.car_id).map(color => (
-                      <option key={color} value={color}>{color}</option>
-                    ))}
-                  </select>
+                    onChange={val => setNewOrder(prev => ({ ...prev, car_color: val }))}
+                    placeholder="Sélectionner la couleur"
+                    options={getAvailableColors(newOrder.car_id).map(color => ({ value: color, label: color }))}
+                  />
                 )}
 
                 <select
