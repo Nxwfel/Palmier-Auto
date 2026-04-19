@@ -133,6 +133,8 @@ const Commercials = () => {
   const [activeTab, setActiveTab] = useState("addClient");
   const [clients, setClients] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [ownorders, setOwnOrders] = useState([]);
+  const [userCommercial, setUserCommercial] = useState([]);
   const [cars, setCars] = useState([]);
   const [currencies, setCurrencies] = useState([]);
   const [commercialsList, setCommercialsList] = useState([]);
@@ -255,6 +257,7 @@ const Commercials = () => {
       const data = await res.json();
       console.log("Commercial info:", data);
       setCommercialInfo(data);
+      setUserCommercial(data);
     } catch (err) {
       console.warn("Failed to fetch commercial info:", err);
     }
@@ -1399,6 +1402,18 @@ const Commercials = () => {
     );
   }, [orders, searchOrders]);
 
+  const myOrders = useMemo(() =>
+    filteredOrders.filter(o =>
+      o.commercials_id === userCommercial?.id ||
+      o.commercial_id === userCommercial?.id
+    ), [filteredOrders, userCommercial]);
+
+  const otherOrders = useMemo(() =>
+    filteredOrders.filter(o =>
+      o.commercials_id !== userCommercial?.id &&
+      o.commercial_id !== userCommercial?.id
+    ), [filteredOrders, userCommercial]);
+
   const filteredGroupedCars = useMemo(() => {
     return groupedCars.filter(g =>
       g.model.toLowerCase().includes(searchCars.toLowerCase())
@@ -1500,6 +1515,26 @@ const Commercials = () => {
               </svg>
             </button>
             <h2 className="text-2xl mb-8">Palmier Auto</h2>
+            {/* Commercial Info */}
+            {userCommercial && (
+              <div className="mt-4 p-4 bg-neutral-800 rounded-xl border border-neutral-700">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white text-lg flex-shrink-0">
+                    {userCommercial.surname?.[0]?.toUpperCase() || "?"}
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="font-semibold text-white text-sm truncate">
+                      {userCommercial.surname} {userCommercial.name}
+                    </p>
+                    <p className="text-xs text-emerald-400">Commercial</p>
+                  </div>
+                </div>
+                <p className="text-xs text-neutral-400 truncate">📞 {userCommercial.phone_number}</p>
+                {userCommercial.address && (
+                  <p className="text-xs text-neutral-400 truncate mt-1">📍 {userCommercial.address}</p>
+                )}
+              </div>
+            )}
             {[
               { id: "addClient", icon: Plus, label: "Ajouter Client" },
               { id: "orders", icon: File, label: "Commandes" },
@@ -1675,76 +1710,120 @@ const Commercials = () => {
               </div>
             </div>
 
-            <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-              {filteredOrders.map(order => (
-                <div key={order.order_id} className="bg-neutral-900/90 p-6 rounded-2xl border border-neutral-800">
-                  {editingOrderId === order.order_id ? (
-                    <div className="space-y-4">
-                      <input
-                        type="number"
-                        placeholder="Paiement (DZD)"
-                        value={editForm.payment_amount}
-                        onChange={e => setEditForm({ ...editForm, payment_amount: e.target.value })}
-                        className="w-full bg-neutral-800 p-3 rounded-lg"
-                      />
-                      <select
-                        value={editForm.delivery_status}
-                        onChange={e => setEditForm({ ...editForm, delivery_status: e.target.value })}
-                        className="w-full bg-neutral-800 p-3 rounded-lg"
-                      >
-                        <option value="shipping">En expédition</option>
-                        <option value="arrived">Arrivé</option>
-                        <option value="showroom">Showroom</option>
-                      </select>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleUpdateOrder(order.order_id)}
-                          disabled={loading}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg disabled:opacity-50 transition-colors"
-                        >
-                          Sauvegarder
-                        </button>
-                        <button
-                          onClick={() => handlePrintContract(order)}
-                          disabled={loading}
-                          className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
-                        >
-                          <Printer size={16} />
-                          Imprimer
-                        </button>
-                        <button
-                          onClick={() => setEditingOrderId(null)}
-                          className="flex-1 bg-neutral-700 hover:bg-neutral-600 py-2 rounded-lg transition-colors"
-                        >
-                          Annuler
-                        </button>
-                      </div>
+            {/* My Orders */}
+            <div>
+              <h3 className="text-xl font-semibold text-emerald-400 mb-4">
+                Mes Commandes ({myOrders.length})
+              </h3>
+              {myOrders.length === 0 ? (
+                <p className="text-neutral-500 text-center py-6">Aucune commande</p>
+              ) : (
+                <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+                  {myOrders.map(order => (
+                    <div key={order.order_id} className="bg-neutral-900/90 p-6 rounded-2xl border border-neutral-800">
+                      {editingOrderId === order.order_id ? (
+                        <div className="space-y-4">
+                          <input
+                            type="number"
+                            placeholder="Paiement (DZD)"
+                            value={editForm.payment_amount}
+                            onChange={e => setEditForm({ ...editForm, payment_amount: e.target.value })}
+                            className="w-full bg-neutral-800 p-3 rounded-lg"
+                          />
+                          <select
+                            value={editForm.delivery_status}
+                            onChange={e => setEditForm({ ...editForm, delivery_status: e.target.value })}
+                            className="w-full bg-neutral-800 p-3 rounded-lg"
+                          >
+                            <option value="shipping">En expédition</option>
+                            <option value="arrived">Arrivé</option>
+                            <option value="showroom">Showroom</option>
+                          </select>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => handleUpdateOrder(order.order_id)}
+                              disabled={loading}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg disabled:opacity-50 transition-colors"
+                            >
+                              Sauvegarder
+                            </button>
+                            <button
+                              onClick={() => handlePrintContract(order)}
+                              disabled={loading}
+                              className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
+                            >
+                              <Printer size={16} />
+                              Imprimer
+                            </button>
+                            <button
+                              onClick={() => setEditingOrderId(null)}
+                              className="flex-1 bg-neutral-700 hover:bg-neutral-600 py-2 rounded-lg transition-colors"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-4">
+                            <h3 className="text-xl font-bold">{order.car_model}</h3>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingOrderId(order.order_id);
+                                  setEditForm({
+                                    payment_amount: order.payment_amount?.toString() || "",
+                                    delivery_status: order.delivery_status || "shipping"
+                                  });
+                                }}
+                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteOrder(order.order_id)}
+                                disabled={loading}
+                                className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-sm text-neutral-400">Client: {order.client_name} {order.client_surname}</p>
+                          <p className="text-sm text-neutral-400">Tel: {order.client_phone}</p>
+                          <p className="text-sm mt-3">Statut: <span className="text-white font-medium">{getStatusText(order.delivery_status)}</span></p>
+                          <p className="text-sm">Prix: <span className="text-green-400 font-medium">{order.price_dzd?.toLocaleString() || 0} DZD</span></p>
+                          <p className="text-sm">Payé: <span className="text-blue-400 font-medium">{order.payment_amount?.toLocaleString() || 0} DZD</span></p>
+                          <button
+                            onClick={() => handlePrintContract(order)}
+                            disabled={loading}
+                            className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Printer size={18} />
+                            Imprimer Contrat
+                          </button>
+                        </>
+                      )}
                     </div>
-                  ) : (
-                    <>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Other Commercials Orders */}
+            {otherOrders.length > 0 && (
+              <div className="border-t border-neutral-700 pt-8">
+                <h3 className="text-xl font-semibold text-neutral-400 mb-4">
+                  Commandes des autres commerciaux ({otherOrders.length})
+                </h3>
+                <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+                  {otherOrders.map(order => (
+                    <div key={order.order_id} className="bg-neutral-900/90 p-6 rounded-2xl border border-neutral-800 opacity-80">
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="text-xl font-bold">{order.car_model}</h3>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingOrderId(order.order_id);
-                              setEditForm({
-                                payment_amount: order.payment_amount?.toString() || "",
-                                delivery_status: order.delivery_status || "shipping"
-                              });
-                            }}
-                            className="text-blue-400 hover:text-blue-300 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteOrder(order.order_id)}
-                            disabled={loading}
-                            className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        <span className="text-xs text-neutral-500 bg-neutral-800 px-2 py-1 rounded-full">
+                          Autre commercial
+                        </span>
                       </div>
                       <p className="text-sm text-neutral-400">Client: {order.client_name} {order.client_surname}</p>
                       <p className="text-sm text-neutral-400">Tel: {order.client_phone}</p>
@@ -1754,19 +1833,18 @@ const Commercials = () => {
                       <button
                         onClick={() => handlePrintContract(order)}
                         disabled={loading}
-                        className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                        className="mt-4 w-full bg-neutral-700 hover:bg-neutral-600 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                       >
                         <Printer size={18} />
                         Imprimer Contrat
                       </button>
-                    </>
-                  )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         )}
-
         {/* Cars Tab */}
         {activeTab === "cars" && (
           <div>
