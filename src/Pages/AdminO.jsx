@@ -569,6 +569,12 @@ export default function AdminSuperPanel() {
   });
   
   const [showEditClient, setShowEditClient] = useState(false);
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientLoading, setClientLoading] = useState(false);
+  const [clientImages, setClientImages] = useState([]);
+  const [showClientImages, setShowClientImages] = useState(false);
+  const [selectedClientForImages, setSelectedClientForImages] = useState(null);
   
   const pushLog = (actor, action) => {
     setLogs((p) => [{ id: Date.now(), actor, action, date: new Date().toISOString() }, ...p]);
@@ -1971,6 +1977,109 @@ export default function AdminSuperPanel() {
     }
   };
 
+  // ✅ CLIENT CRUD HANDLERS
+  const handleClientSubmit = async (e) => {
+    e.preventDefault();
+    setClientLoading(true);
+    try {
+      const isUpdate = !!clientForm.id;
+      const url = `${API_BASE}/clients/`;
+      const payload = {
+        name: clientForm.name,
+        surname: clientForm.surname,
+        nin: clientForm.nin,
+        passport_number: clientForm.passport_number,
+        phone_number: clientForm.phone_number,
+        wilaya: clientForm.wilaya,
+        address: clientForm.address,
+      };
+
+      if (isUpdate) {
+        payload.client_id = clientForm.id;
+        if (clientForm.password) payload.password = clientForm.password;
+      } else {
+        payload.password = clientForm.password;
+      }
+
+      const response = await apiFetch(url, {
+        method: isUpdate ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const responseData = await response.json();
+
+      if (response.ok) {
+        if (!isUpdate) {
+          let password = "";
+          if (responseData.password) {
+            password = responseData.password;
+          } else if (responseData.detail?.includes("password:")) {
+            password = responseData.detail.split("password:")[1]?.trim();
+          }
+          if (password) {
+            setTempPassword(password);
+            setUserPhoneForPassword(clientForm.phone_number);
+            setPasswordModalType("client");
+            setShowPasswordModal(true);
+          }
+        }
+        setClientForm({ id: null, name: "", surname: "", nin: "", passport_number: "", phone_number: "", password: "", wilaya: "", address: "" });
+        setShowAddClient(false);
+        const fresh = await apiFetch(`${API_BASE}/clients/`).then(r => r.json());
+        setClients(Array.isArray(fresh) ? fresh : []);
+        alert(`✅ Client ${isUpdate ? "modifié" : "ajouté"} avec succès!`);
+      } else {
+        alert(`❌ Erreur: ${responseData.detail || "Échec de l'opération"}`);
+      }
+    } catch (err) {
+      console.error("Client submit error:", err);
+      alert("❌ Erreur réseau: " + err.message);
+    } finally {
+      setClientLoading(false);
+    }
+  };
+
+  const handleDeleteClient = async (id) => {
+    if (!window.confirm("Supprimer ce client ?")) return;
+    try {
+      await apiFetch(`${API_BASE}/clients/?client_id=${id}`, { method: "DELETE" });
+      setClients(prev => prev.filter(c => c.id !== id));
+      pushLog("Admin", `Deleted client #${id}`);
+      alert("✅ Client supprimé");
+    } catch (err) {
+      console.error("Error deleting client:", err);
+      alert("❌ Échec de la suppression");
+    }
+  };
+
+  const handleEditClientOpen = (client) => {
+    setClientForm({
+      id: client.id,
+      name: client.name || "",
+      surname: client.surname || "",
+      nin: client.nin || "",
+      passport_number: client.passport_number || "",
+      phone_number: client.phone_number || "",
+      password: "",
+      wilaya: client.wilaya || "",
+      address: client.address || "",
+    });
+    setShowAddClient(true);
+  };
+
+  const handleViewClientImages = async (client) => {
+    setSelectedClientForImages(client);
+    try {
+      const res = await apiFetch(`${API_BASE}/clients/${client.id}/images`);
+      const data = await res.json();
+      setClientImages(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error fetching client images:", err);
+      setClientImages([]);
+    }
+    setShowClientImages(true);
+  };
+
   const saveSupplierItemEdit = async (item) => {
     try {
       const editedData = editingSupplierItem[item.supplier_item_id];
@@ -2028,6 +2137,15 @@ export default function AdminSuperPanel() {
     (c.country && c.country.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const filteredClients = clients.filter((c) =>
+    (c.name && c.name.toLowerCase().includes(clientSearch.toLowerCase())) ||
+    (c.surname && c.surname.toLowerCase().includes(clientSearch.toLowerCase())) ||
+    (c.phone_number && c.phone_number.includes(clientSearch)) ||
+    (c.wilaya && c.wilaya.toLowerCase().includes(clientSearch.toLowerCase())) ||
+    (c.nin && c.nin.includes(clientSearch)) ||
+    (c.id && c.id.toString().includes(clientSearch))
+  );
+
   const totalStockValue = cars.reduce((total, car) => {
     const currency = currencyList.find(c => c.id === car.currency_id);
     const exchangeRate = currency?.exchange_rate_to_dzd || 1;
@@ -2083,6 +2201,7 @@ export default function AdminSuperPanel() {
           { id: "accountants", icon: Users, label: "Accountants" },
           { id: "wholesale_clients", icon: Users, label: "Wholesale Clients" },
           { id: "wholesale_orders", icon: FilePlus, label: "Wholesale Orders" },
+          { id: "clients", icon: Users, label: "Clients" },
           { id: "clients_orders", icon: FilePlus, label: "Clients Orders" },
           { id: "currency", icon: DollarSign, label: "Currency" },
           { id: "car_requests", icon: FilePlus, label: "Car Requests" },
@@ -3351,6 +3470,142 @@ export default function AdminSuperPanel() {
   </motion.div>
 )}
 
+          {tab === "clients" && (
+            <motion.div key="clients" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Gestion des Clients</h2>
+                <div className="flex items-center gap-3">
+                  <input
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    placeholder="Rechercher un client..."
+                    className="bg-neutral-800 px-3 py-2 rounded-lg text-sm text-white"
+                  />
+                  <button
+                    onClick={() => {
+                      setClientForm({ id: null, name: "", surname: "", nin: "", passport_number: "", phone_number: "", password: "", wilaya: "", address: "" });
+                      setShowAddClient(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                  >
+                    Ajouter un Client +
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-emerald-500/10 rounded-lg p-4 border border-emerald-500/30">
+                  <div className="text-sm text-emerald-400 mb-1">Total Clients</div>
+                  <div className="text-2xl font-bold text-emerald-400">{clients.length}</div>
+                </div>
+                <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
+                  <div className="text-sm text-blue-400 mb-1">Commandes Totales</div>
+                  <div className="text-2xl font-bold text-blue-400">{orders.length}</div>
+                </div>
+                <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/30">
+                  <div className="text-sm text-purple-400 mb-1">Clients Actifs</div>
+                  <div className="text-2xl font-bold text-purple-400">
+                    {clients.filter(c => orders.some(o => o.client_id === c.id)).length}
+                  </div>
+                </div>
+                <div className="bg-amber-500/10 rounded-lg p-4 border border-amber-500/30">
+                  <div className="text-sm text-amber-400 mb-1">Résultats</div>
+                  <div className="text-2xl font-bold text-amber-400">{filteredClients.length}</div>
+                </div>
+              </div>
+
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Nom</th>
+                        <th className="py-3 px-3">NIN</th>
+                        <th className="py-3 px-3">Passeport</th>
+                        <th className="py-3 px-3">Téléphone</th>
+                        <th className="py-3 px-3">Wilaya</th>
+                        <th className="py-3 px-3">Adresse</th>
+                        <th className="py-3 px-3">Commandes</th>
+                        <th className="py-3 px-3">Créé</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredClients.length === 0 ? (
+                        <tr>
+                          <td colSpan="10" className="py-8 text-center text-neutral-500">
+                            <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                            Aucun client trouvé
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredClients.map((client) => {
+                          const clientOrders = orders.filter(o => o.client_id === client.id);
+                          const totalPaid = clientOrders.reduce((sum, o) => sum + (o.payment_amount || 0), 0);
+                          return (
+                            <tr key={client.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5 transition">
+                              <td className="py-3 px-3 font-mono text-emerald-400">{client.id}</td>
+                              <td className="py-3 px-3">
+                                <div className="font-medium">{client.name} {client.surname}</div>
+                              </td>
+                              <td className="py-3 px-3 text-sm text-neutral-400 font-mono">{client.nin || '—'}</td>
+                              <td className="py-3 px-3 text-sm text-neutral-400 font-mono">{client.passport_number || '—'}</td>
+                              <td className="py-3 px-3 text-sm">{client.phone_number || '—'}</td>
+                              <td className="py-3 px-3">
+                                {client.wilaya ? (
+                                  <span className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400">{client.wilaya}</span>
+                                ) : '—'}
+                              </td>
+                              <td className="py-3 px-3 text-sm text-neutral-400 max-w-[150px] truncate">{client.address || '—'}</td>
+                              <td className="py-3 px-3">
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">{clientOrders.length}</span>
+                                  {totalPaid > 0 && (
+                                    <span className="text-xs text-emerald-400">{totalPaid.toLocaleString()} DZD</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 text-sm text-neutral-400">
+                                {client.created_at ? new Date(client.created_at).toLocaleDateString() : '—'}
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => handleViewClientImages(client)}
+                                    className="text-purple-400 hover:text-purple-300 p-1"
+                                    title="Voir les images"
+                                  >
+                                    <ImageIcon className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditClientOpen(client)}
+                                    className="text-blue-400 hover:text-blue-300 p-1"
+                                    title="Modifier"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteClient(client.id)}
+                                    className="text-red-400 hover:text-red-300 p-1"
+                                    title="Supprimer"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
         </AnimatePresence>
 
 <Modal 
@@ -3899,6 +4154,130 @@ export default function AdminSuperPanel() {
           </form>
         </Modal>
 
+        {/* ✅ Client Add/Edit Modal */}
+        <Modal
+          open={showAddClient}
+          onClose={() => setShowAddClient(false)}
+          title={clientForm.id ? "Modifier le Client" : "Ajouter un Client"}
+        >
+          <form onSubmit={handleClientSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                type="text"
+                placeholder="Nom *"
+                value={clientForm.name}
+                onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Prénom *"
+                value={clientForm.surname}
+                onChange={(e) => setClientForm({ ...clientForm, surname: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              />
+              <input
+                type="text"
+                placeholder="NIN *"
+                value={clientForm.nin}
+                onChange={(e) => setClientForm({ ...clientForm, nin: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required={!clientForm.id}
+              />
+              <input
+                type="text"
+                placeholder="Numéro de Passeport *"
+                value={clientForm.passport_number}
+                onChange={(e) => setClientForm({ ...clientForm, passport_number: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required={!clientForm.id}
+              />
+              <input
+                type="text"
+                placeholder="Numéro de Téléphone *"
+                value={clientForm.phone_number}
+                onChange={(e) => setClientForm({ ...clientForm, phone_number: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Wilaya *"
+                value={clientForm.wilaya}
+                onChange={(e) => setClientForm({ ...clientForm, wilaya: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Adresse *"
+                value={clientForm.address}
+                onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm md:col-span-2"
+                required
+              />
+              <div className="md:col-span-2">
+                <label className="block text-xs text-neutral-400 mb-1">
+                  {clientForm.id ? "Nouveau mot de passe (laisser vide pour ne pas changer)" : "Mot de passe *"}
+                </label>
+                <input
+                  type="password"
+                  placeholder={clientForm.id ? "Nouveau mot de passe (optionnel)" : "Mot de passe *"}
+                  value={clientForm.password}
+                  onChange={(e) => setClientForm({ ...clientForm, password: e.target.value })}
+                  className="w-full bg-neutral-800 p-2 rounded text-sm"
+                  required={!clientForm.id}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAddClient(false)}
+                className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={clientLoading}
+                className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
+              >
+                {clientLoading ? '⏳ En cours...' : clientForm.id ? '✏️ Modifier' : '➕ Ajouter'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* ✅ Client Images Modal */}
+        <Modal
+          open={showClientImages}
+          onClose={() => { setShowClientImages(false); setClientImages([]); setSelectedClientForImages(null); }}
+          title={selectedClientForImages ? `Images de ${selectedClientForImages.name} ${selectedClientForImages.surname}` : "Images du Client"}
+        >
+          {clientImages.length === 0 ? (
+            <div className="text-center py-8 text-neutral-400">
+              <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Aucune image trouvée pour ce client</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {clientImages.map((img, i) => (
+                <div key={img.id || i} className="relative group rounded-xl overflow-hidden border border-neutral-700">
+                  <img
+                    src={img.url || img.image_url || `${API_BASE}/download_static_files/${img.key || img.image_key}`}
+                    alt={`Client image ${i + 1}`}
+                    className="w-full h-32 object-cover"
+                    onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text fill=%22%23999%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22>No Image</text></svg>'; }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
+
         {/* Dynamic Password Modal */}
         {showPasswordModal && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -3910,6 +4289,7 @@ export default function AdminSuperPanel() {
                     {passwordModalType === "marketer" && "Identifiants du Marketer"}
                     {passwordModalType === "accountant" && "Identifiants de l'Accountant"}
                     {passwordModalType === "wholesale_client" && "Identifiants du Client Grossiste"}
+                    {passwordModalType === "client" && "Identifiants du Client"}
                   </h2>
                   <button onClick={() => setShowPasswordModal(false)} className="text-neutral-400 hover:text-white text-2xl">&times;</button>
                 </div>
@@ -3918,6 +4298,7 @@ export default function AdminSuperPanel() {
                   {passwordModalType === "marketer" && "Le marketer peut se connecter avec ces identifiants :"}
                   {passwordModalType === "accountant" && "L'accountant peut se connecter avec ces identifiants :"}
                   {passwordModalType === "wholesale_client" && "Le client grossiste peut se connecter avec ces identifiants :"}
+                  {passwordModalType === "client" && "Le client peut se connecter avec ces identifiants :"}
                 </p>
                 <div className="space-y-4">
                   <div>
