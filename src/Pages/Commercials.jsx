@@ -1434,7 +1434,7 @@ const Commercials = () => {
       {/* Contract Prompt Modal */}
       {showContractPrompt && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-800 rounded-2xl max-w-md w-full p-8 border border-neutral-700">
+          <div className="bg-neutral-800 rounded-xl max-w-md w-full p-8 border border-neutral-700">
             <h2 className="text-2xl font-bold mb-4 text-center">✅ Commande Ajoutée!</h2>
             <p className="text-neutral-300 mb-6 text-center">Voulez-vous générer le contrat maintenant?</p>
             <div className="flex gap-4">
