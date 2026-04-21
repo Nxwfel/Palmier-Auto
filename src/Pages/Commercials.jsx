@@ -602,6 +602,25 @@ const Commercials = () => {
     }
   };
 
+  // ✅ Helper: Fetch complete client data (including passport_number)
+  const fetchFullClientById = async (clientId) => {
+    try {
+      // GET /clients/ returns full objects with passport_number
+      const res = await apiFetch(`${API_BASE_URL}/clients/`);
+      if (res.ok) {
+        const allClients = await res.json();
+        if (Array.isArray(allClients)) {
+          const found = allClients.find(c => c.id === clientId);
+          if (found) return found;
+        }
+      }
+    } catch (err) {
+      console.warn('fetchFullClientById fallback to cache:', err);
+    }
+    // Fallback: use cached clients list
+    return clients.find(c => c.id === clientId) || null;
+  };
+
   // ✅ Fixed: Add client with proper auth
   const handleAddClient = async () => {
     const { name, surname, phone, password, wilaya, address, nin, passport_number } = newClient;
@@ -709,7 +728,7 @@ const Commercials = () => {
 
       const createdOrder = await res.json();
 
-      const client = clients.find(c => c.id === clientId);
+      const client = await fetchFullClientById(clientId);
       const car = cars.find(c => c.id === carId);
 
       const currency = currencyMap.get(car.currency_id);
@@ -999,7 +1018,7 @@ const Commercials = () => {
         </div>
         <div class="info-row">
             <div class="info-label">رقم جواز السفر:</div>
-            <div class="info-value">${client.passport_number || 'غير محدد'}</div>
+            <div class="info-value">${client.passport_number}</div>
         </div>
         <div class="info-row">
             <div class="info-label">رقم الهاتف:</div>
@@ -1170,7 +1189,7 @@ const Commercials = () => {
 
       const updatedOrder = await res.json();
       if (lastOrderData && lastOrderData.orderId === orderId) {
-        const client = clients.find(c => c.id === updatedOrder.client_id);
+        const client = await fetchFullClientById(updatedOrder.client_id);
         const car = cars.find(c => c.id === updatedOrder.car_id);
 
         setLastOrderData({
@@ -1204,7 +1223,7 @@ const Commercials = () => {
 
   const handlePrintContract = async (order) => {
     try {
-      const client = clients.find(c => c.id === order.client_id);
+      const client = await fetchFullClientById(order.client_id);
       const car = cars.find(c => c.id === order.car_id);
 
       if (!client || !car) {
