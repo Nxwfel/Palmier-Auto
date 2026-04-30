@@ -964,7 +964,7 @@ const Commercials = () => {
             <img src="${qrCodeSrc}" alt="QR Code" crossorigin="anonymous">
         </div>
         <div class="company-info">
-            تجارة بالتجزئة للسيارات | شركة NB SUD | س ت رقم: ب0200015-18/05
+            تجارة بالتجزئة للسيارات | شركة NB SUD | س ت رقم: 0943428-08/00
         </div>
         <div class="company-info">
             العنوان: محل رقم 00 - م م رقم 200 - قسم 85 - المقر رقم 00 - مسكن 201ح
