@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import {Link as Scorll} from 'react-scroll'
+import { Link as Scorll } from 'react-scroll'
 import Tundra from '../assets/TundraG.png';
 import Sportage from '../assets/Sportage.jpg';
 import Tharu from '../assets/Tharu.jpg';
+import Beams from '../Components/Beams.jsx'
 
 const LandingPage = () => {
   const slides = [
@@ -16,6 +17,7 @@ const LandingPage = () => {
 
   const [current, setCurrent] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showAlert, setShowAlert] = useState(true);
 
   // Auto slide
   useEffect(() => {
@@ -130,14 +132,83 @@ const LandingPage = () => {
         )}
       </AnimatePresence>
 
+      {/* Premium Alert Overlay */}
+      <AnimatePresence>
+        {showAlert && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed  inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 10, opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="relative  w-full max-w-2xl rounded-2xl overflow-hidden border border-white/10 bg-black/90 shadow-2xl"
+            >
+              {/* Background Beams Effect */}
+              <div className="absolute inset-0 z-0 opacity-50 mix-blend-screen pointer-events-none flex items-center justify-center">
+                <div className="w-[150%] h-[150%]">
+                  <Beams
+                    beamWidth={3}
+                    beamHeight={30}
+                    beamNumber={20}
+                    lightColor="#ffffff"
+                    speed={2}
+                    noiseIntensity={1.75}
+                    scale={0.2}
+                    rotation={30}
+                  />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/80"></div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="relative z-10 p-10 md:p-16 flex flex-col items-center text-center">
+                <button
+                  onClick={() => setShowAlert(false)}
+                  className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+                  aria-label="Fermer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                <h2 className="text-[10px] md:text-xs tracking-[0.4em] text-amber-400 mb-6 font-light">NOUVEAUTÉ EXCLUSIVE</h2>
+                <h3 className="text-3xl md:text-5xl font-light tracking-widest mb-6 text-white uppercase">
+                  Palmier Affaire
+                </h3>
+                <p className="text-white/60 font-light mb-10 text-sm md:text-base leading-relaxed max-w-md">
+                  L'excellence Palmier Auto, désormais dédiée aux professionnels. Découvrez notre nouvelle plateforme B2B et accédez à des offres privilégiées.
+                </p>
+
+                <a
+                  href="https://palmieraffaire.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowAlert(false)}
+                  className="group relative px-8 py-3 border border-amber-400/50 hover:border-amber-400 bg-amber-400/5 hover:bg-amber-400/10 transition-all duration-500 overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-amber-400/0 via-amber-400/10 to-amber-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                  <span className="relative text-xs md:text-sm tracking-[0.2em] text-amber-400 group-hover:text-amber-300 transition-colors">
+                    VISITER LE SITE
+                  </span>
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Background Slider — Controlled by opacity only */}
       <div className="absolute inset-0 z-10">
         {slides.map((slide, index) => (
           <div
             key={index}
-            className={`absolute inset-0 transition-opacity duration-1000 ${
-              index === current ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`absolute inset-0 transition-opacity duration-1000 ${index === current ? 'opacity-100' : 'opacity-0'
+              }`}
           >
             <div
               className="w-full h-full"
@@ -178,9 +249,8 @@ const LandingPage = () => {
               <button
                 key={idx}
                 onClick={() => setCurrent(idx)}
-                className={`w-2 h-2 rounded-full ${
-                  idx === current ? 'bg-amber-400' : 'bg-white/30'
-                }`}
+                className={`w-2 h-2 rounded-full ${idx === current ? 'bg-amber-400' : 'bg-white/30'
+                  }`}
                 aria-label={`Slide ${idx + 1}`}
               />
             ))}
@@ -205,7 +275,7 @@ const LandingPage = () => {
           </div>
         </div>
       </div>
-      
+
 
       {/* Subtle glow */}
       <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-80 h-32 bg-amber-500/5 blur-3xl rounded-full"></div>
