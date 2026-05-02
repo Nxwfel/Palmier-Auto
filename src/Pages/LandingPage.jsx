@@ -182,7 +182,7 @@ const LandingPage = () => {
                   Palmier Affaire
                 </h3>
                 <p className="text-white/60 font-light mb-10 text-sm md:text-base leading-relaxed max-w-md">
-                  L'excellence Palmier Auto, désormais dédiée aux professionnels. Découvrez notre nouvelle plateforme B2B et accédez à des offres privilégiées.
+                  L'excellence Palmier Auto, désormais dédiée aux professionnels. Découvrez notre nouvelle plateforme Palmier Affaire dédiée pour vos affaire et accédez à des offres privilégiées.
                 </p>
 
                 <a
