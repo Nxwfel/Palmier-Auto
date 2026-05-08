@@ -5,6 +5,7 @@ import {
   BarChart3,
   Car,
   Users,
+  Search,
   CreditCard,
   FilePlus,
   Trash2,
@@ -30,12 +31,12 @@ const Card = ({ children, className = "" }) => (
 );
 
 // ✅ FIXED: Now supports editable cars with full form
-const CommercialCarsModal = ({ 
-  open, 
-  onClose, 
-  commercial, 
-  cars, 
-  suppliers, 
+const CommercialCarsModal = ({
+  open,
+  onClose,
+  commercial,
+  cars,
+  suppliers,
   currencyList,
   supplierItems,
   onCarUpdate,
@@ -46,18 +47,18 @@ const CommercialCarsModal = ({
 
   if (!commercial) return null;
   const soldCars = cars.filter(car => car.commercial_id === commercial.id);
-  
+
   const getSupplierName = (supplierId) => {
     const supplier = suppliers.find(s => s.id === supplierId);
     return supplier ? `${supplier.name} ${supplier.surname}` : 'Unknown';
   };
-  
+
   const convertToDZD = (price, currencyId) => {
     const currency = currencyList.find(c => c.id === currencyId);
     return price * (currency?.exchange_rate_to_dzd || 1);
   };
 
-const handleEditCar = (car) => {
+  const handleEditCar = (car) => {
     setEditingCarId(car.id);
     setEditCarForm({
       car_id: car.id,
@@ -87,20 +88,20 @@ const handleEditCar = (car) => {
 
   const handleSaveCarEdit = async () => {
     if (!editCarForm) return;
-    
+
     try {
       const formDataToSend = new FormData();
       formDataToSend.append("car_id", editCarForm.car_id);
       formDataToSend.append("currency_id", editCarForm.currency_id || "");
       formDataToSend.append("model", editCarForm.model || "");
       formDataToSend.append("description", editCarForm.description || "");
-      
+
       // ✅ FIX: Handle colors as array
       const colorsArray = editCarForm.color.split(',').map(c => c.trim()).filter(c => c);
       colorsArray.forEach(color => {
         formDataToSend.append("color", color);
       });
-      
+
       formDataToSend.append("year", editCarForm.year || "");
       formDataToSend.append("engine", editCarForm.engine || "");
       formDataToSend.append("power", editCarForm.power || "");
@@ -378,19 +379,19 @@ const apiFetch = async (url, options = {}) => {
     ...(token && { "Authorization": `Bearer ${token}` }),
     ...options.headers,
   };
-  
+
   // Only set Content-Type for JSON, not for FormData (let browser handle it)
   if (!(options.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
-  
+
   try {
-    const response = await fetch(url, { 
-      ...options, 
+    const response = await fetch(url, {
+      ...options,
       headers,
-      timeout: 30000 
+      timeout: 30000
     });
-    
+
     // 401: Unauthorized (Session expired/Invalid token)
     if (response.status === 401) {
       localStorage.removeItem("authToken");
@@ -429,7 +430,6 @@ export default function AdminSuperPanel() {
   const [editingSupplierItem, setEditingSupplierItem] = useState({});
   const [generatedPassword, setGeneratedPassword] = useState("");
   const navigate = useNavigate();
-  const [tab, setTab] = useState("overview");
   const [search, setSearch] = useState("");
   const [monthlyearnings, setMonthlyEarnings] = useState(0);
   const [yearlyearnings, setYearlyEarnings] = useState(0);
@@ -437,6 +437,7 @@ export default function AdminSuperPanel() {
   const [yearlyExpenses, setYearlyExpenses] = useState({ total_expenses: 0, total_purchases: 0, total_transport: 0, total_other: 0 });
   const [Caisse, setCaisse] = useState({ balance: 0 });
   const [cars, setCars] = useState([]);
+  const [tab, setTab] = useState("");
   const [fournisseurs, setFournisseurs] = useState([]);
   const [commercials, setCommercials] = useState([]);
   const [marketers, setMarketers] = useState([]);
@@ -455,14 +456,14 @@ export default function AdminSuperPanel() {
   const [fournisseurForm, setFournisseurForm] = useState({
     name: "", surname: "", phone_number: "", address: "",
   });
-  const [socials , setSocials] = useState([]);
+  const [socials, setSocials] = useState([]);
   useEffect(() => {
     const fetchSocials = async () => {
       try {
-        const response = await apiFetch(`${API_BASE}/social_links/`); 
+        const response = await apiFetch(`${API_BASE}/social_links/`);
         const data = await response.json();
         setSocials(data);
-      } 
+      }
       catch (err) {
         console.error("Error fetching social links:", err);
       }
@@ -470,13 +471,14 @@ export default function AdminSuperPanel() {
     fetchSocials();
   }
   ), [];
-  const [socialsform , setSocialsform] = useState({
-    facebook:"" , instagram:"" , whatsapp:""});
-  
+  const [socialsform, setSocialsform] = useState({
+    facebook: "", instagram: "", whatsapp: ""
+  });
+
   const handleSocialsChange = (e) => {
     setSocialsform({ ...socialsform, [e.target.name]: e.target.value });
-  }; 
-  
+  };
+
   const SubmitSocials = async (e) => {
     e.preventDefault();
     try {
@@ -498,26 +500,26 @@ export default function AdminSuperPanel() {
   };
   const [showAddCar, setShowAddCar] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
-  
+
   const initialCarForm = {
-    model: "", 
+    model: "",
     description: "",
-    color: "", 
-    year: "", 
-    engine: "", 
-    power: "", 
-    fuelType: "", 
+    color: "",
+    year: "",
+    engine: "",
+    power: "",
+    fuelType: "",
     milage: "",
-    country: "", 
-    price: "", 
-    wholesale_price: "", 
-    shippingDate: "", 
+    country: "",
+    price: "",
+    wholesale_price: "",
+    shippingDate: "",
     arrivingDate: "",
-    currency_id: "", 
-    quantity: "", 
+    currency_id: "",
+    quantity: "",
     imageFiles: [],
   };
-  
+
   const [carForm, setCarForm] = useState(initialCarForm);
   const [CommercialForm, setCommercialForm] = useState({
     name: "", surname: "", phone_number: "", wilayas: [], address: ""
@@ -525,14 +527,14 @@ export default function AdminSuperPanel() {
   const [showAddCommercial, setShowAddCommercial] = useState(false);
   const [message, setMessage] = useState("");
   const [commercialLoading, setCommercialLoading] = useState(false);
-  
+
   const [marketerForm, setMarketerForm] = useState({
     name: "", surname: "", phone_number: "", address: ""
   });
   const [showAddMarketer, setShowAddMarketer] = useState(false);
   const [marketerLoading, setMarketerLoading] = useState(false);
   const [marketerMessage, setMarketerMessage] = useState("");
-  
+
   const [accountantForm, setAccountantForm] = useState({
     name: "", surname: "", phone_number: "", address: ""
   });
@@ -553,21 +555,21 @@ export default function AdminSuperPanel() {
   const [showAddWholesaleClient, setShowAddWholesaleClient] = useState(false);
   const [showAddWholesaleOrder, setShowAddWholesaleOrder] = useState(false);
   const [showEditWholesaleOrder, setShowEditWholesaleOrder] = useState(false);
-  const [showAddOrder , setShowAddOrder] = useState (false);
-  
+  const [showAddOrder, setShowAddOrder] = useState(false);
+
   // ✅ FIX: Updated client form with nin and passport_number
   const [clientForm, setClientForm] = useState({
     id: null,
-    name: "", 
-    surname: "", 
-    nin: "", 
+    name: "",
+    surname: "",
+    nin: "",
     passport_number: "",
-    phone_number: "", 
-    password: "", 
-    wilaya: "", 
+    phone_number: "",
+    password: "",
+    wilaya: "",
     address: ""
   });
-  
+
   const [showEditClient, setShowEditClient] = useState(false);
   const [showAddClient, setShowAddClient] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
@@ -575,11 +577,11 @@ export default function AdminSuperPanel() {
   const [clientImages, setClientImages] = useState([]);
   const [showClientImages, setShowClientImages] = useState(false);
   const [selectedClientForImages, setSelectedClientForImages] = useState(null);
-  
+
   const pushLog = (actor, action) => {
     setLogs((p) => [{ id: Date.now(), actor, action, date: new Date().toISOString() }, ...p]);
   };
-  
+
   const [orderForm, setOrderForm] = useState({
     id: null,
     client_id: "",
@@ -596,7 +598,7 @@ export default function AdminSuperPanel() {
     currency_id: "",
     price: 0
   });
-  
+
   const getSupplierName = (supplierId) => {
     const supplier = fournisseurs.find(s => s.id === supplierId);
     return supplier ? `${supplier.name} ${supplier.surname}` : 'Unknown';
@@ -655,14 +657,14 @@ export default function AdminSuperPanel() {
       setLoadingTransactions(true);
       try {
         const enrichedTransactions = [];
-        
+
         orders.forEach(order => {
           const client = clients.find(c => c.id === order.client_id);
           const car = cars.find(c => c.id === order.car_id);
           const currency = currencyList.find(c => c.id === car?.currency_id);
           const rate = currency?.exchange_rate_to_dzd || 1;
           const amount = (car?.price || 0) * rate;
-          
+
           enrichedTransactions.push({
             id: `ORD-${order.order_id || order.id}`,
             type: 'order',
@@ -673,14 +675,14 @@ export default function AdminSuperPanel() {
             date: order.created_at || new Date().toISOString()
           });
         });
-        
+
         wholesaleOrders.forEach(order => {
           const client = wholesaleClients.find(c => c.id === order.client_id);
           const car = cars.find(c => c.id === order.car_id);
           const currency = currencyList.find(c => c.id === car?.currency_id);
           const rate = currency?.exchange_rate_to_dzd || 1;
           const amount = (car?.wholesale_price || car?.price || 0) * order.quantity * rate;
-          
+
           enrichedTransactions.push({
             id: `WHO-${order.order_id || order.id}`,
             type: 'wholesale',
@@ -691,14 +693,14 @@ export default function AdminSuperPanel() {
             date: order.created_at || new Date().toISOString()
           });
         });
-        
+
         supplierItems.forEach(item => {
           const supplier = fournisseurs.find(s => s.id === item.supplier_id);
           const car = cars.find(c => c.id === item.car_id);
           const currency = currencyList.find(c => c.id === item.currency_id);
           const rate = currency?.exchange_rate_to_dzd || 1;
           const totalCost = (item.price || 0) * rate;
-          
+
           enrichedTransactions.push({
             id: `SUP-${item.supplier_item_id}`,
             type: 'supplier',
@@ -709,25 +711,25 @@ export default function AdminSuperPanel() {
             date: item.created_at || new Date().toISOString()
           });
         });
-        
+
         enrichedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-        
+
         setTransactions(enrichedTransactions);
-        
+
         const revenue = enrichedTransactions
           .filter(t => t.type === 'order' || t.type === 'wholesale')
           .reduce((sum, t) => sum + t.amount, 0);
-        
+
         const expenses = enrichedTransactions
           .filter(t => t.type === 'supplier')
           .reduce((sum, t) => sum + t.amount, 0);
-        
+
         setTransactionStats({
           totalRevenue: revenue,
           totalExpenses: expenses,
           netBalance: revenue - expenses
         });
-        
+
       } catch (err) {
         console.error("Error fetching transactions:", err);
         setTransactions([]);
@@ -735,7 +737,7 @@ export default function AdminSuperPanel() {
         setLoadingTransactions(false);
       }
     };
-    
+
     if (orders.length || wholesaleOrders.length || supplierItems.length) {
       fetchTransactions();
     }
@@ -751,7 +753,7 @@ export default function AdminSuperPanel() {
         car_color: String(orderForm.car_color),
         delivery_status: String(orderForm.delivery_status),
       };
-      
+
       if (!payload.client_id || isNaN(payload.client_id)) {
         throw new Error("Veuillez sélectionner un client");
       }
@@ -761,24 +763,24 @@ export default function AdminSuperPanel() {
       if (!payload.car_color) {
         throw new Error("Veuillez spécifier une couleur");
       }
-      
+
       console.log("📤 Submitting order payload:", payload);
-      
+
       const response = await apiFetch(url, {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("❌ API Error:", errorData);
         throw new Error(errorData.detail || "Erreur lors de l'ajout");
       }
-      
+
       const data = await response.json();
       console.log("✅ Order created:", data);
-      
+
       setShowAddOrder(false);
       setOrderForm({
         id: null,
@@ -789,7 +791,7 @@ export default function AdminSuperPanel() {
         payment_amount: 0,
         status: true,
       });
-      
+
       console.log("🔄 Refreshing orders list...");
       const freshResponse = await apiFetch(`${API_BASE}/orders/`);
       if (freshResponse.ok) {
@@ -799,7 +801,7 @@ export default function AdminSuperPanel() {
       } else {
         console.error("❌ Failed to refresh orders")
       }
-      
+
       alert("✅ Commande ajoutée avec succès!")
     } catch (error) {
       console.error("❌ Error in handleOrderSubmit:", error);
@@ -839,8 +841,8 @@ export default function AdminSuperPanel() {
     try {
       await apiFetch(`${API_BASE}/orders/?order_id=${id}`, { method: "DELETE" });
       setOrders(prev => prev.filter(o => o.order_id !== id));
-    } catch (err) { 
-      alert("Delete failed"); 
+    } catch (err) {
+      alert("Delete failed");
     }
   };
 
@@ -877,7 +879,7 @@ export default function AdminSuperPanel() {
         const regRes = await apiFetch(`${API_BASE}/commercials_cash_registers/all`);
         const regData = await regRes.json();
         setCommercialRegisters(Array.isArray(regData) ? regData : []);
-        
+
         // Refresh general caisse
         const responseCaiss = await apiFetch(`${API_BASE}/cash_register/`);
         const dataCaiss = await responseCaiss.json();
@@ -890,10 +892,10 @@ export default function AdminSuperPanel() {
 
         alert("Request approved and balances updated!");
       } else {
-        const errorData = await res.json().catch(()=>({}));
+        const errorData = await res.json().catch(() => ({}));
         alert("Failed to approve request: " + (errorData.detail || "Unknown error"));
       }
-    } catch(err) {
+    } catch (err) {
       alert("Error: " + err.message);
     }
   };
@@ -910,19 +912,19 @@ export default function AdminSuperPanel() {
       } else {
         alert("Failed to reject request.");
       }
-    } catch(err) {
+    } catch (err) {
       alert("Error: " + err.message);
     }
   };
-  
+
   useEffect(() => {
     const fetchCarRequests = async () => {
       try {
         const res = await apiFetch(`${API_BASE}/cars_requests/`);
         const data = await res.json();
         setCarRequests(Array.isArray(data) ? data : []);
-      } catch (err) { 
-        console.error("Car requests fetch error:", err); 
+      } catch (err) {
+        console.error("Car requests fetch error:", err);
       }
     };
     fetchCarRequests();
@@ -947,18 +949,18 @@ export default function AdminSuperPanel() {
     try {
       const url = `${API_BASE}/wholesale_orders/`;
       console.log("📍 Fetching from URL:", url);
-      
+
       const res = await apiFetch(url);
-      
+
       if (!res.ok) {
         const errorText = await res.text();
         console.error("❌ Response not OK:", errorText);
         throw new Error(`HTTP ${res.status}: ${errorText}`);
       }
-      
+
       const text = await res.text();
       const data = JSON.parse(text);
-      
+
       if (Array.isArray(data)) {
         setWholesaleOrders(data);
       } else {
@@ -1165,13 +1167,13 @@ export default function AdminSuperPanel() {
       const url = `${API_BASE}/wholesale_orders/`;
 
       let payload;
-      
+
       if (isUpdate) {
         const orderId = Number(wholesaleOrderForm.id);
         if (isNaN(orderId) || orderId <= 0) {
           throw new Error("ID de commande en gros invalide pour la mise à jour");
         }
-        
+
         payload = {
           order_id: orderId,
           client_id: clientId,
@@ -1211,11 +1213,11 @@ export default function AdminSuperPanel() {
 
       setShowAddWholesaleOrder(false);
       setShowEditWholesaleOrder(false);
-      setWholesaleOrderForm({ 
+      setWholesaleOrderForm({
         id: null,
-        client_id: "", 
-        car_id: "", 
-        quantity: 1, 
+        client_id: "",
+        car_id: "",
+        quantity: 1,
         delivery_status: "shipping",
         payment_amount: 0,
         status: true
@@ -1223,7 +1225,7 @@ export default function AdminSuperPanel() {
 
       console.log("🔄 Refreshing wholesale orders...");
       await fetchWholesaleOrders();
-      
+
       alert(`✅ Commande en gros ${isUpdate ? 'mise à jour' : 'ajoutée'} avec succès !`);
 
     } catch (err) {
@@ -1267,8 +1269,8 @@ export default function AdminSuperPanel() {
     }
   };
 
-  useEffect(() => { 
-    fetchFournisseurs(); 
+  useEffect(() => {
+    fetchFournisseurs();
   }, []);
 
   const handleChangeFournisseur = (e) => {
@@ -1432,7 +1434,7 @@ export default function AdminSuperPanel() {
             { code: "eur", name: "Euro" },
             { code: "usd", name: "US Dollar" },
             { code: "cad", name: "Canadian Dollar" },
-            { code: "aed", name: "UAE Dirham"},
+            { code: "aed", name: "UAE Dirham" },
           ];
           for (let i = 0; i < defaultCurrencies.length; i++) {
             if (!isMounted) break;
@@ -1529,14 +1531,14 @@ export default function AdminSuperPanel() {
         payment_amount: Number(orderForm.payment_amount) || null,
         delivery_status: String(orderForm.delivery_status),
       };
-      
+
       if (!payload.order_id || isNaN(payload.order_id)) {
         throw new Error("ID de commande invalide");
       }
       if (!['shipping', 'arrived', 'showroom'].includes(payload.delivery_status)) {
         throw new Error("Statut de livraison invalide");
       }
-      
+
       const response = await apiFetch(url, {
         method: "PUT",
         headers: {
@@ -1544,12 +1546,12 @@ export default function AdminSuperPanel() {
         },
         body: JSON.stringify(payload),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || "Failed to update order");
       }
-      
+
       setShowEditOrder(false);
       setOrderForm({
         id: null,
@@ -1560,7 +1562,7 @@ export default function AdminSuperPanel() {
         payment_amount: 0,
         status: true,
       });
-      
+
       alert("Commande modifiée avec succès!");
       const fresh = await apiFetch(`${API_BASE}/orders/`).then(r => r.json());
       setOrders(Array.isArray(fresh) ? fresh : []);
@@ -1592,10 +1594,10 @@ export default function AdminSuperPanel() {
 
   const handleOpenAddCommercial = (agent = "Admin") => {
     setCommercialForm({
-      name: "", 
-      surname: "", 
-      phone_number: "", 
-      wilayas: [], 
+      name: "",
+      surname: "",
+      phone_number: "",
+      wilayas: [],
       address: ""
     });
     setShowAddCommercial(true);
@@ -1611,20 +1613,20 @@ export default function AdminSuperPanel() {
     }
     try {
       const formData = new FormData();
-      
+
       if (editingCar) {
         formData.append('car_id', editingCar.id);
       }
-      
+
       formData.append('model', carForm.model);
       formData.append('description', carForm.description || "");
-      
+
       // ✅ FIX: Handle colors as array - split comma-separated input
       const colorsArray = carForm.color.split(',').map(c => c.trim()).filter(c => c);
       colorsArray.forEach(color => {
         formData.append('color', color);
       });
-      
+
       formData.append('year', parseInt(carForm.year) || new Date().getFullYear());
       formData.append('quantity', parseInt(carForm.quantity) || 1);
       formData.append('engine', carForm.engine);
@@ -1637,13 +1639,13 @@ export default function AdminSuperPanel() {
       formData.append('shipping_date', carForm.shippingDate || new Date().toISOString().split('T')[0]);
       formData.append('arriving_date', carForm.arrivingDate || new Date().toISOString().split('T')[0]);
       formData.append('currency_id', parseInt(carForm.currency_id));
-      
+
       if (carForm.imageFiles && carForm.imageFiles.length > 0) {
         Array.from(carForm.imageFiles).forEach(file => {
           formData.append('images', file);
         });
       }
-      
+
       const url = `${API_BASE}/cars/`;
       const method = editingCar ? 'PUT' : 'POST';
 
@@ -1651,17 +1653,17 @@ export default function AdminSuperPanel() {
         method,
         body: formData
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
-      
+
       pushLog("Admin", `${editingCar ? 'Updated' : 'Added'} car ${carForm.model}`);
       setShowAddCar(false);
       setEditingCar(null);
       setCarForm(initialCarForm);
-      
+
       const carsResponse = await apiFetch(`${API_BASE}/cars/all`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2087,18 +2089,18 @@ export default function AdminSuperPanel() {
         console.error("Aucune donnée éditée trouvée");
         return;
       }
-      
+
       const payload = {
         supplier_item_id: Number(item.supplier_item_id),
         supplier_id: Number(item.supplier_id) || null,
         payment_amount: Number(editedData.payment_amount) || null,
         price: Number(editedData.price) || null,
       };
-      
+
       if (!payload.supplier_item_id || isNaN(payload.supplier_item_id)) {
         throw new Error("ID de l'item invalide");
       }
-      
+
       const response = await apiFetch(`${API_BASE}/suppliers_items/`, {
         method: "PUT",
         headers: {
@@ -2106,7 +2108,7 @@ export default function AdminSuperPanel() {
         },
         body: JSON.stringify(payload),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         let errorMessage = "Erreur lors de la mise à jour";
@@ -2117,13 +2119,13 @@ export default function AdminSuperPanel() {
         }
         throw new Error(errorMessage);
       }
-      
+
       setEditingSupplierItem(prev => {
         const copy = { ...prev };
         delete copy[item.supplier_item_id];
         return copy;
       });
-      
+
       alert("✅ Mise à jour réussie!");
     } catch (error) {
       console.error("❌ Update failed:", error);
@@ -2138,13 +2140,98 @@ export default function AdminSuperPanel() {
   );
 
   const filteredClients = clients.filter((c) =>
-    (c.name && c.name.toLowerCase().includes(clientSearch.toLowerCase())) ||
-    (c.surname && c.surname.toLowerCase().includes(clientSearch.toLowerCase())) ||
-    (c.phone_number && c.phone_number.includes(clientSearch)) ||
-    (c.wilaya && c.wilaya.toLowerCase().includes(clientSearch.toLowerCase())) ||
-    (c.nin && c.nin.includes(clientSearch)) ||
-    (c.id && c.id.toString().includes(clientSearch))
+    (c.name && c.name.toLowerCase().includes(search.toLowerCase())) ||
+    (c.surname && c.surname.toLowerCase().includes(search.toLowerCase())) ||
+    (c.phone_number && c.phone_number.includes(search)) ||
+    (c.wilaya && c.wilaya.toLowerCase().includes(search.toLowerCase())) ||
+    (c.nin && c.nin.includes(search)) ||
+    (c.id && c.id.toString().includes(search))
   );
+
+  const filteredFournisseurs = fournisseurs.filter((f) =>
+    (f.name && f.name.toLowerCase().includes(search.toLowerCase())) ||
+    (f.surname && f.surname.toLowerCase().includes(search.toLowerCase())) ||
+    (f.phone_number && f.phone_number.includes(search)) ||
+    (f.address && f.address.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const filteredCommercials = commercials.filter((c) =>
+    (c.name && c.name.toLowerCase().includes(search.toLowerCase())) ||
+    (c.surname && c.surname.toLowerCase().includes(search.toLowerCase())) ||
+    (c.phone_number && c.phone_number.includes(search))
+  );
+
+  const filteredMarketers = marketers.filter((m) =>
+    (m.name && m.name.toLowerCase().includes(search.toLowerCase())) ||
+    (m.surname && m.surname.toLowerCase().includes(search.toLowerCase())) ||
+    (m.phone_number && m.phone_number.includes(search))
+  );
+
+  const filteredAccountants = accountants.filter((a) =>
+    (a.name && a.name.toLowerCase().includes(search.toLowerCase())) ||
+    (a.surname && a.surname.toLowerCase().includes(search.toLowerCase())) ||
+    (a.phone_number && a.phone_number.includes(search))
+  );
+
+  const filteredTransactions = transactions.filter((t) => {
+    const matchesSearch =
+      (t.description && t.description.toLowerCase().includes(search.toLowerCase())) ||
+      (t.party_name && t.party_name.toLowerCase().includes(search.toLowerCase())) ||
+      (t.amount && t.amount.toString().includes(search));
+
+    if (transactionFilter === "all") return matchesSearch;
+    return matchesSearch && t.type === transactionFilter;
+  });
+
+  const filteredWholesaleClients = wholesaleClients.filter((c) =>
+    (c.name && c.name.toLowerCase().includes(search.toLowerCase())) ||
+    (c.surname && c.surname.toLowerCase().includes(search.toLowerCase())) ||
+    (c.phone_number && c.phone_number.includes(search)) ||
+    (c.company_name && c.company_name.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const filteredWholesaleOrders = wholesaleOrders.filter((o) => {
+    const client = wholesaleClients.find(c => c.id === o.client_id) || {};
+    const car = cars.find(c => c.id === o.car_id) || {};
+    return (
+      (client.name && client.name.toLowerCase().includes(search.toLowerCase())) ||
+      (client.surname && client.surname.toLowerCase().includes(search.toLowerCase())) ||
+      (car.model && car.model.toLowerCase().includes(search.toLowerCase())) ||
+      (o.order_id && o.order_id.toString().includes(search))
+    );
+  });
+
+  const filteredClientOrders = orders.filter((o) => {
+    const client = clients.find(c => c.id === o.client_id) || {};
+    const car = cars.find(c => c.id === o.car_id) || {};
+    return (
+      (client.name && client.name.toLowerCase().includes(search.toLowerCase())) ||
+      (client.surname && client.surname.toLowerCase().includes(search.toLowerCase())) ||
+      (car.model && car.model.toLowerCase().includes(search.toLowerCase())) ||
+      (o.id && o.id.toString().includes(search)) ||
+      (o.order_id && o.order_id.toString().includes(search))
+    );
+  });
+
+  const filteredCarRequests = carRequests.filter((r) => {
+    const client = clients.find(c => c.id === r.client_id) || {};
+    return (
+      (client.name && client.name.toLowerCase().includes(search.toLowerCase())) ||
+      (client.surname && client.surname.toLowerCase().includes(search.toLowerCase())) ||
+      (r.model && r.model.toLowerCase().includes(search.toLowerCase())) ||
+      (r.color && r.color.toLowerCase().includes(search.toLowerCase())) ||
+      (r.country && r.country.toLowerCase().includes(search.toLowerCase()))
+    );
+  });
+
+  const filteredSupplierItems = supplierItems.filter((i) => {
+    const supplier = fournisseurs.find(s => s.id === i.supplier_id) || {};
+    return (
+      (supplier.name && supplier.name.toLowerCase().includes(search.toLowerCase())) ||
+      (supplier.surname && supplier.surname.toLowerCase().includes(search.toLowerCase())) ||
+      (i.car_id && i.car_id.toString().includes(search))
+    );
+  });
 
   const totalStockValue = cars.reduce((total, car) => {
     const currency = currencyList.find(c => c.id === car.currency_id);
@@ -2166,13 +2253,6 @@ export default function AdminSuperPanel() {
     );
   }
 
-  const filteredTransactions = transactions.filter(transaction => {
-    if (transactionFilter === 'all') return true;
-    if (transactionFilter === 'orders') return transaction.type === 'order';
-    if (transactionFilter === 'wholesale') return transaction.type === 'wholesale';
-    if (transactionFilter === 'suppliers') return transaction.type === 'supplier';
-    return true;
-  });
 
   const handleEditOrder = (order) => {
     setOrderForm({
@@ -2230,7 +2310,19 @@ export default function AdminSuperPanel() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-20 md:ml-28 p-8 space-y-8 min-w-fit overflow-scroll">
+      <main className="flex-1 ml-20 md:ml-28 p-8 space-y-8 min-w-fit overflow-scroll relative">
+        {/* Global Search Bar */}
+        <div className="sticky top-0 z-30 bg-neutral-950/80 backdrop-blur-md pb-4 pt-2 -mt-2">
+          <div className="relative max-w-2xl mx-auto">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher partout (voitures, clients, transactions...)"
+              className="w-full bg-neutral-900/50 border border-neutral-800 pl-12 pr-4 py-3 rounded-xl outline-none focus:border-emerald-500 transition-all shadow-xl text-white"
+            />
+          </div>
+        </div>
         <AnimatePresence mode="wait">
           {tab === "overview" && (
             <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
@@ -2331,7 +2423,6 @@ export default function AdminSuperPanel() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-semibold">Gestion des Voitures</h2>
                 <div className="flex items-center gap-3">
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search car..." className="bg-neutral-800 px-3 py-2 rounded-lg text-sm text-white" />
                   <button onClick={() => handleOpenAdd("Admin")} className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400">Ajouter une voiture</button>
                 </div>
               </div>
@@ -2391,7 +2482,7 @@ export default function AdminSuperPanel() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-semibold">Gestion des Caisses (Commercials)</h2>
               </div>
-              
+
               <div className="grid md:grid-cols-2 gap-6">
                 <Card>
                   <h3 className="text-xl font-semibold mb-4 text-emerald-400">Soldes des Commerciaux</h3>
@@ -2400,18 +2491,18 @@ export default function AdminSuperPanel() {
                   ) : (
                     <div className="space-y-4">
                       {commercialRegisters.map((reg) => {
-                         const comm = commercials.find((c) => c.id === reg.commercial_id);
-                         return (
-                           <div key={reg.id} className="bg-neutral-800/40 p-4 rounded-xl border border-neutral-700 flex justify-between items-center">
-                              <div>
-                                <h4 className="font-semibold text-white">{comm ? `${comm.name} ${comm.surname}` : `ID: ${reg.commercial_id}`}</h4>
-                                <span className="text-sm text-neutral-400">Dernière mise à jour: {new Date(reg.updated_at || reg.created_at || Date.now()).toLocaleDateString()}</span>
-                              </div>
-                              <div className="text-right">
-                                <span className="text-lg font-bold text-emerald-400">{(reg.balance || 0).toLocaleString()} DZD</span>
-                              </div>
-                           </div>
-                         );
+                        const comm = commercials.find((c) => c.id === reg.commercial_id);
+                        return (
+                          <div key={reg.id} className="bg-neutral-800/40 p-4 rounded-xl border border-neutral-700 flex justify-between items-center">
+                            <div>
+                              <h4 className="font-semibold text-white">{comm ? `${comm.name} ${comm.surname}` : `ID: ${reg.commercial_id}`}</h4>
+                              <span className="text-sm text-neutral-400">Dernière mise à jour: {new Date(reg.updated_at || reg.created_at || Date.now()).toLocaleDateString()}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-lg font-bold text-emerald-400">{(reg.balance || 0).toLocaleString()} DZD</span>
+                            </div>
+                          </div>
+                        );
                       })}
                     </div>
                   )}
@@ -2424,37 +2515,37 @@ export default function AdminSuperPanel() {
                   ) : (
                     <div className="space-y-4">
                       {cashRequests.map((req) => {
-                         const comm = commercials.find((c) => c.id === req.commercial_id);
-                         return (
-                           <div key={req.id} className="bg-neutral-800/40 p-4 rounded-xl border border-neutral-700">
-                             <pre className="text-[10px] text-yellow-400 mb-2 overflow-auto bg-black p-2 rounded">{JSON.stringify(req, null, 2)}</pre>
-                             <div className="flex justify-between items-center mb-3">
-                                <div>
-                                  <h4 className="font-semibold text-white">
-                                    {comm ? `${comm.name} ${comm.surname}` : `Commercial ID: ${req.commercial_id}`}
-                                  </h4>
-                                  <span className="text-xs text-neutral-400">Le {new Date(req.created_at).toLocaleDateString()} à {new Date(req.created_at).toLocaleTimeString()}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="text-lg font-bold text-blue-400">{(req.amount || 0).toLocaleString()} DZD</span>
-                                </div>
-                             </div>
-                             <div className="flex justify-end gap-2">
-                                <button 
-                                  onClick={() => handleRejectCashRequest(req.id)}
-                                  className="px-3 py-1.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 text-sm font-medium transition"
-                                >
-                                  Refuser
-                                </button>
-                                <button 
-                                  onClick={() => handleAcceptCashRequest(req.id)}
-                                  className="px-3 py-1.5 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-sm font-medium transition"
-                                >
-                                  Approuver
-                                </button>
-                             </div>
-                           </div>
-                         );
+                        const comm = commercials.find((c) => c.id === req.commercial_id);
+                        return (
+                          <div key={req.id} className="bg-neutral-800/40 p-4 rounded-xl border border-neutral-700">
+                            <pre className="text-[10px] text-yellow-400 mb-2 overflow-auto bg-black p-2 rounded">{JSON.stringify(req, null, 2)}</pre>
+                            <div className="flex justify-between items-center mb-3">
+                              <div>
+                                <h4 className="font-semibold text-white">
+                                  {comm ? `${comm.name} ${comm.surname}` : `Commercial ID: ${req.commercial_id}`}
+                                </h4>
+                                <span className="text-xs text-neutral-400">Le {new Date(req.created_at).toLocaleDateString()} à {new Date(req.created_at).toLocaleTimeString()}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-lg font-bold text-blue-400">{(req.amount || 0).toLocaleString()} DZD</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => handleRejectCashRequest(req.id)}
+                                className="px-3 py-1.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 text-sm font-medium transition"
+                              >
+                                Refuser
+                              </button>
+                              <button
+                                onClick={() => handleAcceptCashRequest(req.id)}
+                                className="px-3 py-1.5 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-sm font-medium transition"
+                              >
+                                Approuver
+                              </button>
+                            </div>
+                          </div>
+                        );
                       })}
                     </div>
                   )}
@@ -2464,142 +2555,140 @@ export default function AdminSuperPanel() {
           )}
 
           {tab === "transactions" && (
-  <motion.div key="transactions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-3xl font-semibold">Gestion des Transactions</h2>
-      <div className="flex gap-2">
-        <select
-          value={transactionFilter}
-          onChange={(e) => setTransactionFilter(e.target.value)}
-          className="bg-neutral-800 px-3 py-2 rounded-lg text-sm"
-        >
-          <option value="all">Toutes les Transactions</option>
-          <option value="orders">Commandes Clients</option>
-          <option value="wholesale">Commandes Gros</option>
-          <option value="suppliers">Paiements Fournisseurs</option>
-        </select>
-      </div>
-    </div>
-    
-    <Card>
-      {loadingTransactions ? (
-        <div className="text-center py-8 text-neutral-400">
-          <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p>Chargement des transactions...</p>
-        </div>
-      ) : (
-        <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-emerald-500/10 rounded-lg p-4 border border-emerald-500/30">
-              <div className="text-sm text-emerald-400 mb-1">Total Revenus</div>
-              <div className="text-2xl font-bold text-emerald-400">
-                {transactionStats.totalRevenue.toLocaleString()} DZD
+            <motion.div key="transactions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Gestion des Transactions</h2>
+                <div className="flex gap-2">
+                  <select
+                    value={transactionFilter}
+                    onChange={(e) => setTransactionFilter(e.target.value)}
+                    className="bg-neutral-800 px-3 py-2 rounded-lg text-sm"
+                  >
+                    <option value="all">Toutes les Transactions</option>
+                    <option value="order">Commandes Clients</option>
+                    <option value="wholesale">Commandes Gros</option>
+                    <option value="supplier">Paiements Fournisseurs</option>
+                  </select>
+                </div>
               </div>
-            </div>
-            <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/30">
-              <div className="text-sm text-red-400 mb-1">Total Dépenses</div>
-              <div className="text-2xl font-bold text-red-400">
-                {transactionStats.totalExpenses.toLocaleString()} DZD
-              </div>
-            </div>
-            <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
-              <div className="text-sm text-blue-400 mb-1">Solde Net</div>
-              <div className="text-2xl font-bold text-blue-400">
-                {transactionStats.netBalance.toLocaleString()} DZD
-              </div>
-            </div>
-            <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/30">
-              <div className="text-sm text-purple-400 mb-1">Transactions</div>
-              <div className="text-2xl font-bold text-purple-400">
-                {transactions.length}
-              </div>
-            </div>
-          </div>
 
-          {/* Transactions Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
-                  <th className="py-3 px-3">ID</th>
-                  <th className="py-3 px-3">Type</th>
-                  <th className="py-3 px-3">Description</th>
-                  <th className="py-3 px-3">Client/Fournisseur</th>
-                  <th className="py-3 px-3">Montant</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="py-8 text-center text-neutral-500">
-                      Aucune transaction trouvée
-                    </td>
-                  </tr>
+              <Card>
+                {loadingTransactions ? (
+                  <div className="text-center py-8 text-neutral-400">
+                    <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p>Chargement des transactions...</p>
+                  </div>
                 ) : (
-                  filteredTransactions.map((transaction, i) => {
-                    const isRevenue = transaction.type === 'order' || transaction.type === 'wholesale';
-                    return (
-                      <tr key={transaction.id || `trans-${i}`} className="border-b border-neutral-800/40 hover:bg-white/5">
-                        <td className="py-3 px-3 font-mono text-emerald-400">
-                          {transaction.id || `T-${i + 1}`}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            transaction.type === 'order' ? 'bg-blue-500/20 text-blue-400' :
-                            transaction.type === 'wholesale' ? 'bg-purple-500/20 text-purple-400' :
-                            'bg-red-500/20 text-red-400'
-                          }`}>
-                            {transaction.type === 'order' ? '🛒 Commande' :
-                             transaction.type === 'wholesale' ? '📦 Gros' :
-                             '💸 Fournisseur'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-sm">
-                          {transaction.description}
-                        </td>
-                        <td className="py-3 px-3 text-sm text-neutral-400">
-                          {transaction.party_name}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`font-semibold ${isRevenue ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {isRevenue ? '+' : '-'}{transaction.amount.toLocaleString()} DZD
-                          </span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            transaction.status === 'paid' ? 'bg-green-500/20 text-green-400' :
-                            transaction.status === 'partial' ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-red-500/20 text-red-400'
-                          }`}>
-                            {transaction.status === 'paid' ? '✅ Payé' :
-                             transaction.status === 'partial' ? '⏳ Partiel' :
-                             '❌ Impayé'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-sm text-neutral-400">
-                          {new Date(transaction.date).toLocaleDateString('fr-FR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </td>
-                      </tr>
-                    );
-                  })
+                  <>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-emerald-500/10 rounded-lg p-4 border border-emerald-500/30">
+                        <div className="text-sm text-emerald-400 mb-1">Total Revenus</div>
+                        <div className="text-2xl font-bold text-emerald-400">
+                          {transactionStats.totalRevenue.toLocaleString()} DZD
+                        </div>
+                      </div>
+                      <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/30">
+                        <div className="text-sm text-red-400 mb-1">Total Dépenses</div>
+                        <div className="text-2xl font-bold text-red-400">
+                          {transactionStats.totalExpenses.toLocaleString()} DZD
+                        </div>
+                      </div>
+                      <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
+                        <div className="text-sm text-blue-400 mb-1">Solde Net</div>
+                        <div className="text-2xl font-bold text-blue-400">
+                          {transactionStats.netBalance.toLocaleString()} DZD
+                        </div>
+                      </div>
+                      <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/30">
+                        <div className="text-sm text-purple-400 mb-1">Transactions</div>
+                        <div className="text-2xl font-bold text-purple-400">
+                          {transactions.length}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Transactions Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                            <th className="py-3 px-3">ID</th>
+                            <th className="py-3 px-3">Type</th>
+                            <th className="py-3 px-3">Description</th>
+                            <th className="py-3 px-3">Client/Fournisseur</th>
+                            <th className="py-3 px-3">Montant</th>
+                            <th className="py-3 px-3">Status</th>
+                            <th className="py-3 px-3">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredTransactions.length === 0 ? (
+                            <tr>
+                              <td colSpan="7" className="py-8 text-center text-neutral-500">
+                                Aucune transaction trouvée
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredTransactions.map((transaction, i) => {
+                              const isRevenue = transaction.type === 'order' || transaction.type === 'wholesale';
+                              return (
+                                <tr key={transaction.id || `trans-${i}`} className="border-b border-neutral-800/40 hover:bg-white/5">
+                                  <td className="py-3 px-3 font-mono text-emerald-400">
+                                    {transaction.id || `T-${i + 1}`}
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    <span className={`px-2 py-1 rounded text-xs ${transaction.type === 'order' ? 'bg-blue-500/20 text-blue-400' :
+                                      transaction.type === 'wholesale' ? 'bg-purple-500/20 text-purple-400' :
+                                        'bg-red-500/20 text-red-400'
+                                      }`}>
+                                      {transaction.type === 'order' ? '🛒 Commande' :
+                                        transaction.type === 'wholesale' ? '📦 Gros' :
+                                          '💸 Fournisseur'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3 text-sm">
+                                    {transaction.description}
+                                  </td>
+                                  <td className="py-3 px-3 text-sm text-neutral-400">
+                                    {transaction.party_name}
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    <span className={`font-semibold ${isRevenue ? 'text-emerald-400' : 'text-red-400'}`}>
+                                      {isRevenue ? '+' : '-'}{transaction.amount.toLocaleString()} DZD
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    <span className={`px-2 py-1 rounded text-xs ${transaction.status === 'paid' ? 'bg-green-500/20 text-green-400' :
+                                      transaction.status === 'partial' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        'bg-red-500/20 text-red-400'
+                                      }`}>
+                                      {transaction.status === 'paid' ? '✅ Payé' :
+                                        transaction.status === 'partial' ? '⏳ Partiel' :
+                                          '❌ Impayé'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3 text-sm text-neutral-400">
+                                    {new Date(transaction.date).toLocaleDateString('fr-FR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </Card>
-  </motion.div>
-)}
+              </Card>
+            </motion.div>
+          )}
 
           {/* ✅ MAIN MODIFICATION: Fournisseurs Tab with Editable Payments & Prices */}
           {tab === "fournisseurs" && (
@@ -2625,7 +2714,7 @@ export default function AdminSuperPanel() {
                       <p className="text-gray-400">Aucun fournisseur trouvé.</p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {fournisseurs.map((f) => (
+                        {filteredFournisseurs.map((f) => (
                           <div
                             key={f.id}
                             className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-purple-500 transition"
@@ -2660,146 +2749,146 @@ export default function AdminSuperPanel() {
                   <h3 className="text-lg font-semibold mb-4">Details Des Fournisseurs</h3>
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {fournisseurs.map((supplier) => {
-                        const items = supplierItems.filter(item => item.supplier_id === supplier.id);
+                      const items = supplierItems.filter(item => item.supplier_id === supplier.id);
 
-                        // 🔥 All totals now calculated in ORIGINAL CURRENCY
-                        const totalOwed = items.reduce((sum, item) => sum + (item.price || 0), 0);
-                        const totalPaid = items.reduce((sum, item) => sum + (item.payment_amount || 0), 0);
-                        const remaining = totalOwed - totalPaid;
+                      // 🔥 All totals now calculated in ORIGINAL CURRENCY
+                      const totalOwed = items.reduce((sum, item) => sum + (item.price || 0), 0);
+                      const totalPaid = items.reduce((sum, item) => sum + (item.payment_amount || 0), 0);
+                      const remaining = totalOwed - totalPaid;
 
-                        return (
-                          <div key={supplier.id} className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-purple-500 transition">
-                            <h3 className="text-lg font-semibold text-purple-400">
-                              {supplier.name} {supplier.surname}
-                            </h3>
-                            <p className="text-sm text-gray-400">📞 {supplier.phone_number || "—"} | 📍 {supplier.address || "—"}</p>
+                      return (
+                        <div key={supplier.id} className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-purple-500 transition">
+                          <h3 className="text-lg font-semibold text-purple-400">
+                            {supplier.name} {supplier.surname}
+                          </h3>
+                          <p className="text-sm text-gray-400">📞 {supplier.phone_number || "—"} | 📍 {supplier.address || "—"}</p>
 
-                            <div className="mt-3 p-3 bg-neutral-800/40 rounded-lg">
-                              <div className="grid grid-cols-3 gap-2 text-xs">
-                                <div className="text-center">
-                                  <div className="text-emerald-400 font-medium">
-                                    {totalOwed.toLocaleString()} {items[0]?.currency_code || ""}
-                                  </div>
-                                  <div className="text-neutral-400">Total</div>
+                          <div className="mt-3 p-3 bg-neutral-800/40 rounded-lg">
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="text-center">
+                                <div className="text-emerald-400 font-medium">
+                                  {totalOwed.toLocaleString()} {items[0]?.currency_code || ""}
                                 </div>
-                                <div className="text-center">
-                                  <div className="text-blue-400 font-medium">
-                                    {totalPaid.toLocaleString()} {items[0]?.currency_code || ""}
-                                  </div>
-                                  <div className="text-neutral-400">Payé</div>
+                                <div className="text-neutral-400">Total</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-blue-400 font-medium">
+                                  {totalPaid.toLocaleString()} {items[0]?.currency_code || ""}
                                 </div>
-                                <div className="text-center">
-                                  <div className={`font-bold ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                    {remaining.toLocaleString()} {items[0]?.currency_code || ""}
-                                  </div>
-                                  <div className="text-neutral-400">Restant</div>
+                                <div className="text-neutral-400">Payé</div>
+                              </div>
+                              <div className="text-center">
+                                <div className={`font-bold ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                  {remaining.toLocaleString()} {items[0]?.currency_code || ""}
                                 </div>
+                                <div className="text-neutral-400">Restant</div>
                               </div>
                             </div>
+                          </div>
 
-                            {/* Editable Items */}
-                            {items.length > 0 && (
-                              <div className="mt-3">
-                                <h4 className="text-sm font-medium text-purple-300 mb-2">Payement des voitures</h4>
+                          {/* Editable Items */}
+                          {items.length > 0 && (
+                            <div className="mt-3">
+                              <h4 className="text-sm font-medium text-purple-300 mb-2">Payement des voitures</h4>
 
-                                <div className="space-y-3">
-                                  {items.map((item) => {
-                                    const car = cars.find(c => c.id === item.car_id) || {};
-                                    const currency = currencyList.find(c => c.id === item.currency_id);
+                              <div className="space-y-3">
+                                {items.map((item) => {
+                                  const car = cars.find(c => c.id === item.car_id) || {};
+                                  const currency = currencyList.find(c => c.id === item.currency_id);
 
-                                    const editablePrice =
-                                      editingSupplierItem[item.supplier_item_id]?.price ??
-                                      item.price ??
-                                      0;
+                                  const editablePrice =
+                                    editingSupplierItem[item.supplier_item_id]?.price ??
+                                    item.price ??
+                                    0;
 
-                                    const editablePaid =
-                                      editingSupplierItem[item.supplier_item_id]?.payment_amount ??
-                                      item.payment_amount ??
-                                      0;
+                                  const editablePaid =
+                                    editingSupplierItem[item.supplier_item_id]?.payment_amount ??
+                                    item.payment_amount ??
+                                    0;
 
-                                    const remainingItem = editablePrice - editablePaid;
+                                  const remainingItem = editablePrice - editablePaid;
 
-                                    return (
-                                      <div key={item.supplier_item_id} className="bg-neutral-800/30 p-3 rounded border border-neutral-700">
-                                        <div className="flex justify-between items-start mb-2">
-                                          <div>
-                                            <span className="font-medium text-emerald-400">{car.model || 'Car'} #{car.id}</span>
-                                            <br />
-                                            <span className="text-xs text-neutral-500">
-                                              {currency?.code.toUpperCase()}
-                                            </span>
-                                          </div>
-
-                                          <div className="text-right">
-                                            <div className="text-xs text-neutral-400">Total</div>
-                                            <div className="font-bold text-emerald-400">
-                                              {editablePrice.toLocaleString()} {currency?.code.toUpperCase()}
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        {/* Inputs */}
-                                        <div className="grid grid-cols-2 gap-2 mt-2">
-                                          <div>
-                                            <label className="text-xs text-neutral-400 block mb-1">
-                                              Prix ({currency?.code.toUpperCase()}):
-                                            </label>
-                                            <input
-                                              type="number"
-                                              min="0"
-                                              value={editablePrice}
-                                              onChange={(e) => {
-                                                const val = parseFloat(e.target.value) || 0;
-                                                setEditingSupplierItem(prev => ({
-                                                  ...prev,
-                                                  [item.supplier_item_id]: {
-                                                    ...prev[item.supplier_item_id],
-                                                    price: val
-                                                  }
-                                                }));
-                                              }}
-                                              className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
-                                            />
-                                          </div>
-
-                                          <div>
-                                            <label className="text-xs text-neutral-400 block mb-1">
-                                              Payé ({currency?.code.toUpperCase()}):
-                                            </label>
-                                            <input
-                                              type="number"
-                                              min="0"
-                                              max={editablePrice}
-                                              value={editablePaid}
-                                              onChange={(e) => {
-                                                const val = parseFloat(e.target.value) || 0;
-                                                setEditingSupplierItem(prev => ({
-                                                  ...prev,
-                                                  [item.supplier_item_id]: {
-                                                    ...prev[item.supplier_item_id],
-                                                    payment_amount: val
-                                                  }
-                                                }));
-                                              }}
-                                              className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
-                                            />
-                                          </div>
-                                        </div>
-
-                                        {/* Remaining */}
-                                        <div className="mt-2 pt-2 border-t border-neutral-700 flex justify-between">
-                                          <span className="text-xs text-neutral-400">Restant:</span>
-                                          <span className={`font-bold ${remainingItem > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                            {remainingItem > 0
-                                              ? `${remainingItem.toLocaleString()} ${currency?.code.toUpperCase()}`
-                                              : '✅ Paid'}
+                                  return (
+                                    <div key={item.supplier_item_id} className="bg-neutral-800/30 p-3 rounded border border-neutral-700">
+                                      <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                          <span className="font-medium text-emerald-400">{car.model || 'Car'} #{car.id}</span>
+                                          <br />
+                                          <span className="text-xs text-neutral-500">
+                                            {currency?.code.toUpperCase()}
                                           </span>
                                         </div>
 
-                                        {/* Save / Cancel */}
-                                        <div className="flex justify-end gap-2 mt-2">
-                                          {(editingSupplierItem[item.supplier_item_id]?.price !== item.price ||
-                                            editingSupplierItem[item.supplier_item_id]?.payment_amount !== item.payment_amount) && (
+                                        <div className="text-right">
+                                          <div className="text-xs text-neutral-400">Total</div>
+                                          <div className="font-bold text-emerald-400">
+                                            {editablePrice.toLocaleString()} {currency?.code.toUpperCase()}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Inputs */}
+                                      <div className="grid grid-cols-2 gap-2 mt-2">
+                                        <div>
+                                          <label className="text-xs text-neutral-400 block mb-1">
+                                            Prix ({currency?.code.toUpperCase()}):
+                                          </label>
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            value={editablePrice}
+                                            onChange={(e) => {
+                                              const val = parseFloat(e.target.value) || 0;
+                                              setEditingSupplierItem(prev => ({
+                                                ...prev,
+                                                [item.supplier_item_id]: {
+                                                  ...prev[item.supplier_item_id],
+                                                  price: val
+                                                }
+                                              }));
+                                            }}
+                                            className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className="text-xs text-neutral-400 block mb-1">
+                                            Payé ({currency?.code.toUpperCase()}):
+                                          </label>
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            max={editablePrice}
+                                            value={editablePaid}
+                                            onChange={(e) => {
+                                              const val = parseFloat(e.target.value) || 0;
+                                              setEditingSupplierItem(prev => ({
+                                                ...prev,
+                                                [item.supplier_item_id]: {
+                                                  ...prev[item.supplier_item_id],
+                                                  payment_amount: val
+                                                }
+                                              }));
+                                            }}
+                                            className="w-full bg-neutral-700 text-white text-sm px-2 py-1 rounded"
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Remaining */}
+                                      <div className="mt-2 pt-2 border-t border-neutral-700 flex justify-between">
+                                        <span className="text-xs text-neutral-400">Restant:</span>
+                                        <span className={`font-bold ${remainingItem > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                          {remainingItem > 0
+                                            ? `${remainingItem.toLocaleString()} ${currency?.code.toUpperCase()}`
+                                            : '✅ Paid'}
+                                        </span>
+                                      </div>
+
+                                      {/* Save / Cancel */}
+                                      <div className="flex justify-end gap-2 mt-2">
+                                        {(editingSupplierItem[item.supplier_item_id]?.price !== item.price ||
+                                          editingSupplierItem[item.supplier_item_id]?.payment_amount !== item.payment_amount) && (
                                             <button
                                               onClick={() => saveSupplierItemEdit(item)}
                                               className="text-xs px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500"
@@ -2808,47 +2897,47 @@ export default function AdminSuperPanel() {
                                             </button>
                                           )}
 
-                                          {editingSupplierItem[item.supplier_item_id] && (
-                                            <button
-                                              onClick={() => {
-                                                setEditingSupplierItem(prev => {
-                                                  const updated = { ...prev };
-                                                  delete updated[item.supplier_item_id];
-                                                  return updated;
-                                                });
-                                              }}
-                                              className="text-xs px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded"
-                                            >
-                                              Annulé
-                                            </button>
-                                          )}
-                                        </div>
+                                        {editingSupplierItem[item.supplier_item_id] && (
+                                          <button
+                                            onClick={() => {
+                                              setEditingSupplierItem(prev => {
+                                                const updated = { ...prev };
+                                                delete updated[item.supplier_item_id];
+                                                return updated;
+                                              });
+                                            }}
+                                            className="text-xs px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded"
+                                          >
+                                            Annulé
+                                          </button>
+                                        )}
                                       </div>
-                                    );
-                                  })}
-                                </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            )}
-
-                            {/* Buttons */}
-                            <div className="flex justify-end mt-3 space-x-2">
-                              <button
-                                onClick={() => handleEditFournisseur(supplier)}
-                                className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-xs"
-                              >
-                                Modifier
-                              </button>
-
-                              <button
-                                onClick={() => handleDeleteFournisseur(supplier.id)}
-                                className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs"
-                              >
-                                Supprimer
-                              </button>
                             </div>
+                          )}
+
+                          {/* Buttons */}
+                          <div className="flex justify-end mt-3 space-x-2">
+                            <button
+                              onClick={() => handleEditFournisseur(supplier)}
+                              className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-xs"
+                            >
+                              Modifier
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteFournisseur(supplier.id)}
+                              className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs"
+                            >
+                              Supprimer
+                            </button>
                           </div>
-                        );
-                      })}
+                        </div>
+                      );
+                    })}
 
                   </div>
                 </Card>
@@ -2974,7 +3063,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {commercials.map((cm) => {
+                      {filteredCommercials.map((cm) => {
                         const soldCars = cars.filter(car => car.commercial_id === cm.id).length;
                         return (
                           <tr
@@ -2995,11 +3084,11 @@ export default function AdminSuperPanel() {
                               {new Date(cm.created_at).toLocaleDateString()}
                             </td>
                             <td className="py-3 px-3 text-sm text-neutral-400">
-                              <button 
-                              onClick={() => {handledeleteCommercial(cm.id)}}
-                              className="text-red-500 hover:text-red-300"
+                              <button
+                                onClick={() => { handledeleteCommercial(cm.id) }}
+                                className="text-red-500 hover:text-red-300"
                               >
-                               Supprimer
+                                Supprimer
                               </button>
                             </td>
                           </tr>
@@ -3034,7 +3123,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {marketers.map((marketer) => (
+                      {filteredMarketers.map((marketer) => (
                         <tr key={marketer.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
                           <td className="py-3 px-3 font-mono text-emerald-400">{marketer.id}</td>
                           <td className="py-3 px-3">{marketer.name} {marketer.surname}</td>
@@ -3076,7 +3165,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {accountants.map((accountant) => (
+                      {filteredAccountants.map((accountant) => (
                         <tr key={accountant.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
                           <td className="py-3 px-3 font-mono text-emerald-400">{accountant.id}</td>
                           <td className="py-3 px-3">{accountant.name} {accountant.surname}</td>
@@ -3096,391 +3185,382 @@ export default function AdminSuperPanel() {
             </motion.div>
           )}
           {tab === "wholesale_clients" && (
-                      <motion.div key="wholesale_clients" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                        <div className="flex items-center justify-between mb-6">
-                          <h2 className="text-3xl font-semibold">Clients Gros</h2>
-                          <button 
-                            onClick={() => { 
-                              setWholesaleClientForm({ name: "", surname: "", phone_number: "", address: "", company_name: "" }); 
-                              setShowAddWholesaleClient(true); 
-                            }} 
-                            className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
-                          >
-                            Ajouter un client gros +
-                          </button>
-                        </div>
-                        <Card>
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
-                                  <th className="py-3 px-3">ID</th>
-                                  <th className="py-3 px-3">Nom</th>
-                                  <th className="py-3 px-3">Entreprise</th>
-                                  <th className="py-3 px-3">Num Tel</th>
-                                  <th className="py-3 px-3">Address</th>
-                                  <th className="py-3 px-3">Crée</th>
-                                  <th className="py-3 px-3 text-right">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {wholesaleClients.map((client, i) => (
-                                  <tr key={client.id ?? `wclient-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
-                                    <td className="py-3 px-3 font-mono text-emerald-400">{client.id}</td>
-                                    <td className="py-3 px-3">{client.name} {client.surname}</td>
-                                    <td className="py-3 px-3 text-sm font-medium text-purple-400">{client.company_name || '—'}</td>
-                                    <td className="py-3 px-3">{client.phone_number}</td>
-                                    <td className="py-3 px-3 text-sm text-neutral-400">{client.address}</td>
-                                    <td className="py-3 px-3 text-sm text-neutral-400">
-                                      {new Date(client.created_at).toLocaleDateString()}
-                                    </td>
-                                    <td className="py-3 px-3 text-right space-x-2">
-                                      <button 
-                                        onClick={() => { 
-                                          setWholesaleClientForm(client); 
-                                          setShowAddWholesaleClient(true); 
-                                        }} 
-                                        className="text-blue-400 hover:text-blue-300"
-                                      >
-                                        Modifier
-                                      </button>
-                                      <button 
-                                        onClick={() => handleDeleteWholesaleClient(client.id)} 
-                                        className="text-red-400 hover:text-red-300"
-                                      >
-                                        Supprimer
-                                      </button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </Card>
-                      </motion.div>
-                    )}
-          
-                    {tab === "wholesale_orders" && (
-                      <motion.div key="wholesale_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                        <div className="flex items-center justify-between mb-6">
-                          <h2 className="text-3xl font-semibold">Gros Order</h2>
-                          <button 
-                            onClick={() => { 
-                              setWholesaleOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping", payment_amount: 0, status: true }); 
-                              setShowAddWholesaleOrder(true); 
-                            }} 
-                            className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
-                          >
-                            Ajouter un Ordre de Gros +
-                          </button>
-                        </div>
-                        <Card>
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
-                                  <th className="py-3 px-4 text-left">ID Commande</th>
-                                  <th className="py-3 px-4 text-left">ID Client</th>
-                                  <th className="py-3 px-4 text-left">ID Voiture</th>
-                                  <th className="py-3 px-4 text-left">Qté</th>
-                                  <th className="py-3 px-4 text-left">Statut Livraison</th>
-                                  <th className="py-3 px-4 text-left">Total</th>
-                                  <th className="py-3 px-4 text-left">Payé</th>
-                                  <th className="py-3 px-4 text-center items-center justify-center">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {wholesaleOrders.map((order, i) => {
-                                  const client = wholesaleClients.find(c => c.id === order.client_id) || {};
-                                  const car = cars.find(c => c.id === order.car_id) || {};
-                                  const currency = currencyList.find(c => c.id === car.currency_id);
-                                  const rate = currency?.exchange_rate_to_dzd || 1;
-                                  const value = car.price * order.quantity * rate;
-                                  return (
-                                    <tr key={order.id ?? `worder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
-                                      <td className="py-3 px-3 font-mono text-emerald-400">{order.order_id}</td>
-                                      <td className="py-3 px-3">
-                                        {client.name} {client.surname}
-                                        <div className="text-xs text-purple-400">{client.company_name}</div>
-                                      </td>
-                                      <td className="py-3 px-3">
-                                        {car.model || '—'} #{car.id}
-                                        <div className="text-xs text-neutral-500">{car.color} · {car.year}</div>
-                                      </td>
-                                      <td className="py-3 px-3">{order.quantity}</td>
-                                      <td className="py-3 px-3">
-                                        <span className={`px-2 py-1 rounded text-xs ${
-                                          order.delivery_status === 'showroom' ? 'bg-green-500/20 text-green-400' :
-                                          order.delivery_status === 'arrived' ? 'bg-blue-500/20 text-blue-400' :
-                                          'bg-yellow-500/20 text-yellow-400'
-                                        }`}>
-                                          {order.delivery_status}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-3 text-purple-400">{value} DZD</td>
-                                      <td className="py-3 px-3 text-blue-400">{order.payment_amount} DZD</td>
-                                      <td className="py-3 px-3 max-md:flex max-md:flex-col max-md:items-center max-md:justify-end text-center space-x-2 max-md:gap-2">
-                                        <button onClick={() => handleEditWholesaleOrder(order)} className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded mr-1">✏️</button>
-                                        <button onClick={() => handleDeleteWholesaleOrder(order.order_id)} className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded">🗑️</button>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </Card>
-                      </motion.div>
-                    )}
-                    {tab === "clients_orders" && (
-                      <motion.div key="clients_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                        <div className="flex items-center justify-between mb-6">
-                          <h2 className="text-3xl font-semibold">Ordre Client</h2>
-                          <button
-                            onClick={() => {
-                              setOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" });
-                              setShowAddOrder(true);
-                            }}
-                            className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
-                          >
-                            Ajouter un Ordre +
-                          </button>
-                        </div>
-                        <Card>
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
-                                  <th className="py-3 px-3">ID</th>
-                                  <th className="py-3 px-3">Client</th>
-                                  <th className="py-3 px-3">Num Tel</th>
-                                  <th className="py-3 px-3">Address</th>
-                                  <th className="py-3 px-3">Voiture</th>
-                                  <th className="py-3 px-3">Total (DZD)</th>
-                                  <th className="py-3 px-3">Payé (DZD)</th>
-                                  <th className="py-3 px-3">Status</th>
-                                  <th className="py-3 px-3">Crée</th>
-                                  <th className="py-3 px-3 text-right">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {orders.map((order, i) => {
-                                  const client = clients.find(c => c.id === order.client_id) || {};
-                                  const car = cars.find(c => c.id === order.car_id) || {};
-                                  const currency = currencyList.find(c => c.id === car.currency_id);
-                                  const rate = currency?.exchange_rate_to_dzd || 1;
-                                  const unitPrice = car.price ? (car.price * rate) : (order.price_dzd || 0);
-                                  const totalValue = unitPrice ;
-                                  const paid = order.payment_amount || 0;
-                                  return (
-                                    <tr key={(order.id || order.order_id) ?? `corder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
-                                      <td className="py-3 px-3 font-mono text-emerald-400">{order.id || order.order_id}</td>
-                                      <td className="py-3 px-3">
-                                        {client.name} {client.surname}
-                                        <div className="text-xs text-neutral-400">{client.company_name || ''}</div>
-                                      </td>
-                                      <td className="py-3 px-3 text-sm text-neutral-400">{client.phone_number || order.client_phone || '—'}</td>
-                                      <td className="py-3 px-3 text-xs text-neutral-400">{client.address || '—'}</td>
-                                      <td className="py-3 px-3">
-                                        {car.model || '—'} #{car.id || order.car_id}
-                                        <div className="text-xs text-neutral-500">{car.color} · {car.year}</div>
-                                      </td>
-                                      <td className="py-3 px-3 text-purple-400">{Number(totalValue || 0).toLocaleString()}</td>
-                                      <td className="py-3 px-3 text-blue-400">{Number(paid).toLocaleString()}</td>
-                                      <td className="py-3 px-3">
-                                        <span className={`px-2 py-1 rounded text-xs ${
-                                          order.delivery_status === 'showroom' ? 'bg-green-500/20 text-green-400' :
-                                          order.delivery_status === 'arrived' ? 'bg-blue-500/20 text-blue-400' :
-                                          'bg-yellow-500/20 text-yellow-400'
-                                        }`}>
-                                          {order.delivery_status}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-3 text-sm text-neutral-400">
-                                        {order.created_at ? new Date(order.created_at).toLocaleString() : '—'}
-                                      </td>
-                                      <td className="py-3 px-3 text-right space-x-2">
-                                        <button onClick={() => handleEditOrder(order)}
-                                        className="text-blue-400">Modifier</button>
-                                        <button
-                                          onClick={() => handleDeleteOrder(order.id || order.order_id)}
-                                          className="text-red-400 hover:text-red-300"
-                                        >
-                                          Supprimer
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </Card>
-                      </motion.div>
-                    )}
+            <motion.div key="wholesale_clients" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Clients Gros</h2>
+                <button
+                  onClick={() => {
+                    setWholesaleClientForm({ name: "", surname: "", phone_number: "", address: "", company_name: "" });
+                    setShowAddWholesaleClient(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                >
+                  Ajouter un client gros +
+                </button>
+              </div>
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Nom</th>
+                        <th className="py-3 px-3">Entreprise</th>
+                        <th className="py-3 px-3">Num Tel</th>
+                        <th className="py-3 px-3">Address</th>
+                        <th className="py-3 px-3">Crée</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredWholesaleClients.map((client, i) => (
+                        <tr key={client.id ?? `wclient-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                          <td className="py-3 px-3 font-mono text-emerald-400">{client.id}</td>
+                          <td className="py-3 px-3">{client.name} {client.surname}</td>
+                          <td className="py-3 px-3 text-sm font-medium text-purple-400">{client.company_name || '—'}</td>
+                          <td className="py-3 px-3">{client.phone_number}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">{client.address}</td>
+                          <td className="py-3 px-3 text-sm text-neutral-400">
+                            {new Date(client.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-3 text-right space-x-2">
+                            <button
+                              onClick={() => {
+                                setWholesaleClientForm(client);
+                                setShowAddWholesaleClient(true);
+                              }}
+                              className="text-blue-400 hover:text-blue-300"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              onClick={() => handleDeleteWholesaleClient(client.id)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              Supprimer
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {tab === "wholesale_orders" && (
+            <motion.div key="wholesale_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Gros Order</h2>
+                <button
+                  onClick={() => {
+                    setWholesaleOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping", payment_amount: 0, status: true });
+                    setShowAddWholesaleOrder(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                >
+                  Ajouter un Ordre de Gros +
+                </button>
+              </div>
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-3 px-4 text-left">ID Commande</th>
+                        <th className="py-3 px-4 text-left">ID Client</th>
+                        <th className="py-3 px-4 text-left">ID Voiture</th>
+                        <th className="py-3 px-4 text-left">Qté</th>
+                        <th className="py-3 px-4 text-left">Statut Livraison</th>
+                        <th className="py-3 px-4 text-left">Total</th>
+                        <th className="py-3 px-4 text-left">Payé</th>
+                        <th className="py-3 px-4 text-center items-center justify-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredWholesaleOrders.map((order, i) => {
+                        const client = wholesaleClients.find(c => c.id === order.client_id) || {};
+                        const car = cars.find(c => c.id === order.car_id) || {};
+                        const currency = currencyList.find(c => c.id === car.currency_id);
+                        const rate = currency?.exchange_rate_to_dzd || 1;
+                        const value = car.price * order.quantity * rate;
+                        return (
+                          <tr key={order.id ?? `worder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                            <td className="py-3 px-3 font-mono text-emerald-400">{order.order_id}</td>
+                            <td className="py-3 px-3">
+                              {client.name} {client.surname}
+                              <div className="text-xs text-purple-400">{client.company_name}</div>
+                            </td>
+                            <td className="py-3 px-3">
+                              {car.model || '—'} #{car.id}
+                              <div className="text-xs text-neutral-500">{car.color} · {car.year}</div>
+                            </td>
+                            <td className="py-3 px-3">{order.quantity}</td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2 py-1 rounded text-xs ${order.delivery_status === 'showroom' ? 'bg-green-500/20 text-green-400' :
+                                order.delivery_status === 'arrived' ? 'bg-blue-500/20 text-blue-400' :
+                                  'bg-yellow-500/20 text-yellow-400'
+                                }`}>
+                                {order.delivery_status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-purple-400">{value} DZD</td>
+                            <td className="py-3 px-3 text-blue-400">{order.payment_amount} DZD</td>
+                            <td className="py-3 px-3 max-md:flex max-md:flex-col max-md:items-center max-md:justify-end text-center space-x-2 max-md:gap-2">
+                              <button onClick={() => handleEditWholesaleOrder(order)} className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded mr-1">✏️</button>
+                              <button onClick={() => handleDeleteWholesaleOrder(order.order_id)} className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded">🗑️</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+          {tab === "clients_orders" && (
+            <motion.div key="clients_orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-semibold">Ordre Client</h2>
+                <button
+                  onClick={() => {
+                    setOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" });
+                    setShowAddOrder(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+                >
+                  Ajouter un Ordre +
+                </button>
+              </div>
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Client</th>
+                        <th className="py-3 px-3">Num Tel</th>
+                        <th className="py-3 px-3">Address</th>
+                        <th className="py-3 px-3">Voiture</th>
+                        <th className="py-3 px-3">Total (DZD)</th>
+                        <th className="py-3 px-3">Payé (DZD)</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3">Crée</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredClientOrders.map((order, i) => {
+                        const client = clients.find(c => c.id === order.client_id) || {};
+                        const car = cars.find(c => c.id === order.car_id) || {};
+                        const currency = currencyList.find(c => c.id === car.currency_id);
+                        const rate = currency?.exchange_rate_to_dzd || 1;
+                        const unitPrice = car.price ? (car.price * rate) : (order.price_dzd || 0);
+                        const totalValue = unitPrice;
+                        const paid = order.payment_amount || 0;
+                        return (
+                          <tr key={(order.id || order.order_id) ?? `corder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+                            <td className="py-3 px-3 font-mono text-emerald-400">{order.id || order.order_id}</td>
+                            <td className="py-3 px-3">
+                              {client.name} {client.surname}
+                              <div className="text-xs text-neutral-400">{client.company_name || ''}</div>
+                            </td>
+                            <td className="py-3 px-3 text-sm text-neutral-400">{client.phone_number || order.client_phone || '—'}</td>
+                            <td className="py-3 px-3 text-xs text-neutral-400">{client.address || '—'}</td>
+                            <td className="py-3 px-3">
+                              {car.model || '—'} #{car.id || order.car_id}
+                              <div className="text-xs text-neutral-500">{car.color} · {car.year}</div>
+                            </td>
+                            <td className="py-3 px-3 text-purple-400">{Number(totalValue || 0).toLocaleString()}</td>
+                            <td className="py-3 px-3 text-blue-400">{Number(paid).toLocaleString()}</td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2 py-1 rounded text-xs ${order.delivery_status === 'showroom' ? 'bg-green-500/20 text-green-400' :
+                                order.delivery_status === 'arrived' ? 'bg-blue-500/20 text-blue-400' :
+                                  'bg-yellow-500/20 text-yellow-400'
+                                }`}>
+                                {order.delivery_status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-sm text-neutral-400">
+                              {order.created_at ? new Date(order.created_at).toLocaleString() : '—'}
+                            </td>
+                            <td className="py-3 px-3 text-right space-x-2">
+                              <button onClick={() => handleEditOrder(order)}
+                                className="text-blue-400">Modifier</button>
+                              <button
+                                onClick={() => handleDeleteOrder(order.id || order.order_id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                Supprimer
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
           {tab === "car_requests" && (
-  <motion.div>
-    <div className="flex justify-between items-center mb-6">
-      <h2 className="text-3xl">Requetes</h2>
-      {/* Optional: Add button to create request */}
-    </div>
-    <Card>
-      <table className="w-full">
-        <thead>...</thead>
-        <tbody>
-          {carRequests.map(req => {
-            const client = clients.find(c => c.id === req.client_id) || {};
-            return (
-              <tr key={req.id}>
-                <td>{req.id}</td>
-                <td>{client.name} {client.surname}</td>
-                <td>{req.model} ({req.color})</td>
-                <td>{req.year}</td>
-                <td>{req.country}</td>
-                <td>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    req.status ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    {req.status ? 'Accepted' : 'Pending'}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </Card>
-  </motion.div>
-)}
+            <motion.div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl">Requetes</h2>
+                {/* Optional: Add button to create request */}
+              </div>
+              <Card>
+                <table className="w-full">
+                  <thead>...</thead>
+                  <tbody>
+                    {filteredCarRequests.map(req => {
+                      const client = clients.find(c => c.id === req.client_id) || {};
+                      return (
+                        <tr key={req.id}>
+                          <td>{req.id}</td>
+                          <td>{client.name} {client.surname}</td>
+                          <td>{req.model} ({req.color})</td>
+                          <td>{req.year}</td>
+                          <td>{req.country}</td>
+                          <td>
+                            <span className={`px-2 py-1 rounded text-xs ${req.status ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                              }`}>
+                              {req.status ? 'Accepted' : 'Pending'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </Card>
+            </motion.div>
+          )}
 
-{tab === "social_media" && (
-  <motion.div
-    key="socialmedia"
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-    transition={{ duration: 0.4 }}
-  >
-    <h1 className="text-3xl font-main mb-6">Liens Sociaux</h1>
-    <Card>
-      <form onSubmit={SubmitSocials} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">Facebook</label>
-          <input
-            type="text"
-            value={socialsform.facebook}
-            onChange={(e) => setSocialsform({...socialsform, facebook: e.target.value})}
-            className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Instagram</label>
-          <input
-            type="text"
-            value={socialsform.instagram}
-            onChange={(e) => setSocialsform({...socialsform, instagram: e.target.value})}
-            className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Whatsapp</label>
-          <input
-            type="text"
-            value={socialsform.whatsapp}
-            onChange={(e) => setSocialsform({...socialsform, twitter: e.target.value})}
-            className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
-          />
-        </div>
-        <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
-          Mettre à jour
-        </button>
-      </form>
-    </Card>
-  </motion.div>
-)}
+          {tab === "social_media" && (
+            <motion.div
+              key="socialmedia"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+            >
+              <h1 className="text-3xl font-main mb-6">Liens Sociaux</h1>
+              <Card>
+                <form onSubmit={SubmitSocials} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Facebook</label>
+                    <input
+                      type="text"
+                      value={socialsform.facebook}
+                      onChange={(e) => setSocialsform({ ...socialsform, facebook: e.target.value })}
+                      className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Instagram</label>
+                    <input
+                      type="text"
+                      value={socialsform.instagram}
+                      onChange={(e) => setSocialsform({ ...socialsform, instagram: e.target.value })}
+                      className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Whatsapp</label>
+                    <input
+                      type="text"
+                      value={socialsform.whatsapp}
+                      onChange={(e) => setSocialsform({ ...socialsform, twitter: e.target.value })}
+                      className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
+                    />
+                  </div>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
+                    Mettre à jour
+                  </button>
+                </form>
+              </Card>
+            </motion.div>
+          )}
 
-{tab === "supplierItems" && (
-  <motion.div
-    key="supplierItems"
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-    transition={{ duration: 0.4 }}
-  >
-    <h1 className="text-3xl font-main mb-6">Éléments Fournisseurs</h1>
-    <button
-      onClick={() => handleEditOrAddSupplierItem()}
-      className="mb-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded"
-    >
-      ➕ Ajouter Élément
-    </button>
-    <Card>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-gray-400 border-b border-neutral-700">
-              <th className="py-3 px-4 text-left">ID Voiture</th>
-              <th className="py-3 px-4 text-left">ID Fournisseur</th>
-              <th className="py-3 px-4 text-left">Prix (Devise)</th>
-              <th className="py-3 px-4 text-left">Prix (DZD)</th>
-              <th className="py-3 px-4 text-left">Payé (DZD)</th>
-              <th className="py-3 px-4 text-left">Reste (DZD)</th>
-              <th className="py-3 px-4 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {supplierItems.map((item) => {
-              const currency = currencyList.find(c => c.id === item.currency_id);
-              const rate = currency?.exchange_rate_to_dzd || 1;
-              const priceDZD = (item.price || 0) * rate;
-              const paid = item.payment_amount || 0;
-              const remaining = priceDZD - paid;
+          {tab === "supplierItems" && (
+            <motion.div
+              key="supplierItems"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+            >
+              <h1 className="text-3xl font-main mb-6">Éléments Fournisseurs</h1>
+              <button
+                onClick={() => handleEditOrAddSupplierItem()}
+                className="mb-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded"
+              >
+                ➕ Ajouter Élément
+              </button>
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-gray-400 border-b border-neutral-700">
+                        <th className="py-3 px-4 text-left">ID Voiture</th>
+                        <th className="py-3 px-4 text-left">ID Fournisseur</th>
+                        <th className="py-3 px-4 text-left">Prix (Devise)</th>
+                        <th className="py-3 px-4 text-left">Prix (DZD)</th>
+                        <th className="py-3 px-4 text-left">Payé (DZD)</th>
+                        <th className="py-3 px-4 text-left">Reste (DZD)</th>
+                        <th className="py-3 px-4 text-left">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredSupplierItems.map((item) => {
+                        const currency = currencyList.find(c => c.id === item.currency_id);
+                        const rate = currency?.exchange_rate_to_dzd || 1;
+                        const priceDZD = (item.price || 0) * rate;
+                        const paid = item.payment_amount || 0;
+                        const remaining = priceDZD - paid;
 
-              const editablePrice = editingSupplierItem[item.supplier_item_id]?.price ?? item.price ?? 0;
-              const editablePaid = editingSupplierItem[item.supplier_item_id]?.payment_amount ?? item.payment_amount ?? 0;
-              const editablePriceDZD = editablePrice * rate;
-              const editableRemaining = editablePriceDZD - editablePaid;
+                        const editablePrice = editingSupplierItem[item.supplier_item_id]?.price ?? item.price ?? 0;
+                        const editablePaid = editingSupplierItem[item.supplier_item_id]?.payment_amount ?? item.payment_amount ?? 0;
+                        const editablePriceDZD = editablePrice * rate;
+                        const editableRemaining = editablePriceDZD - editablePaid;
 
-              return (
-                <tr key={item.supplier_item_id} className="border-b border-neutral-800/50 hover:bg-white/5">
-                  <td className="py-4 px-4">{item.car_id}</td>
-                  <td className="py-4 px-4">{getSupplierName(item.supplier_id)}</td>
-                  <td className="py-4 px-4">{(item.price || 0).toLocaleString()} {currency?.code.toUpperCase() || 'N/A'}</td>
-                  <td className="py-4 px-4">{priceDZD.toLocaleString()} DZD</td>
-                  <td className="py-4 px-4">{paid.toLocaleString()} DZD</td>
-                  <td className={`py-4 px-4 font-medium ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                    {remaining > 0 ? `${remaining.toLocaleString()} DZD` : '✅ Payé'}
-                  </td>
-                  <td className="py-4 px-4">
+                        return (
+                          <tr key={item.supplier_item_id} className="border-b border-neutral-800/50 hover:bg-white/5">
+                            <td className="py-4 px-4">{item.car_id}</td>
+                            <td className="py-4 px-4">{getSupplierName(item.supplier_id)}</td>
+                            <td className="py-4 px-4">{(item.price || 0).toLocaleString()} {currency?.code.toUpperCase() || 'N/A'}</td>
+                            <td className="py-4 px-4">{priceDZD.toLocaleString()} DZD</td>
+                            <td className="py-4 px-4">{paid.toLocaleString()} DZD</td>
+                            <td className={`py-4 px-4 font-medium ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                              {remaining > 0 ? `${remaining.toLocaleString()} DZD` : '✅ Payé'}
+                            </td>
+                            <td className="py-4 px-4">
 
-                        <button
-                          onClick={() => handleDeleteSupplierItem(item.supplier_item_id)}
-                          className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded"
-                        >
-                          🗑️
-                        </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </Card>
-  </motion.div>
-)}
+                              <button
+                                onClick={() => handleDeleteSupplierItem(item.supplier_item_id)}
+                                className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded"
+                              >
+                                🗑️
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
+          )}
 
           {tab === "clients" && (
             <motion.div key="clients" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-semibold">Gestion des Clients</h2>
                 <div className="flex items-center gap-3">
-                  <input
-                    value={clientSearch}
-                    onChange={(e) => setClientSearch(e.target.value)}
-                    placeholder="Rechercher un client..."
-                    className="bg-neutral-800 px-3 py-2 rounded-lg text-sm text-white"
-                  />
                   <button
                     onClick={() => {
                       setClientForm({ id: null, name: "", surname: "", nin: "", passport_number: "", phone_number: "", password: "", wilaya: "", address: "" });
@@ -3608,465 +3688,465 @@ export default function AdminSuperPanel() {
 
         </AnimatePresence>
 
-<Modal 
-  open={showAddOrder}
-  onClose={() => setShowAddOrder(false)}
-  title="Ajouter une Commande"
->
-  <form onSubmit={handleOrderSubmit} className="space-y-4">
-    {/* Client Selection */}
-    <div>
-      <label className="block text-sm font-medium text-neutral-300 mb-2">
-        Client *
-      </label>
-      <select
-        value={orderForm.client_id}
-        onChange={(e) => setOrderForm({ ...orderForm, client_id: e.target.value })}
-        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-        required
-      >
-        <option value="">Sélectionner un client</option>
-        {clients.map((client) => (
-          <option key={client.id} value={client.id}>
-            {client.name} {client.surname} - {client.phone_number}
-          </option>
-        ))}
-      </select>
-    </div>
-
-{/* Car Selection */}
-<div>
-  <label className="block text-sm font-medium text-neutral-300 mb-2">
-    Voiture *
-  </label>
-  <select
-    value={orderForm.car_id}
-    onChange={(e) => {
-      const selectedCar = cars.find(c => c.id === Number(e.target.value));
-      if (selectedCar) {
-        const priceInDZD = convertToDZD(selectedCar.price, selectedCar.currency);
-        setOrderForm({ 
-          ...orderForm, 
-          car_id: e.target.value,
-          payment_amount: priceInDZD
-        });
-      }
-    }}
-    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-    required
-  >
-    <option value="">Sélectionner une voiture</option>
-    {cars.map((car) => {
-      const priceInDZD = convertToDZD(car.price, car.currency);
-      return (
-        <option key={car.id} value={car.id}>
-          {car.model} - {car.color} ({car.year}) - {priceInDZD?.toLocaleString()} DZD
-        </option>
-      );
-    })}
-  </select>
-</div>
-    {/* Car Color */}
-    <div>
-      <label className="block text-sm font-medium text-neutral-300 mb-2">
-        Couleur de la voiture *
-      </label>
-      <input
-        type="text"
-        value={orderForm.car_color}
-        onChange={(e) => setOrderForm({ ...orderForm, car_color: e.target.value })}
-        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-        placeholder="Ex: Rouge, Noir, Blanc..."
-        required
-      />
-    </div>
-
-    {/* Delivery Status */}
-    <div>
-      <label className="block text-sm font-medium text-neutral-300 mb-2">
-        Statut de livraison *
-      </label>
-      <select
-        value={orderForm.delivery_status}
-        onChange={(e) => setOrderForm({ ...orderForm, delivery_status: e.target.value })}
-        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-        required
-      >
-        <option value="shipping">En cours de livraison</option>
-        <option value="delivered">Livrée</option>
-        <option value="pending">En attente</option>
-        <option value="cancelled">Annulée</option>
-      </select>
-    </div>
-
-    {/* Payment Amount */}
-    <div>
-      <label className="block text-sm font-medium text-neutral-300 mb-2">
-        Montant du paiement *
-      </label>
-      <input
-        type="number"
-        value={orderForm.payment_amount}
-        onChange={(e) => setOrderForm({ ...orderForm, payment_amount: Number(e.target.value) })}
-        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-        placeholder="0"
-        min="0"
-        required
-      />
-      <p className="text-xs text-neutral-500 mt-1">Montant en DZD</p>
-    </div>
-
-    {/* Status */}
-    <div className="flex items-center gap-2">
-      <input
-        type="checkbox"
-        id="orderStatus"
-        checked={orderForm.status}
-        onChange={(e) => setOrderForm({ ...orderForm, status: e.target.checked })}
-        className="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
-      />
-      <label htmlFor="orderStatus" className="text-sm text-neutral-300">
-        Commande active
-      </label>
-    </div>
-
-    {/* Buttons */}
-    <div className="flex gap-3 pt-4">
-      <button
-        type="button"
-        onClick={() => {
-          setShowAddOrder(false);
-          setOrderForm({
-            id: null,
-            client_id: "",
-            car_id: "",
-            car_color: "",
-            delivery_status: "shipping",
-            payment_amount: 0,
-            status: true,
-          });
-        }}
-        className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors"
-      >
-        Annuler
-      </button>
-      <button
-        type="submit"
-        className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
-      >
-        Ajouter la commande
-      </button>
-    </div>
-  </form>
-</Modal>
-
-<Modal 
-  open={showEditOrder}
-  onClose={() => {
-    setShowEditOrder(false);
-    setOrderForm({
-      id: null,
-      client_id: "",
-      car_id: "",
-      car_color: "",
-      delivery_status: "shipping",
-      payment_amount: 0,
-      status: true,
-    });
-  }}
-  title="Modifier la Commande"
->
-  <form onSubmit={handleEditOrderSubmit} className="space-y-4">
-    {/* Client Selection */}
-    <div>
-      <label className="block text-sm font-medium text-neutral-300 mb-2">
-        Client *
-      </label>
-      <select
-        value={orderForm.client_id}
-        onChange={(e) => setOrderForm({ ...orderForm, client_id: e.target.value })}
-        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-        required
-      >
-        <option value="">Sélectionner un client</option>
-        {clients.map((client) => (
-          <option key={client.id} value={client.id}>
-            {client.name} {client.surname} - {client.phone_number}
-          </option>
-        ))}
-      </select>
-    </div>
-
-    {/* Car Selection */}
-    <div>
-      <label className="block text-sm font-medium text-neutral-300 mb-2">
-        Voiture *
-      </label>
-      <select
-        value={orderForm.car_id}
-        onChange={(e) => {
-          const selectedCar = cars.find(c => c.id === Number(e.target.value));
-          if (selectedCar) {
-            const priceInDZD = convertToDZD(selectedCar.price, selectedCar.currency);
-            setOrderForm({ 
-              ...orderForm, 
-              car_id: e.target.value,
-              payment_amount: priceInDZD
-            });
-          }
-        }}
-        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-        required
-      >
-        <option value="">Sélectionner une voiture</option>
-        {cars.map((car) => {
-          const priceInDZD = convertToDZD(car.price, car.currency);
-          return (
-            <option key={car.id} value={car.id}>
-              {car.model} - {car.color} ({car.year}) - {priceInDZD?.toLocaleString()} DZD
-            </option>
-          );
-        })}
-      </select>
-    </div>
-
-    {/* Car Color */}
-    <div>
-      <label className="block text-sm font-medium text-neutral-300 mb-2">
-        Couleur de la voiture *
-      </label>
-      <input
-        type="text"
-        value={orderForm.car_color}
-        onChange={(e) => setOrderForm({ ...orderForm, car_color: e.target.value })}
-        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-        placeholder="Ex: Rouge, Noir, Blanc..."
-        required
-      />
-    </div>
-
-    {/* Delivery Status - VALEURS CORRIGÉES */}
-<div>
-  <label className="block text-sm font-medium text-neutral-300 mb-2">
-    Statut de livraison *
-  </label>
-  <select
-    value={orderForm.delivery_status}
-    onChange={(e) => setOrderForm({ ...orderForm, delivery_status: e.target.value })}
-    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-    required
-  >
-    <option value="shipping">En cours de livraison</option>
-    <option value="arrived">Arrivée</option>
-    <option value="showroom">En showroom</option>
-  </select>
-</div>
-
-    {/* Payment Amount */}
-    <div>
-      <label className="block text-sm font-medium text-neutral-300 mb-2">
-        Montant du paiement *
-      </label>
-      <input
-        type="number"
-        value={orderForm.payment_amount}
-        onChange={(e) => setOrderForm({ ...orderForm, payment_amount: Number(e.target.value) })}
-        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-        placeholder="0"
-        min="0"
-        required
-      />
-      <p className="text-xs text-neutral-500 mt-1">Montant en DZD</p>
-    </div>
-
-    {/* Status */}
-    <div className="flex items-center gap-2">
-      <input
-        type="checkbox"
-        id="editOrderStatus"
-        checked={orderForm.status}
-        onChange={(e) => setOrderForm({ ...orderForm, status: e.target.checked })}
-        className="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
-      />
-      <label htmlFor="editOrderStatus" className="text-sm text-neutral-300">
-        Commande active
-      </label>
-    </div>
-
-    {/* Buttons */}
-    <div className="flex gap-3 pt-4">
-      <button
-        type="button"
-        onClick={() => {
-          setShowEditOrder(false);
-          setOrderForm({
-            id: null,
-            client_id: "",
-            car_id: "",
-            car_color: "",
-            delivery_status: "shipping",
-            payment_amount: 0,
-            status: true,
-          });
-        }}
-        className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors"
-      >
-        Annuler
-      </button>
-      <button
-        type="submit"
-        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-      >
-        Mettre à jour
-      </button>
-    </div>
-  </form>
-</Modal>
-<Modal
-  open={showAddSupplierItem}
-  onClose={() => {
-    setShowAddSupplierItem(false);
-    setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 }); // Reset on close
-  }}
-  title="Ajouter un Élément Fournisseur"
->
-  <form onSubmit={handleAddSupplierItem} className="space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <div>
-        <label className="text-sm text-neutral-400 block mb-1">Voiture</label>
-        <select
-          name="car_id"
-          value={supplierItemForm.car_id}
-          onChange={(e) => setSupplierItemForm({ ...supplierItemForm, car_id: e.target.value })}
-          className="w-full bg-neutral-800 p-2 rounded text-sm"
-          required
+        <Modal
+          open={showAddOrder}
+          onClose={() => setShowAddOrder(false)}
+          title="Ajouter une Commande"
         >
-          <option value="">Select Car</option>
-          {cars.map((car) => (
-            <option key={car.id} value={car.id}>
-              {car.model} #{car.id} — {car.color} · {car.year}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="text-sm text-neutral-400 block mb-1">Fournisseur</label>
-        <select
-          name="supplier_id"
-          value={supplierItemForm.supplier_id}
-          onChange={(e) => setSupplierItemForm({ ...supplierItemForm, supplier_id: e.target.value })}
-          className="w-full bg-neutral-800 p-2 rounded text-sm"
-          required
-        >
-          <option value="">Select Supplier</option>
-          {fournisseurs.map((supplier) => (
-            <option key={supplier.id} value={supplier.id}>
-              {supplier.name} {supplier.surname}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="text-sm text-neutral-400 block mb-1">Devise</label>
-        <select
-          name="currency_id"
-          value={supplierItemForm.currency_id}
-          onChange={(e) => setSupplierItemForm({ ...supplierItemForm, currency_id: e.target.value })}
-          className="w-full bg-neutral-800 p-2 rounded text-sm"
-          required
-        >
-          <option value="">Select Currency</option>
-          {currencyList.map((currency) => (
-            <option key={currency.id} value={currency.id}>
-              {currency.name} ({currency.code.toUpperCase()})
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="text-sm text-neutral-400 block mb-1">Prix</label>
-        <input
-          type="number"
-          step="0.01"
-          name="price"
-          placeholder="Prix"
-          value={supplierItemForm.price}
-          onChange={(e) => setSupplierItemForm({ ...supplierItemForm, price: e.target.value })}
-          className="w-full bg-neutral-800 p-2 rounded text-sm"
-          required
-        />
-      </div>
-    </div>
-    <div className="flex justify-end gap-2 pt-4">
-      <button type="button" onClick={() => setShowAddSupplierItem(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Annuler</button>
-      <button type="submit" className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white text-sm">➕ Ajouter Élément</button>
-    </div>
-  </form>
-</Modal>
+          <form onSubmit={handleOrderSubmit} className="space-y-4">
+            {/* Client Selection */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Client *
+              </label>
+              <select
+                value={orderForm.client_id}
+                onChange={(e) => setOrderForm({ ...orderForm, client_id: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                required
+              >
+                <option value="">Sélectionner un client</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name} {client.surname} - {client.phone_number}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        
-      <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
-        <form onSubmit={handleSubmitCar} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <select value={carForm.currency_id} onChange={(e) => setCarForm({ ...carForm, currency_id: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required>
-              <option value="">Select Currency</option>
-              {currencyList.map(curr => (
-                <option key={curr.id} value={curr.id}>{curr.name} ({curr.code.toUpperCase()})</option>
-              ))}
-            </select>
-            <input autoFocus value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Model *" className="bg-neutral-800 p-2 rounded text-sm" required />
-            <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Colors (comma-separated)" className="bg-neutral-800 p-2 rounded text-sm" />
-            
-            {/* ✅ Added Description field - spans full width */}
-            <textarea 
-              value={carForm.description} 
-              onChange={(e) => setCarForm({ ...carForm, description: e.target.value })} 
-              placeholder="Description (optional)" 
-              className="bg-neutral-800 p-2 rounded text-sm md:col-span-3 min-h-[80px]" 
-              rows="3"
-            />
-            
-            <input type="number" value={carForm.year} onChange={(e) => setCarForm({ ...carForm, year: e.target.value })} placeholder="Year" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input value={carForm.engine} onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })} placeholder="Engine" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input value={carForm.power} onChange={(e) => setCarForm({ ...carForm, power: e.target.value })} placeholder="Power" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input value={carForm.fuelType} onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })} placeholder="Fuel Type" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Mileage" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input value={carForm.country} onChange={(e) => setCarForm({ ...carForm, country: e.target.value })} placeholder="Country" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input type="number" step="0.01" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Price *" className="bg-neutral-800 p-2 rounded text-sm" required />
-            <input type="number" step="0.01" value={carForm.wholesale_price} onChange={(e) => setCarForm({ ...carForm, wholesale_price: e.target.value })} placeholder="Wholesale Price" className="bg-neutral-800 p-2 rounded text-sm" />
-            <input type="number" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="Quantity *" className="bg-neutral-800 p-2 rounded text-sm" required />
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-neutral-400">Purchase Date</span>
-              <input type="date" value={carForm.shippingDate} onChange={(e) => setCarForm({ ...carForm, shippingDate: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-neutral-400">Arrival Date</span>
-              <input type="date" value={carForm.arrivingDate} onChange={(e) => setCarForm({ ...carForm, arrivingDate: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" />
-            </label>
-          </div>
-          <div className="mb-4">
-            <label className="flex items-center gap-2 cursor-pointer bg-neutral-800 px-3 py-2 rounded text-sm">
-              <input 
-                type="file" 
-                accept="image/*" 
-                multiple 
-                onChange={(e) => setCarForm({ ...carForm, imageFiles: Array.from(e.target.files) })} 
-                className="hidden" 
+            {/* Car Selection */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Voiture *
+              </label>
+              <select
+                value={orderForm.car_id}
+                onChange={(e) => {
+                  const selectedCar = cars.find(c => c.id === Number(e.target.value));
+                  if (selectedCar) {
+                    const priceInDZD = convertToDZD(selectedCar.price, selectedCar.currency);
+                    setOrderForm({
+                      ...orderForm,
+                      car_id: e.target.value,
+                      payment_amount: priceInDZD
+                    });
+                  }
+                }}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                required
+              >
+                <option value="">Sélectionner une voiture</option>
+                {cars.map((car) => {
+                  const priceInDZD = convertToDZD(car.price, car.currency);
+                  return (
+                    <option key={car.id} value={car.id}>
+                      {car.model} - {car.color} ({car.year}) - {priceInDZD?.toLocaleString()} DZD
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            {/* Car Color */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Couleur de la voiture *
+              </label>
+              <input
+                type="text"
+                value={orderForm.car_color}
+                onChange={(e) => setOrderForm({ ...orderForm, car_color: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                placeholder="Ex: Rouge, Noir, Blanc..."
+                required
               />
-              📸 Upload Images
-            </label>
-            {carForm.imageFiles && carForm.imageFiles.length > 0 && (
-              <p className="text-xs text-neutral-400 mt-2">{carForm.imageFiles.length} file(s) selected</p>
-            )}
-          </div>
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setShowAddCar(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Cancel</button>
-            <button type="submit" className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm">
-              {editingCar ? '✏️ Update Car' : '➕ Save Car'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+            </div>
+
+            {/* Delivery Status */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Statut de livraison *
+              </label>
+              <select
+                value={orderForm.delivery_status}
+                onChange={(e) => setOrderForm({ ...orderForm, delivery_status: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                required
+              >
+                <option value="shipping">En cours de livraison</option>
+                <option value="delivered">Livrée</option>
+                <option value="pending">En attente</option>
+                <option value="cancelled">Annulée</option>
+              </select>
+            </div>
+
+            {/* Payment Amount */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Montant du paiement *
+              </label>
+              <input
+                type="number"
+                value={orderForm.payment_amount}
+                onChange={(e) => setOrderForm({ ...orderForm, payment_amount: Number(e.target.value) })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                placeholder="0"
+                min="0"
+                required
+              />
+              <p className="text-xs text-neutral-500 mt-1">Montant en DZD</p>
+            </div>
+
+            {/* Status */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="orderStatus"
+                checked={orderForm.status}
+                onChange={(e) => setOrderForm({ ...orderForm, status: e.target.checked })}
+                className="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
+              />
+              <label htmlFor="orderStatus" className="text-sm text-neutral-300">
+                Commande active
+              </label>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddOrder(false);
+                  setOrderForm({
+                    id: null,
+                    client_id: "",
+                    car_id: "",
+                    car_color: "",
+                    delivery_status: "shipping",
+                    payment_amount: 0,
+                    status: true,
+                  });
+                }}
+                className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+              >
+                Ajouter la commande
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        <Modal
+          open={showEditOrder}
+          onClose={() => {
+            setShowEditOrder(false);
+            setOrderForm({
+              id: null,
+              client_id: "",
+              car_id: "",
+              car_color: "",
+              delivery_status: "shipping",
+              payment_amount: 0,
+              status: true,
+            });
+          }}
+          title="Modifier la Commande"
+        >
+          <form onSubmit={handleEditOrderSubmit} className="space-y-4">
+            {/* Client Selection */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Client *
+              </label>
+              <select
+                value={orderForm.client_id}
+                onChange={(e) => setOrderForm({ ...orderForm, client_id: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                required
+              >
+                <option value="">Sélectionner un client</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name} {client.surname} - {client.phone_number}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Car Selection */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Voiture *
+              </label>
+              <select
+                value={orderForm.car_id}
+                onChange={(e) => {
+                  const selectedCar = cars.find(c => c.id === Number(e.target.value));
+                  if (selectedCar) {
+                    const priceInDZD = convertToDZD(selectedCar.price, selectedCar.currency);
+                    setOrderForm({
+                      ...orderForm,
+                      car_id: e.target.value,
+                      payment_amount: priceInDZD
+                    });
+                  }
+                }}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                required
+              >
+                <option value="">Sélectionner une voiture</option>
+                {cars.map((car) => {
+                  const priceInDZD = convertToDZD(car.price, car.currency);
+                  return (
+                    <option key={car.id} value={car.id}>
+                      {car.model} - {car.color} ({car.year}) - {priceInDZD?.toLocaleString()} DZD
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Car Color */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Couleur de la voiture *
+              </label>
+              <input
+                type="text"
+                value={orderForm.car_color}
+                onChange={(e) => setOrderForm({ ...orderForm, car_color: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                placeholder="Ex: Rouge, Noir, Blanc..."
+                required
+              />
+            </div>
+
+            {/* Delivery Status - VALEURS CORRIGÉES */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Statut de livraison *
+              </label>
+              <select
+                value={orderForm.delivery_status}
+                onChange={(e) => setOrderForm({ ...orderForm, delivery_status: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                required
+              >
+                <option value="shipping">En cours de livraison</option>
+                <option value="arrived">Arrivée</option>
+                <option value="showroom">En showroom</option>
+              </select>
+            </div>
+
+            {/* Payment Amount */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Montant du paiement *
+              </label>
+              <input
+                type="number"
+                value={orderForm.payment_amount}
+                onChange={(e) => setOrderForm({ ...orderForm, payment_amount: Number(e.target.value) })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                placeholder="0"
+                min="0"
+                required
+              />
+              <p className="text-xs text-neutral-500 mt-1">Montant en DZD</p>
+            </div>
+
+            {/* Status */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="editOrderStatus"
+                checked={orderForm.status}
+                onChange={(e) => setOrderForm({ ...orderForm, status: e.target.checked })}
+                className="w-4 h-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
+              />
+              <label htmlFor="editOrderStatus" className="text-sm text-neutral-300">
+                Commande active
+              </label>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditOrder(false);
+                  setOrderForm({
+                    id: null,
+                    client_id: "",
+                    car_id: "",
+                    car_color: "",
+                    delivery_status: "shipping",
+                    payment_amount: 0,
+                    status: true,
+                  });
+                }}
+                className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                Mettre à jour
+              </button>
+            </div>
+          </form>
+        </Modal>
+        <Modal
+          open={showAddSupplierItem}
+          onClose={() => {
+            setShowAddSupplierItem(false);
+            setSupplierItemForm({ car_id: "", supplier_id: "", currency_id: "", price: 0 }); // Reset on close
+          }}
+          title="Ajouter un Élément Fournisseur"
+        >
+          <form onSubmit={handleAddSupplierItem} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm text-neutral-400 block mb-1">Voiture</label>
+                <select
+                  name="car_id"
+                  value={supplierItemForm.car_id}
+                  onChange={(e) => setSupplierItemForm({ ...supplierItemForm, car_id: e.target.value })}
+                  className="w-full bg-neutral-800 p-2 rounded text-sm"
+                  required
+                >
+                  <option value="">Select Car</option>
+                  {cars.map((car) => (
+                    <option key={car.id} value={car.id}>
+                      {car.model} #{car.id} — {car.color} · {car.year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-neutral-400 block mb-1">Fournisseur</label>
+                <select
+                  name="supplier_id"
+                  value={supplierItemForm.supplier_id}
+                  onChange={(e) => setSupplierItemForm({ ...supplierItemForm, supplier_id: e.target.value })}
+                  className="w-full bg-neutral-800 p-2 rounded text-sm"
+                  required
+                >
+                  <option value="">Select Supplier</option>
+                  {fournisseurs.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.name} {supplier.surname}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-neutral-400 block mb-1">Devise</label>
+                <select
+                  name="currency_id"
+                  value={supplierItemForm.currency_id}
+                  onChange={(e) => setSupplierItemForm({ ...supplierItemForm, currency_id: e.target.value })}
+                  className="w-full bg-neutral-800 p-2 rounded text-sm"
+                  required
+                >
+                  <option value="">Select Currency</option>
+                  {currencyList.map((currency) => (
+                    <option key={currency.id} value={currency.id}>
+                      {currency.name} ({currency.code.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-neutral-400 block mb-1">Prix</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="price"
+                  placeholder="Prix"
+                  value={supplierItemForm.price}
+                  onChange={(e) => setSupplierItemForm({ ...supplierItemForm, price: e.target.value })}
+                  className="w-full bg-neutral-800 p-2 rounded text-sm"
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <button type="button" onClick={() => setShowAddSupplierItem(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Annuler</button>
+              <button type="submit" className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white text-sm">➕ Ajouter Élément</button>
+            </div>
+          </form>
+        </Modal>
+
+
+        <Modal open={showAddCar} onClose={() => setShowAddCar(false)} title={editingCar ? "Edit Car" : "Add Car"}>
+          <form onSubmit={handleSubmitCar} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <select value={carForm.currency_id} onChange={(e) => setCarForm({ ...carForm, currency_id: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" required>
+                <option value="">Select Currency</option>
+                {currencyList.map(curr => (
+                  <option key={curr.id} value={curr.id}>{curr.name} ({curr.code.toUpperCase()})</option>
+                ))}
+              </select>
+              <input autoFocus value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Model *" className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Colors (comma-separated)" className="bg-neutral-800 p-2 rounded text-sm" />
+
+              {/* ✅ Added Description field - spans full width */}
+              <textarea
+                value={carForm.description}
+                onChange={(e) => setCarForm({ ...carForm, description: e.target.value })}
+                placeholder="Description (optional)"
+                className="bg-neutral-800 p-2 rounded text-sm md:col-span-3 min-h-[80px]"
+                rows="3"
+              />
+
+              <input type="number" value={carForm.year} onChange={(e) => setCarForm({ ...carForm, year: e.target.value })} placeholder="Year" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input value={carForm.engine} onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })} placeholder="Engine" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input value={carForm.power} onChange={(e) => setCarForm({ ...carForm, power: e.target.value })} placeholder="Power" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input value={carForm.fuelType} onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })} placeholder="Fuel Type" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Mileage" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input value={carForm.country} onChange={(e) => setCarForm({ ...carForm, country: e.target.value })} placeholder="Country" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input type="number" step="0.01" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Price *" className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="number" step="0.01" value={carForm.wholesale_price} onChange={(e) => setCarForm({ ...carForm, wholesale_price: e.target.value })} placeholder="Wholesale Price" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input type="number" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="Quantity *" className="bg-neutral-800 p-2 rounded text-sm" required />
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-neutral-400">Purchase Date</span>
+                <input type="date" value={carForm.shippingDate} onChange={(e) => setCarForm({ ...carForm, shippingDate: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-neutral-400">Arrival Date</span>
+                <input type="date" value={carForm.arrivingDate} onChange={(e) => setCarForm({ ...carForm, arrivingDate: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" />
+              </label>
+            </div>
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer bg-neutral-800 px-3 py-2 rounded text-sm">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => setCarForm({ ...carForm, imageFiles: Array.from(e.target.files) })}
+                  className="hidden"
+                />
+                📸 Upload Images
+              </label>
+              {carForm.imageFiles && carForm.imageFiles.length > 0 && (
+                <p className="text-xs text-neutral-400 mt-2">{carForm.imageFiles.length} file(s) selected</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowAddCar(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">Cancel</button>
+              <button type="submit" className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm">
+                {editingCar ? '✏️ Update Car' : '➕ Save Car'}
+              </button>
+            </div>
+          </form>
+        </Modal>
 
         <Modal open={showAddCommercial} onClose={() => setShowAddCommercial(false)} title={CommercialForm.commercial_id ? "Edit Commercial" : "Add Commercial"}>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -4077,14 +4157,14 @@ export default function AdminSuperPanel() {
               <input type="text" name="address" placeholder="Address" value={CommercialForm.address} onChange={handleChange} className="bg-neutral-800 p-2 rounded text-sm" required />
               <label className="md:col-span-2 flex flex-col gap-1">
                 <span className="text-xs text-neutral-400">Wilayas (comma-separated)</span>
-                <input 
-                  type="text" 
-                  name="wilayas" 
-                  placeholder="e.g. Algiers, Oran" 
-                  value={CommercialForm.wilayas.join(', ')} 
-                  onChange={handleChange} 
-                  className="bg-neutral-800 p-2 rounded text-sm" 
-                  required 
+                <input
+                  type="text"
+                  name="wilayas"
+                  placeholder="e.g. Algiers, Oran"
+                  value={CommercialForm.wilayas.join(', ')}
+                  onChange={handleChange}
+                  className="bg-neutral-800 p-2 rounded text-sm"
+                  required
                 />
               </label>
             </div>
@@ -4361,213 +4441,213 @@ export default function AdminSuperPanel() {
         </Modal>
 
         {/* ✅ Wholesale Client Modal */}
-<Modal 
-  open={showAddWholesaleClient} 
-  onClose={() => setShowAddWholesaleClient(false)} 
-  title={wholesaleClientForm.id ? "Edit Wholesale Client" : "Add Wholesale Client"}
->
-  <form onSubmit={handleWholesaleClientSubmit} className="space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <input
-        type="text"
-        placeholder="Name"
-        value={wholesaleClientForm.name}
-        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, name: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      />
-      <input
-        type="text"
-        placeholder="Surname"
-        value={wholesaleClientForm.surname}
-        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, surname: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      />
-      <input
-        type="text"
-        placeholder="Phone Number"
-        value={wholesaleClientForm.phone_number}
-        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, phone_number: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      />
-      <input
-        type="text"
-        placeholder="Address"
-        value={wholesaleClientForm.address}
-        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, address: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-      />
-      <input
-        type="text"
-        placeholder="Company Name"
-        value={wholesaleClientForm.company_name}
-        onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, company_name: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      />
-    </div>
-    <div className="flex justify-end gap-3">
-      <button
-        type="button"
-        onClick={() => setShowAddWholesaleClient(false)}
-        className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
-      >
-        Cancel
-      </button>
-      <button
-        type="submit"
-        className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
-      >
-        {wholesaleClientForm.id ? "✏️ Update Client" : "➕ Add Client"}
-      </button>
-    </div>
-  </form>
-</Modal>
-{/* ✅ Wholesale Order Modal */}
-<Modal 
-  open={showAddWholesaleOrder} 
-  onClose={() => setShowAddWholesaleOrder(false)} 
-  title={"Ajouter une Commande Grossiste"}
->
-  <form onSubmit={handleWholesaleOrderSubmit} className="space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {/* ✅ Client Selection - REQUIRED for CREATE */}
-      <div className="md:col-span-2">
-        <label className="block text-sm text-neutral-400 mb-1">Client Grossiste *</label>
-        <select
-          value={wholesaleOrderForm.client_id}
-          onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, client_id: e.target.value })}
-          className="w-full bg-neutral-800 p-2 rounded text-sm"
-          required
+        <Modal
+          open={showAddWholesaleClient}
+          onClose={() => setShowAddWholesaleClient(false)}
+          title={wholesaleClientForm.id ? "Edit Wholesale Client" : "Add Wholesale Client"}
         >
-          <option value="">Sélectionner un client grossiste</option>
-          {wholesaleClients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} {c.surname} ({c.company_name})
-            </option>
-          ))}
-        </select>
-      </div>
+          <form onSubmit={handleWholesaleClientSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                type="text"
+                placeholder="Name"
+                value={wholesaleClientForm.name}
+                onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, name: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Surname"
+                value={wholesaleClientForm.surname}
+                onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, surname: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Phone Number"
+                value={wholesaleClientForm.phone_number}
+                onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, phone_number: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Address"
+                value={wholesaleClientForm.address}
+                onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, address: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+              />
+              <input
+                type="text"
+                placeholder="Company Name"
+                value={wholesaleClientForm.company_name}
+                onChange={(e) => setWholesaleClientForm({ ...wholesaleClientForm, company_name: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAddWholesaleClient(false)}
+                className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
+              >
+                {wholesaleClientForm.id ? "✏️ Update Client" : "➕ Add Client"}
+              </button>
+            </div>
+          </form>
+        </Modal>
+        {/* ✅ Wholesale Order Modal */}
+        <Modal
+          open={showAddWholesaleOrder}
+          onClose={() => setShowAddWholesaleOrder(false)}
+          title={"Ajouter une Commande Grossiste"}
+        >
+          <form onSubmit={handleWholesaleOrderSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* ✅ Client Selection - REQUIRED for CREATE */}
+              <div className="md:col-span-2">
+                <label className="block text-sm text-neutral-400 mb-1">Client Grossiste *</label>
+                <select
+                  value={wholesaleOrderForm.client_id}
+                  onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, client_id: e.target.value })}
+                  className="w-full bg-neutral-800 p-2 rounded text-sm"
+                  required
+                >
+                  <option value="">Sélectionner un client grossiste</option>
+                  {wholesaleClients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.surname} ({c.company_name})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-      <select
-        value={wholesaleOrderForm.car_id}
-        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, car_id: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      >
-        <option value="">Select Car</option>
-        {cars.map((car) => (
-          <option key={car.id} value={car.id}>
-            {car.model} #{car.id} — {car.color} · {car.year}
-          </option>
-        ))}
-      </select>
-      
-      <input
-        type="number"
-        min="1"
-        placeholder="Quantity"
-        value={wholesaleOrderForm.quantity}
-        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, quantity: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-        required
-      />
-      
-      <select
-        value={wholesaleOrderForm.delivery_status}
-        onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
-        className="bg-neutral-800 p-2 rounded text-sm"
-      >
-        <option value="shipping">Shipping</option>
-        <option value="arrived">Arrived</option>
-        <option value="showroom">Showroom</option>
-      </select>
-    </div>
-    
-    <div className="flex justify-end gap-3">
-      <button
-        type="button"
-        onClick={() => setShowAddWholesaleOrder(false)}
-        className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
-      >
-        Annuler
-      </button>
-      <button
-        type="submit"
-        className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
-      >
-        ➕ Ajouter la commande
-      </button>
-    </div>
-  </form>
-</Modal>
-<Modal 
-  open={showEditWholesaleOrder} 
-  onClose={() => setShowEditWholesaleOrder(false)} 
-  title={"Modifier la Commande Grossiste"}
->
-  <form onSubmit={handleWholesaleOrderSubmit} className="space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <div className="md:col-span-2">
-        <label className="block text-sm text-neutral-400 mb-1">Status</label>
-        <select
-          value={wholesaleOrderForm.status}
-          onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, status: e.target.value === 'true' })}
-          className="w-full bg-neutral-800 p-2 rounded text-sm"
+              <select
+                value={wholesaleOrderForm.car_id}
+                onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, car_id: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              >
+                <option value="">Select Car</option>
+                {cars.map((car) => (
+                  <option key={car.id} value={car.id}>
+                    {car.model} #{car.id} — {car.color} · {car.year}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="number"
+                min="1"
+                placeholder="Quantity"
+                value={wholesaleOrderForm.quantity}
+                onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, quantity: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+                required
+              />
+
+              <select
+                value={wholesaleOrderForm.delivery_status}
+                onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
+                className="bg-neutral-800 p-2 rounded text-sm"
+              >
+                <option value="shipping">Shipping</option>
+                <option value="arrived">Arrived</option>
+                <option value="showroom">Showroom</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAddWholesaleOrder(false)}
+                className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
+              >
+                ➕ Ajouter la commande
+              </button>
+            </div>
+          </form>
+        </Modal>
+        <Modal
+          open={showEditWholesaleOrder}
+          onClose={() => setShowEditWholesaleOrder(false)}
+          title={"Modifier la Commande Grossiste"}
         >
-          <option value="true">Active</option>
-        </select>
-      </div>
-      
-      <div>
-        <label className="block text-sm text-neutral-400 mb-1">Payment Amount</label>
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="Payment Amount"
-          value={wholesaleOrderForm.payment_amount}
-          onChange={(e) => setWholesaleOrderForm({ 
-              ...wholesaleOrderForm, 
-              payment_amount: e.target.value === '' ? null : parseFloat(e.target.value) 
-            })}
-          className="w-full bg-neutral-800 p-2 rounded text-sm"
-        />
-      </div>
-      
-      <div>
-        <label className="block text-sm text-neutral-400 mb-1">Delivery Status</label>
-        <select
-          value={wholesaleOrderForm.delivery_status}
-          onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
-          className="w-full bg-neutral-800 p-2 rounded text-sm"
-        >
-          <option value="shipping">Shipping</option>
-          <option value="arrived">Arrived</option>
-          <option value="showroom">Showroom</option>
-        </select>
-      </div>
-    </div>
-    
-    <div className="flex justify-end gap-3">
-      <button
-        type="button"
-        onClick={() => setShowEditWholesaleOrder(false)}
-        className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
-      >
-        Cancel
-      </button>
-      <button
-        type="submit"
-        className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
-      >
-        ✏️ Update Order
-      </button>
-    </div>
-  </form>
-</Modal>
+          <form onSubmit={handleWholesaleOrderSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="md:col-span-2">
+                <label className="block text-sm text-neutral-400 mb-1">Status</label>
+                <select
+                  value={wholesaleOrderForm.status}
+                  onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, status: e.target.value === 'true' })}
+                  className="w-full bg-neutral-800 p-2 rounded text-sm"
+                >
+                  <option value="true">Active</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-neutral-400 mb-1">Payment Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Payment Amount"
+                  value={wholesaleOrderForm.payment_amount}
+                  onChange={(e) => setWholesaleOrderForm({
+                    ...wholesaleOrderForm,
+                    payment_amount: e.target.value === '' ? null : parseFloat(e.target.value)
+                  })}
+                  className="w-full bg-neutral-800 p-2 rounded text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-neutral-400 mb-1">Delivery Status</label>
+                <select
+                  value={wholesaleOrderForm.delivery_status}
+                  onChange={(e) => setWholesaleOrderForm({ ...wholesaleOrderForm, delivery_status: e.target.value })}
+                  className="w-full bg-neutral-800 p-2 rounded text-sm"
+                >
+                  <option value="shipping">Shipping</option>
+                  <option value="arrived">Arrived</option>
+                  <option value="showroom">Showroom</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowEditWholesaleOrder(false)}
+                className="px-4 py-2 rounded bg-neutral-800/60 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm"
+              >
+                ✏️ Update Order
+              </button>
+            </div>
+          </form>
+        </Modal>
 
         {/* ✅ Pass supplierItems + callbacks for edit/delete */}
         <CommercialCarsModal
@@ -4627,7 +4707,7 @@ export default function AdminSuperPanel() {
             };
             handleDelete(carId);
           }}
-          
+
         />
       </main>
     </div>

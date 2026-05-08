@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { parseColors } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, File, FileArchiveIcon, Car, LetterTextIcon, Printer, Upload, Trash2, Image as ImageIcon, Banknote } from "lucide-react";
+import { Search, Plus, File, FileArchiveIcon, Car, LetterTextIcon, Printer, Upload, Trash2, Image as ImageIcon, Banknote, Edit2 } from "lucide-react";
 import QrCode from "../assets/qr_client.png";
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
@@ -157,9 +157,7 @@ const Commercials = () => {
     delivery_status: "shipping"
   });
 
-  const [searchOrders, setSearchOrders] = useState("");
-  const [searchCars, setSearchCars] = useState("");
-  const [searchClients, setSearchClients] = useState("");
+  const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -170,6 +168,11 @@ const Commercials = () => {
 
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editForm, setEditForm] = useState({ payment_amount: "", delivery_status: "" });
+
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [editClientForm, setEditClientForm] = useState({
+    name: "", surname: "", phone: "", password: "", wilaya: "", address: "", nin: "", passport_number: ""
+  });
 
   const [requestModel, setRequestModel] = useState("");
   const [requestDetails, setRequestDetails] = useState("");
@@ -619,6 +622,79 @@ const Commercials = () => {
     }
     // Fallback: use cached clients list
     return clients.find(c => c.id === clientId) || null;
+  };
+
+  const handleUpdateClient = async (clientId) => {
+    const { name, surname, phone, password, wilaya, address, nin, passport_number } = editClientForm;
+    const body = { client_id: clientId };
+    if (name) body.name = name;
+    if (surname) body.surname = surname;
+    if (phone) body.phone_number = phone;
+    if (password) body.password = password;
+    if (wilaya) body.wilaya = wilaya;
+    if (address) body.address = address;
+    if (nin) body.nin = nin.toString();
+    if (passport_number) body.passport_number = passport_number.toString();
+
+    try {
+      setLoading(true);
+      const res = await apiFetch(`${API_BASE_URL}/clients/`, {
+        method: "PUT",
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
+        const errData = await res.json().catch(() => ({}));
+        let errMessage = "Erreur serveur inconnue";
+        if (errData.detail && Array.isArray(errData.detail)) {
+          errMessage = errData.detail.map(d => `${d.loc?.join('.') || ''}: ${d.msg}`).join('\n');
+        } else if (errData.detail) {
+          errMessage = errData.detail;
+        }
+        throw new Error(errMessage);
+      }
+
+      alert("✅ Client mis à jour avec succès !");
+      setEditingClientId(null);
+      fetchClients();
+    } catch (err) {
+      console.error("Update Client Error:", err);
+      alert("❌ " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteClient = async (clientId) => {
+    if (!window.confirm("⚠️ Êtes-vous sûr de vouloir supprimer ce client ?")) return;
+
+    try {
+      setLoading(true);
+      const res = await apiFetch(`${API_BASE_URL}/clients/?client_id=${clientId}`, {
+        method: "DELETE"
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          navigate('/commercialslogin');
+          return;
+        }
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Erreur lors de la suppression");
+      }
+
+      alert("✅ Client supprimé avec succès !");
+      fetchClients();
+    } catch (err) {
+      console.error("Delete Client Error:", err);
+      alert("❌ " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ✅ Fixed: Add client with proper auth
@@ -1416,10 +1492,10 @@ const Commercials = () => {
 
   const filteredOrders = useMemo(() => {
     return orders.filter(o =>
-      (o.client_name?.toLowerCase() || "").includes(searchOrders.toLowerCase()) ||
-      (o.car_model?.toLowerCase() || "").includes(searchOrders.toLowerCase())
+      (o.client_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      (o.car_model?.toLowerCase() || "").includes(search.toLowerCase())
     );
-  }, [orders, searchOrders]);
+  }, [orders, search]);
 
   const myOrders = useMemo(() =>
     filteredOrders.filter(o =>
@@ -1435,17 +1511,17 @@ const Commercials = () => {
 
   const filteredGroupedCars = useMemo(() => {
     return groupedCars.filter(g =>
-      g.model.toLowerCase().includes(searchCars.toLowerCase())
+      g.model.toLowerCase().includes(search.toLowerCase())
     );
-  }, [groupedCars, searchCars]);
+  }, [groupedCars, search]);
 
   const filteredClients = useMemo(() => {
     return clients.filter(c =>
-      (c.name?.toLowerCase() || "").includes(searchClients.toLowerCase()) ||
-      (c.surname?.toLowerCase() || "").includes(searchClients.toLowerCase()) ||
-      (c.phone_number?.toLowerCase() || "").includes(searchClients.toLowerCase())
+      (c.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      (c.surname?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      (c.phone_number?.toLowerCase() || "").includes(search.toLowerCase())
     );
-  }, [clients, searchClients]);
+  }, [clients, search]);
 
   return (
     <div className="h-screen w-screen font-main flex bg-gradient-to-br from-neutral-950 to-neutral-900 text-white overflow-hidden">
@@ -1580,11 +1656,23 @@ const Commercials = () => {
 
       {/* Main Content */}
       <main className="flex-1 md:ml-64 overflow-y-auto p-6 md:p-8">
-        <button onClick={() => setMenuOpen(true)} className="md:hidden mb-6 p-2 bg-neutral-800 rounded-lg">
-          <svg className="w-8 h-8" fill="none" stroke="gray" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <button onClick={() => setMenuOpen(true)} className="md:hidden p-2 bg-neutral-800 rounded-lg w-fit">
+            <svg className="w-8 h-8" fill="none" stroke="gray" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          
+          <div className="relative flex-1 max-w-2xl">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher partout (clients, voitures, commandes...)"
+              className="w-full bg-neutral-900/50 border border-neutral-800 pl-12 pr-4 py-3 rounded-xl outline-none focus:border-emerald-500 transition-all shadow-lg"
+            />
+          </div>
+        </div>
 
         {error && (
           <div className="mb-6 p-4 bg-red-500/20 border border-red-500 text-red-300 rounded-lg">
@@ -1636,15 +1724,6 @@ const Commercials = () => {
             <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-white">Clients enregistrés</h2>
-                <div className="relative flex-1 max-w-sm ml-4">
-                  <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
-                  <input
-                    value={searchClients}
-                    onChange={e => setSearchClients(e.target.value)}
-                    placeholder="Rechercher client..."
-                    className="bg-neutral-800 pl-12 pr-4 py-2 rounded-lg w-full outline-none border border-neutral-700 focus:border-emerald-500 transition-colors"
-                  />
-                </div>
               </div>
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 {filteredClients.length === 0 ? (
@@ -1652,10 +1731,60 @@ const Commercials = () => {
                 ) : (
                   filteredClients.map(c => (
                     <div key={c.id} className="bg-neutral-800 p-4 rounded-lg">
-                      <p className="font-medium text-lg">{c.name} {c.surname} <span className="text-emerald-400 text-sm">#{c.id}</span></p>
-                      <p className="text-sm text-neutral-400">NIN: {c.nin}</p>
-                      <p className="text-sm text-neutral-400">Passeport: {c.passport_number || 'N/A'}</p>
-                      <p className="text-sm text-neutral-400">{c.phone_number} • {c.wilaya}</p>
+                      {editingClientId === c.id ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" placeholder="Nom" value={editClientForm.name} onChange={e => setEditClientForm({ ...editClientForm, name: e.target.value })} className="bg-neutral-900 p-3 rounded-lg outline-none" />
+                            <input type="text" placeholder="Prénom" value={editClientForm.surname} onChange={e => setEditClientForm({ ...editClientForm, surname: e.target.value })} className="bg-neutral-900 p-3 rounded-lg outline-none" />
+                            <input type="text" placeholder="Téléphone" value={editClientForm.phone} onChange={e => setEditClientForm({ ...editClientForm, phone: e.target.value })} className="bg-neutral-900 p-3 rounded-lg outline-none" />
+                            <input type="password" placeholder="Nouveau Mot de passe (optionnel)" value={editClientForm.password} onChange={e => setEditClientForm({ ...editClientForm, password: e.target.value })} className="bg-neutral-900 p-3 rounded-lg outline-none" />
+                            <input type="text" placeholder="Wilaya" value={editClientForm.wilaya} onChange={e => setEditClientForm({ ...editClientForm, wilaya: e.target.value })} className="bg-neutral-900 p-3 rounded-lg outline-none" />
+                            <input type="text" placeholder="Adresse" value={editClientForm.address} onChange={e => setEditClientForm({ ...editClientForm, address: e.target.value })} className="bg-neutral-900 p-3 rounded-lg outline-none" />
+                            <input type="number" placeholder="NIN" value={editClientForm.nin} onChange={e => setEditClientForm({ ...editClientForm, nin: e.target.value })} className="bg-neutral-900 p-3 rounded-lg outline-none" />
+                            <input type="number" placeholder="Passeport" value={editClientForm.passport_number} onChange={e => setEditClientForm({ ...editClientForm, passport_number: e.target.value })} className="bg-neutral-900 p-3 rounded-lg outline-none" />
+                          </div>
+                          <div className="flex gap-3">
+                            <button onClick={() => handleUpdateClient(c.id)} disabled={loading} className="flex-1 bg-emerald-600 hover:bg-emerald-700 py-2 rounded-lg transition">Sauvegarder</button>
+                            <button onClick={() => setEditingClientId(null)} className="flex-1 bg-neutral-700 hover:bg-neutral-600 py-2 rounded-lg transition">Annuler</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-lg">{c.name} {c.surname} <span className="text-emerald-400 text-sm">#{c.id}</span></p>
+                            <p className="text-sm text-neutral-400">NIN: {c.nin}</p>
+                            <p className="text-sm text-neutral-400">Passeport: {c.passport_number || 'N/A'}</p>
+                            <p className="text-sm text-neutral-400">{c.phone_number} • {c.wilaya}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingClientId(c.id);
+                                setEditClientForm({
+                                  name: c.name || "",
+                                  surname: c.surname || "",
+                                  phone: c.phone_number || "",
+                                  password: "",
+                                  wilaya: c.wilaya || "",
+                                  address: c.address || "",
+                                  nin: c.nin || "",
+                                  passport_number: c.passport_number || ""
+                                });
+                              }}
+                              className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClient(c.id)}
+                              disabled={loading}
+                              className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition disabled:opacity-50"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -1718,15 +1847,6 @@ const Commercials = () => {
 
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-3xl font-bold">Commandes</h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
-                <input
-                  value={searchOrders}
-                  onChange={e => setSearchOrders(e.target.value)}
-                  placeholder="Rechercher..."
-                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64"
-                />
-              </div>
             </div>
 
             {/* My Orders */}
@@ -1869,15 +1989,6 @@ const Commercials = () => {
           <div>
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-3xl font-bold">Voitures Disponibles</h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
-                <input
-                  value={searchCars}
-                  onChange={e => setSearchCars(e.target.value)}
-                  placeholder="Rechercher modèle..."
-                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64"
-                />
-              </div>
             </div>
             <div className="grid lg:grid-cols-4 md:grid-cols-3 gap-6">
               {filteredGroupedCars.map(g => {
@@ -1907,15 +2018,6 @@ const Commercials = () => {
           <div>
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-3xl font-bold">Documents Clients</h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 text-neutral-400" size={20} />
-                <input
-                  value={searchClients}
-                  onChange={e => setSearchClients(e.target.value)}
-                  placeholder="Rechercher client..."
-                  className="bg-neutral-800 pl-12 pr-4 py-3 rounded-lg w-64"
-                />
-              </div>
             </div>
 
             <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
