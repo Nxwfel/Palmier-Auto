@@ -512,6 +512,8 @@ export default function AdminSuperPanel() {
     milage: "",
     country: "",
     price: "",
+    min_price: "",
+    max_price: "",
     wholesale_price: "",
     shippingDate: "",
     arrivingDate: "",
@@ -1635,6 +1637,8 @@ export default function AdminSuperPanel() {
       formData.append('milage', parseFloat(carForm.milage) || 0);
       formData.append('country', carForm.country);
       formData.append('price', parseFloat(carForm.price) || 0);
+      if (carForm.min_price) formData.append('min_price', parseFloat(carForm.min_price));
+      if (carForm.max_price) formData.append('max_price', parseFloat(carForm.max_price));
       formData.append('wholesale_price', parseFloat(carForm.wholesale_price) || 0);
       formData.append('shipping_date', carForm.shippingDate || new Date().toISOString().split('T')[0]);
       formData.append('arriving_date', carForm.arrivingDate || new Date().toISOString().split('T')[0]);
@@ -1691,6 +1695,8 @@ export default function AdminSuperPanel() {
       milage: car.milage || "",
       country: car.country || "",
       price: car.price || "",
+      min_price: car.min_price || "",
+      max_price: car.max_price || "",
       wholesale_price: car.wholesale_price || "",
       shippingDate: car.shipping_date || "",
       arrivingDate: car.arriving_date || "",
@@ -4113,6 +4119,8 @@ export default function AdminSuperPanel() {
               <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Mileage" className="bg-neutral-800 p-2 rounded text-sm" />
               <input value={carForm.country} onChange={(e) => setCarForm({ ...carForm, country: e.target.value })} placeholder="Country" className="bg-neutral-800 p-2 rounded text-sm" />
               <input type="number" step="0.01" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Price *" className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="number" step="0.01" value={carForm.min_price} onChange={(e) => setCarForm({ ...carForm, min_price: e.target.value })} placeholder="Min Price" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input type="number" step="0.01" value={carForm.max_price} onChange={(e) => setCarForm({ ...carForm, max_price: e.target.value })} placeholder="Max Price" className="bg-neutral-800 p-2 rounded text-sm" />
               <input type="number" step="0.01" value={carForm.wholesale_price} onChange={(e) => setCarForm({ ...carForm, wholesale_price: e.target.value })} placeholder="Wholesale Price" className="bg-neutral-800 p-2 rounded text-sm" />
               <input type="number" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="Quantity *" className="bg-neutral-800 p-2 rounded text-sm" required />
               <label className="flex flex-col gap-1">

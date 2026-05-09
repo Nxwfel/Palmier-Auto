@@ -154,6 +154,7 @@ const Commercials = () => {
     client_id: null,
     car_id: null,
     car_color: "",
+    custom_price: "",
     delivery_status: "shipping"
   });
 
@@ -203,10 +204,21 @@ const Commercials = () => {
   }, [currencies]);
 
   const getCarPriceInfo = (car) => {
-    if (!car?.price || car.currency_id === undefined) return { originalPrice: null, currencyCode: "???", priceInDZD: null };
+    if (!car?.price || car.currency_id === undefined) return { originalPrice: null, minPrice: null, maxPrice: null, currencyCode: "???", priceInDZD: null, minPriceDZD: null, maxPriceDZD: null };
     const currency = currencyMap.get(car.currency_id);
-    const priceInDZD = currency ? car.price * currency.exchange_rate_to_dzd : null;
-    return { originalPrice: car.price, currencyCode: currency?.code || "???", priceInDZD };
+    const exchangeRate = currency?.exchange_rate_to_dzd || 0;
+    const priceInDZD = currency ? car.price * exchangeRate : null;
+    const minPriceDZD = currency && car.min_price ? car.min_price * exchangeRate : null;
+    const maxPriceDZD = currency && car.max_price ? car.max_price * exchangeRate : null;
+    return { 
+      originalPrice: car.price, 
+      minPrice: car.min_price, 
+      maxPrice: car.max_price, 
+      currencyCode: currency?.code || "???", 
+      priceInDZD, 
+      minPriceDZD, 
+      maxPriceDZD 
+    };
   };
 
   useEffect(() => {
@@ -775,7 +787,8 @@ const Commercials = () => {
       client_id: clientId,
       car_id: carId,
       car_color,
-      delivery_status
+      delivery_status,
+      ...(newOrder.custom_price !== "" && { custom_price: parseFloat(newOrder.custom_price) })
     };
 
     try {
@@ -813,6 +826,8 @@ const Commercials = () => {
       const originalPrice = car.price || 0;
 
       const orderPriceDZD = createdOrder.price_dzd || (originalPrice * (exchangeRate || 0));
+      // Use custom_price if provided (in DZD), else fall back to computed price
+      const effectivePriceDZD = newOrder.custom_price !== "" ? parseFloat(newOrder.custom_price) : orderPriceDZD;
 
       const newOrderCommercialId = createdOrder.commercials_id || createdOrder.commercial_id || null;
       // Resolve the commercial who created this order (may be the logged-in user)
@@ -825,8 +840,9 @@ const Commercials = () => {
         car,
         color: car_color,
         originalPrice: originalPrice,
+        customPrice: newOrder.custom_price !== "" ? parseFloat(newOrder.custom_price) : null,
         currencyCode: currencyCode,
-        priceInDZD: orderPriceDZD,
+        priceInDZD: effectivePriceDZD,
         exchangeRate: exchangeRate,
         paymentAmount: createdOrder.payment_amount || 0,
         orderId: createdOrder.order_id || createdOrder.id,
@@ -837,7 +853,7 @@ const Commercials = () => {
 
       alert("✅ Commande ajoutée !");
       setShowContractPrompt(true);
-      setNewOrder({ client_id: null, car_id: null, car_color: "", delivery_status: "shipping" });
+      setNewOrder({ client_id: null, car_id: null, car_color: "", custom_price: "", delivery_status: "shipping" });
       fetchOrders();
     } catch (err) {
       if (err.message === "UNAUTHORIZED") {
@@ -854,9 +870,10 @@ const Commercials = () => {
   const generateContract = (orderData) => {
     const data = orderData || lastOrderData;
     if (!data) return;
-    const { client, car, color, price, priceInDZD, paymentAmount, date, commercialId,
+    const { client, car, color, customPrice, priceInDZD, paymentAmount, date, commercialId,
       resolvedCommercial } = data;
-    const totalPrice = priceInDZD ? Math.round(priceInDZD) : 0;
+    // Use custom_price if set, otherwise fall back to priceInDZD
+    const totalPrice = customPrice != null ? Math.round(customPrice) : (priceInDZD ? Math.round(priceInDZD) : 0);
     const paidAmount = paymentAmount || 0;
     const remainingBalance = totalPrice - paidAmount;
 
@@ -1312,6 +1329,11 @@ const Commercials = () => {
       const exchangeRate = currency?.exchange_rate_to_dzd || null;
       const currencyCode = currency?.code || '???';
       const originalPrice = car.price || 0;
+      // Use custom_price from order if set, otherwise fall back to price_dzd
+      const customPrice = (order.custom_price != null && order.custom_price !== 0)
+        ? order.custom_price
+        : null;
+      const effectivePriceDZD = customPrice ?? orderPriceDZD;
 
       const orderCommercialId = order.commercials_id || order.commercial_id || null;
 
@@ -1345,8 +1367,9 @@ const Commercials = () => {
         car,
         color: order.car_color,
         originalPrice,
+        customPrice,
         currencyCode,
-        priceInDZD: orderPriceDZD,
+        priceInDZD: effectivePriceDZD,
         exchangeRate,
         paymentAmount: order.payment_amount || 0,
         orderId: order.order_id,
@@ -1362,8 +1385,9 @@ const Commercials = () => {
         car,
         color: order.car_color,
         originalPrice,
+        customPrice,
         currencyCode,
-        priceInDZD: orderPriceDZD,
+        priceInDZD: effectivePriceDZD,
         exchangeRate,
         paymentAmount: order.payment_amount || 0,
         orderId: order.order_id,
@@ -1822,6 +1846,16 @@ const Commercials = () => {
                   />
                 )}
 
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newOrder.custom_price}
+                  onChange={e => setNewOrder(prev => ({ ...prev, custom_price: e.target.value }))}
+                  placeholder="Prix personnalisé (DZD) — facultatif"
+                  className="bg-neutral-800 p-4 rounded-lg placeholder:text-neutral-500"
+                />
+
                 <select
                   value={newOrder.delivery_status}
                   onChange={e => setNewOrder(prev => ({
@@ -2000,6 +2034,16 @@ const Commercials = () => {
                     className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800 hover:scale-105 cursor-pointer transition"
                   >
                     <h3 className="text-xl font-bold mb-2">{g.model}</h3>
+                    {(() => {
+                      if (!rep) return null;
+                      const priceInfo = getCarPriceInfo(rep);
+                      if (priceInfo.minPriceDZD && priceInfo.maxPriceDZD) {
+                        return <p className="text-emerald-400 font-medium mb-1">{priceInfo.minPriceDZD.toLocaleString()} - {priceInfo.maxPriceDZD.toLocaleString()} DZD</p>;
+                      } else if (priceInfo.priceInDZD) {
+                        return <p className="text-emerald-400 font-medium mb-1">{priceInfo.priceInDZD.toLocaleString()} DZD</p>;
+                      }
+                      return null;
+                    })()}
                     {g.quantity && (
                       <p className="text-emerald-400 font-medium mb-4">{g.quantity} unité{g.quantity > 1 ? 's' : ''}</p>
                     )}
@@ -2179,9 +2223,17 @@ const Commercials = () => {
                 {selectedCarPriceInfo?.originalPrice && (
                   <p><span className="text-neutral-400">Prix:</span> {selectedCarPriceInfo.originalPrice.toLocaleString()} {selectedCarPriceInfo.currencyCode}</p>
                 )}
+                {selectedCarPriceInfo?.minPrice && selectedCarPriceInfo?.maxPrice && (
+                  <p><span className="text-neutral-400">Plage de prix:</span> {selectedCarPriceInfo.minPrice.toLocaleString()} - {selectedCarPriceInfo.maxPrice.toLocaleString()} {selectedCarPriceInfo.currencyCode}</p>
+                )}
                 {selectedCarPriceInfo?.priceInDZD && (
                   <p className="text-2xl font-bold text-emerald-400">
                     Prix en DZD: {selectedCarPriceInfo.priceInDZD.toLocaleString()} DZD
+                  </p>
+                )}
+                {selectedCarPriceInfo?.minPriceDZD && selectedCarPriceInfo?.maxPriceDZD && (
+                  <p className="text-2xl font-bold text-emerald-400">
+                    Plage en DZD: {selectedCarPriceInfo.minPriceDZD.toLocaleString()} - {selectedCarPriceInfo.maxPriceDZD.toLocaleString()} DZD
                   </p>
                 )}
                 {selectedCar.engine && <p><span className="text-neutral-400">Moteur:</span> {selectedCar.engine}</p>}

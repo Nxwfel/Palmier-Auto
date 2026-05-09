@@ -83,6 +83,8 @@ const MarketingAgent = () => {
     country: "",
     quantity: "",
     price: "",
+    min_price: "",
+    max_price: "",
     wholesale_price: "",
     shipping_date: "",
     arriving_date: "",
@@ -113,6 +115,8 @@ const MarketingAgent = () => {
     country: "",
     quantity: "",
     price: "",
+    min_price: "",
+    max_price: "",
     wholesale_price: "",
     shipping_date: "",
     arriving_date: "",
@@ -351,6 +355,8 @@ const MarketingAgent = () => {
       "country",
       "quantity",
       "price",
+      "min_price",
+      "max_price",
       "wholesale_price",
       "shipping_date",
       "arriving_date",
@@ -390,6 +396,8 @@ const MarketingAgent = () => {
       formDataToSend.append("country", formData.country);
       formDataToSend.append("quantity", parseInt(formData.quantity));
       formDataToSend.append("price", parseFloat(formData.price));
+      formDataToSend.append("min_price", parseFloat(formData.min_price));
+      formDataToSend.append("max_price", parseFloat(formData.max_price));
       formDataToSend.append("wholesale_price", parseFloat(formData.wholesale_price));
       formDataToSend.append("shipping_date", formData.shipping_date);
       formDataToSend.append("arriving_date", formData.arriving_date);
@@ -426,6 +434,8 @@ const MarketingAgent = () => {
           country: "",
           quantity: "",
           price: "",
+          min_price: "",
+          max_price: "",
           wholesale_price: "",
           shipping_date: "",
           arriving_date: "",
@@ -502,6 +512,8 @@ const MarketingAgent = () => {
       country: car.country || "",
       quantity: car.quantity || "",
       price: car.price || "",
+      min_price: car.min_price || "",
+      max_price: car.max_price || "",
       wholesale_price: car.wholesale_price || "",
       shipping_date: car.shipping_date || "",
       arriving_date: car.arriving_date || "",
@@ -572,6 +584,14 @@ const MarketingAgent = () => {
       
       if (editForm.price && editForm.price !== "") {
         formDataToSend.append("price", parseFloat(editForm.price));
+      }
+      
+      if (editForm.min_price && editForm.min_price !== "") {
+        formDataToSend.append("min_price", parseFloat(editForm.min_price));
+      }
+      
+      if (editForm.max_price && editForm.max_price !== "") {
+        formDataToSend.append("max_price", parseFloat(editForm.max_price));
       }
       
       if (editForm.wholesale_price && editForm.wholesale_price !== "") {
@@ -918,6 +938,26 @@ const MarketingAgent = () => {
                 value={formData.price}
                 onChange={handleChange}
                 placeholder="Prix *"
+                type="number"
+                step="0.01"
+                className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
+                required
+              />
+              <input
+                name="min_price"
+                value={formData.min_price}
+                onChange={handleChange}
+                placeholder="Prix Minimum *"
+                type="number"
+                step="0.01"
+                className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
+                required
+              />
+              <input
+                name="max_price"
+                value={formData.max_price}
+                onChange={handleChange}
+                placeholder="Prix Maximum *"
                 type="number"
                 step="0.01"
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1325,6 +1365,24 @@ const MarketingAgent = () => {
                         value={editForm.price}
                         onChange={handleEditChange}
                         placeholder="Prix"
+                        type="number"
+                        step="0.01"
+                        className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <input
+                        name="min_price"
+                        value={editForm.min_price}
+                        onChange={handleEditChange}
+                        placeholder="Prix Minimum"
+                        type="number"
+                        step="0.01"
+                        className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <input
+                        name="max_price"
+                        value={editForm.max_price}
+                        onChange={handleEditChange}
+                        placeholder="Prix Maximum"
                         type="number"
                         step="0.01"
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
