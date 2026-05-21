@@ -1147,6 +1147,12 @@ const Commercials = () => {
             <div class="info-value">${car.engine}</div>
         </div>
         ` : ''}
+        <div class="info-row">
+            <div class="info-label">وضعية الجمارك:</div>
+            <div class="info-value" style="font-weight: bold; color: ${car.customs_cleared ? '#059669' : '#d97706'}">
+                ${car.customs_cleared ? '✅ تم التخليص الجمركي' : '⏳ في انتظار التخليص الجمركي'}
+            </div>
+        </div>
     </div>
 
     <div class="price-highlight">
@@ -2241,6 +2247,18 @@ const Commercials = () => {
                 {selectedCar.fuel_type && <p><span className="text-neutral-400">Carburant:</span> {selectedCar.fuel_type}</p>}
                 {selectedCar.milage != null && <p><span className="text-neutral-400">Kilométrage:</span> {selectedCar.milage.toLocaleString()} km</p>}
                 {selectedCar.country && <p><span className="text-neutral-400">Origine:</span> {selectedCar.country}</p>}
+                <p>
+                  <span className="text-neutral-400">Dédounement:</span>{" "}
+                  <span className={`font-semibold ${selectedCar.customs_cleared ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {selectedCar.customs_cleared ? '✅ Dédouanée' : '⏳ En attente de dédouanement'}
+                  </span>
+                </p>
+                {selectedCar.description && (
+                  <div className="mt-2 p-3 bg-neutral-900/60 rounded-lg">
+                    <p className="text-neutral-400 text-sm mb-1">Description:</p>
+                    <p className="text-sm">{selectedCar.description}</p>
+                  </div>
+                )}
               </div>
               <div className="mt-10 text-right">
                 <button onClick={() => setIsModalOpen(false)} className="px-8 py-3 bg-neutral-700 rounded-lg hover:bg-neutral-600 transition">

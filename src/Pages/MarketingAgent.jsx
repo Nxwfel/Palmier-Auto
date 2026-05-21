@@ -88,6 +88,7 @@ const MarketingAgent = () => {
     wholesale_price: "",
     shipping_date: "",
     arriving_date: "",
+    customs_cleared: false,
     images: [],
   });
 
@@ -120,6 +121,7 @@ const MarketingAgent = () => {
     wholesale_price: "",
     shipping_date: "",
     arriving_date: "",
+    customs_cleared: false,
     images: [],
     existing_images: [], // Track existing images
   });
@@ -208,7 +210,8 @@ const MarketingAgent = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
   };
 
   const addColor = () => {
@@ -401,6 +404,7 @@ const MarketingAgent = () => {
       formDataToSend.append("wholesale_price", parseFloat(formData.wholesale_price));
       formDataToSend.append("shipping_date", formData.shipping_date);
       formDataToSend.append("arriving_date", formData.arriving_date);
+      formDataToSend.append("customs_cleared", formData.customs_cleared ? "true" : "false");
       
       // Append all images
       formData.images.forEach(file => {
@@ -439,6 +443,7 @@ const MarketingAgent = () => {
           wholesale_price: "",
           shipping_date: "",
           arriving_date: "",
+          customs_cleared: false,
           images: [],
         });
         setColorInput("");
@@ -517,6 +522,7 @@ const MarketingAgent = () => {
       wholesale_price: car.wholesale_price || "",
       shipping_date: car.shipping_date || "",
       arriving_date: car.arriving_date || "",
+      customs_cleared: car.customs_cleared ?? false,
       images: [],
       existing_images: existingImages,
     });
@@ -525,7 +531,8 @@ const MarketingAgent = () => {
   };
 
   const handleEditChange = (e) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setEditForm({ ...editForm, [name]: type === "checkbox" ? checked : value });
   };
 
   const handleSaveEdit = async (e) => {
@@ -605,6 +612,8 @@ const MarketingAgent = () => {
       if (editForm.arriving_date && editForm.arriving_date !== "") {
         formDataToSend.append("arriving_date", editForm.arriving_date);
       }
+
+      formDataToSend.append("customs_cleared", editForm.customs_cleared ? "true" : "false");
       
       // Append all new images
       if (editForm.images && editForm.images.length > 0) {
@@ -989,6 +998,16 @@ const MarketingAgent = () => {
                 className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                 required
               />
+              <label className="md:col-span-3 flex items-center gap-3 bg-neutral-800 p-3 rounded-xl cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="customs_cleared"
+                  checked={!!formData.customs_cleared}
+                  onChange={handleChange}
+                  className="w-4 h-4 rounded accent-emerald-500"
+                />
+                <span className="text-sm text-neutral-300">Dédouanée (Customs Cleared)</span>
+              </label>
               
               {/* Enhanced Image Upload Section */}
               <div className="md:col-span-3">
@@ -1410,6 +1429,16 @@ const MarketingAgent = () => {
                         type="date"
                         className="bg-neutral-800 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
                       />
+                      <label className="md:col-span-3 flex items-center gap-3 bg-neutral-800 p-3 rounded-xl cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="customs_cleared"
+                          checked={!!editForm.customs_cleared}
+                          onChange={handleEditChange}
+                          className="w-4 h-4 rounded accent-emerald-500"
+                        />
+                        <span className="text-sm text-neutral-300">Dédouanée (Customs Cleared)</span>
+                      </label>
                       
                       {/* Display existing images */}
                       {editForm.existing_images && editForm.existing_images.length > 0 && (

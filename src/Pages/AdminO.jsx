@@ -77,6 +77,7 @@ const CommercialCarsModal = ({
       wholesale_price: car.wholesale_price || "",
       shipping_date: car.shipping_date || "",
       arriving_date: car.arriving_date || "",
+      customs_cleared: car.customs_cleared ?? false,
       images: [],
     });
   };
@@ -113,6 +114,7 @@ const CommercialCarsModal = ({
       formDataToSend.append("wholesale_price", editCarForm.wholesale_price || "");
       formDataToSend.append("shipping_date", editCarForm.shipping_date || "");
       formDataToSend.append("arriving_date", editCarForm.arriving_date || "");
+      formDataToSend.append("customs_cleared", editCarForm.customs_cleared ? "true" : "false");
       editCarForm.images.forEach(file => {
         formDataToSend.append("images", file);
       });
@@ -208,6 +210,15 @@ const CommercialCarsModal = ({
                             <input name="wholesale_price" type="number" step="0.01" value={editCarForm.wholesale_price} onChange={handleEditCarChange} placeholder="Wholesale Price" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="shipping_date" type="date" value={editCarForm.shipping_date} onChange={handleEditCarChange} className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="arriving_date" type="date" value={editCarForm.arriving_date} onChange={handleEditCarChange} className="bg-neutral-700 p-2 rounded text-sm" />
+                            <label className="flex items-center gap-2 col-span-3 cursor-pointer bg-neutral-700 px-3 py-2 rounded text-sm">
+                              <input
+                                type="checkbox"
+                                checked={!!editCarForm.customs_cleared}
+                                onChange={(e) => setEditCarForm({ ...editCarForm, customs_cleared: e.target.checked })}
+                                className="w-4 h-4 rounded accent-emerald-500"
+                              />
+                              <span>Dédouanée (Customs Cleared)</span>
+                            </label>
                           </div>
                           <div className="mb-4">
                             <label className="block text-xs text-neutral-400 mb-2">Add/Update Images (optional)</label>
@@ -519,6 +530,7 @@ export default function AdminSuperPanel() {
     arrivingDate: "",
     currency_id: "",
     quantity: "",
+    customs_cleared: false,
     imageFiles: [],
   };
 
@@ -1609,8 +1621,8 @@ export default function AdminSuperPanel() {
   // ✅ FIX: Updated handleSubmitCar to handle colors as array
   const handleSubmitCar = async (e) => {
     e.preventDefault();
-    if (!carForm.model || !carForm.currency_id || !carForm.quantity) {
-      alert("Model, Currency, and Quantity are required");
+    if (!carForm.model || !carForm.currency_id || !carForm.quantity || !carForm.color || !carForm.min_price || !carForm.max_price) {
+      alert("Model, Currency, Quantity, Colors, Min Price, and Max Price are required");
       return;
     }
     try {
@@ -1637,12 +1649,13 @@ export default function AdminSuperPanel() {
       formData.append('milage', parseFloat(carForm.milage) || 0);
       formData.append('country', carForm.country);
       formData.append('price', parseFloat(carForm.price) || 0);
-      if (carForm.min_price) formData.append('min_price', parseFloat(carForm.min_price));
-      if (carForm.max_price) formData.append('max_price', parseFloat(carForm.max_price));
+      formData.append('min_price', parseFloat(carForm.min_price));
+      formData.append('max_price', parseFloat(carForm.max_price));
       formData.append('wholesale_price', parseFloat(carForm.wholesale_price) || 0);
       formData.append('shipping_date', carForm.shippingDate || new Date().toISOString().split('T')[0]);
       formData.append('arriving_date', carForm.arrivingDate || new Date().toISOString().split('T')[0]);
       formData.append('currency_id', parseInt(carForm.currency_id));
+      formData.append('customs_cleared', carForm.customs_cleared ? 'true' : 'false');
 
       if (carForm.imageFiles && carForm.imageFiles.length > 0) {
         Array.from(carForm.imageFiles).forEach(file => {
@@ -1701,6 +1714,7 @@ export default function AdminSuperPanel() {
       shippingDate: car.shipping_date || "",
       arrivingDate: car.arriving_date || "",
       currency_id: car.currency_id || "",
+      customs_cleared: car.customs_cleared ?? false,
       imageFiles: [],
     });
     setShowAddCar(true);
@@ -4101,7 +4115,7 @@ export default function AdminSuperPanel() {
                 ))}
               </select>
               <input autoFocus value={carForm.model} onChange={(e) => setCarForm({ ...carForm, model: e.target.value })} placeholder="Model *" className="bg-neutral-800 p-2 rounded text-sm" required />
-              <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Colors (comma-separated)" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input value={carForm.color} onChange={(e) => setCarForm({ ...carForm, color: e.target.value })} placeholder="Colors (comma-separated) *" className="bg-neutral-800 p-2 rounded text-sm" required />
 
               {/* ✅ Added Description field - spans full width */}
               <textarea
@@ -4119,8 +4133,8 @@ export default function AdminSuperPanel() {
               <input type="number" step="0.01" value={carForm.milage} onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })} placeholder="Mileage" className="bg-neutral-800 p-2 rounded text-sm" />
               <input value={carForm.country} onChange={(e) => setCarForm({ ...carForm, country: e.target.value })} placeholder="Country" className="bg-neutral-800 p-2 rounded text-sm" />
               <input type="number" step="0.01" value={carForm.price} onChange={(e) => setCarForm({ ...carForm, price: e.target.value })} placeholder="Price *" className="bg-neutral-800 p-2 rounded text-sm" required />
-              <input type="number" step="0.01" value={carForm.min_price} onChange={(e) => setCarForm({ ...carForm, min_price: e.target.value })} placeholder="Min Price" className="bg-neutral-800 p-2 rounded text-sm" />
-              <input type="number" step="0.01" value={carForm.max_price} onChange={(e) => setCarForm({ ...carForm, max_price: e.target.value })} placeholder="Max Price" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input type="number" step="0.01" value={carForm.min_price} onChange={(e) => setCarForm({ ...carForm, min_price: e.target.value })} placeholder="Min Price *" className="bg-neutral-800 p-2 rounded text-sm" required />
+              <input type="number" step="0.01" value={carForm.max_price} onChange={(e) => setCarForm({ ...carForm, max_price: e.target.value })} placeholder="Max Price *" className="bg-neutral-800 p-2 rounded text-sm" required />
               <input type="number" step="0.01" value={carForm.wholesale_price} onChange={(e) => setCarForm({ ...carForm, wholesale_price: e.target.value })} placeholder="Wholesale Price" className="bg-neutral-800 p-2 rounded text-sm" />
               <input type="number" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="Quantity *" className="bg-neutral-800 p-2 rounded text-sm" required />
               <label className="flex flex-col gap-1">
@@ -4130,6 +4144,15 @@ export default function AdminSuperPanel() {
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-neutral-400">Arrival Date</span>
                 <input type="date" value={carForm.arrivingDate} onChange={(e) => setCarForm({ ...carForm, arrivingDate: e.target.value })} className="bg-neutral-800 p-2 rounded text-sm" />
+              </label>
+              <label className="flex items-center gap-2 col-span-3 cursor-pointer bg-neutral-800/60 px-3 py-2 rounded text-sm">
+                <input
+                  type="checkbox"
+                  checked={!!carForm.customs_cleared}
+                  onChange={(e) => setCarForm({ ...carForm, customs_cleared: e.target.checked })}
+                  className="w-4 h-4 rounded accent-emerald-500"
+                />
+                <span className="text-neutral-300">Dédouanée (Customs Cleared)</span>
               </label>
             </div>
             <div className="mb-4">
