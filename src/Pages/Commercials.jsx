@@ -1150,7 +1150,7 @@ const Commercials = () => {
         <div class="info-row">
             <div class="info-label">وضعية الجمارك:</div>
             <div class="info-value" style="font-weight: bold; color: ${car.customs_cleared ? '#059669' : '#d97706'}">
-                ${car.customs_cleared ? '✅ تم التخليص الجمركي' : '⏳ في انتظار التخليص الجمركي'}
+                ${car.customs_cleared ? ' تم التخليص الجمركي' : '⏳ في انتظار التخليص الجمركي'}
             </div>
         </div>
     </div>
@@ -1164,7 +1164,6 @@ const Commercials = () => {
         ` : ''}
         المبلغ الإجمالي والنهائي: ${formattedTotal} دج 
         <br>
-        <small style="font-size: 10pt;">(متضمناً جميع تكاليف النقل والتأمين دون حقوق الجمركة)</small>
     </div>
 
     <div class="payment-details">
