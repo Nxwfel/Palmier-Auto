@@ -1150,7 +1150,7 @@ const Commercials = () => {
         <div class="info-row">
             <div class="info-label">وضعية الجمارك:</div>
             <div class="info-value" style="font-weight: bold; color: ${car.customs_cleared ? '#059669' : '#d97706'}">
-                ${car.customs_cleared ? ' تم التخليص الجمركي' : '⏳ في انتظار التخليص الجمركي'}
+                ${car.customs_cleared ? ' متضمن تكاليف الجمركة' : 'غير متضمن تكاليف الجمركة '}
             </div>
         </div>
     </div>
