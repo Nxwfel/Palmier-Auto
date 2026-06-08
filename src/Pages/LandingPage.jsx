@@ -6,6 +6,8 @@ import Tundra from '../assets/TundraG.png';
 import Sportage from '../assets/Sportage.jpg';
 import Tharu from '../assets/Tharu.jpg';
 import Beams from '../Components/Beams.jsx'
+import { GoogleAdsObserver } from 'react-google-ads-advanced';
+import 'react-google-ads-advanced/dist/index.css';
 
 const LandingPage = () => {
   const slides = [
@@ -38,6 +40,7 @@ const LandingPage = () => {
   return (
     <div className="relative font-main h-screen w-screen overflow-hidden bg-black text-white">
       {/* Header */}
+      <GoogleAdsObserver />
       <header className="z-40 relative h-[10vh] flex items-center justify-between px-6 md:px-12">
         <h1 className=" text-xl md:text-2xl tracking-wider">PALMIER AUTO</h1>
 
@@ -186,7 +189,7 @@ const LandingPage = () => {
                 </p>
 
                 <a
-                  href="https://palmieraffaire.com"
+                  href="https://palmieraffaires.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setShowAlert(false)}
