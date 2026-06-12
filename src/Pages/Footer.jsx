@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { MapPin, Phone, Mail, Facebook, Instagram, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -153,6 +154,12 @@ const Footer = () => {
         <div className='max-w-7xl mx-auto px-8 py-4'>
           <div className='flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-neutral-600'>
             <p>© 2025 Palmier Auto. Tous droits réservés.</p>
+            <div className='flex gap-4'>
+              <Link to='/privacy' className='hover:text-amber-400 transition-colors'>Privacy</Link>
+              <Link to='/terms' className='hover:text-amber-400 transition-colors'>Terms</Link>
+              <Link to='/cookies' className='hover:text-amber-400 transition-colors'>Cookies</Link>
+              <Link to='/disclaimer' className='hover:text-amber-400 transition-colors'>Disclaimer</Link>
+            </div>
           </div>
         </div>
       </div>

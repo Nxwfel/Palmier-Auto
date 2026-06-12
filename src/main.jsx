@@ -22,6 +22,10 @@ import AccountantProtectedRoute from './Components/AccountantProtectedRoute.jsx'
 import MarketingProtectedRoute from './Components/MarketingProtectedRoute.jsx'
 import OrderForm from './Pages/OrderForm.jsx'
 import Footer from './Pages/Footer.jsx'
+import PrivacyPolicy from './Pages/PrivacyPolicy.jsx'
+import TermsAndConditions from './Pages/TermsAndConditions.jsx'
+import CookiePolicy from './Pages/CookiePolicy.jsx'
+import Disclaimer from './Pages/Disclaimer.jsx'
 import './index.css'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -30,6 +34,10 @@ createRoot(document.getElementById('root')).render(
         <Route path='/' element={<App/>} />
         <Route path='/auth' element={<AuthPage/>} />
         <Route path='/Contact' element={<Footer/>} />
+        <Route path='/privacy' element={<PrivacyPolicy/>} />
+        <Route path='/terms' element={<TermsAndConditions/>} />
+        <Route path='/cookies' element={<CookiePolicy/>} />
+        <Route path='/disclaimer' element={<Disclaimer/>} />
         <Route element={<ProtectedRoute />}>
           <Route path="/admin" element={<AdminSuperPanel />} />
         </Route>
