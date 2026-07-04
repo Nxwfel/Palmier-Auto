@@ -801,7 +801,7 @@ const Commercials = () => {
       client_id: clientId,
       car_id: carId,
       car_color,
-      num_chassis: String(num_chassis),
+      num_chassis,
       delivery_status,
       ...(newOrder.custom_price !== "" && { custom_price: parseFloat(newOrder.custom_price) })
     };
