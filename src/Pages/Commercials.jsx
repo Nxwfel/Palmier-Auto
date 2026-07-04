@@ -792,8 +792,8 @@ const Commercials = () => {
     const clientId = Number(client_id);
     const carId = Number(car_id);
 
-    if (!clientId || !carId || !car_color || !num_chassis) {
-      alert("⚠️ Sélectionnez un client, une voiture, une couleur et un châssis.");
+    if (!clientId || !carId || !car_color) {
+      alert("⚠️ Sélectionnez un client, une voiture et une couleur.");
       return;
     }
 
@@ -801,9 +801,9 @@ const Commercials = () => {
       client_id: clientId,
       car_id: carId,
       car_color,
-      num_chassis,
       delivery_status,
-      ...(newOrder.custom_price !== "" && { custom_price: parseFloat(newOrder.custom_price) })
+      ...(newOrder.custom_price !== "" && { custom_price: parseFloat(newOrder.custom_price) }),
+      ...(num_chassis !== "" && { num_chassis })
     };
 
     try {
@@ -1283,10 +1283,7 @@ const Commercials = () => {
     if (editForm.delivery_status) body.delivery_status = editForm.delivery_status;
     if (editForm.num_chassis) body.num_chassis = String(editForm.num_chassis);
 
-    if (!body.num_chassis && editForm.num_chassis !== undefined) {
-      alert("⚠️ Sélectionnez un châssis.");
-      return;
-    }
+
 
     try {
       setLoading(true);

@@ -779,9 +779,11 @@ export default function AdminSuperPanel() {
         client_id: Number(orderForm.client_id),
         car_id: Number(orderForm.car_id),
         car_color: String(orderForm.car_color),
-        num_chassis: String(orderForm.num_chassis),
         delivery_status: String(orderForm.delivery_status),
       };
+      if (orderForm.num_chassis) {
+        payload.num_chassis = String(orderForm.num_chassis);
+      }
 
       if (!payload.client_id || isNaN(payload.client_id)) {
         throw new Error("Veuillez sélectionner un client");
@@ -789,9 +791,7 @@ export default function AdminSuperPanel() {
       if (!payload.car_id || isNaN(payload.car_id)) {
         throw new Error("Veuillez sélectionner une voiture");
       }
-      if (!payload.num_chassis) {
-        throw new Error("Veuillez sélectionner un numéro de châssis");
-      }
+
       if (!payload.car_color) {
         throw new Error("Veuillez spécifier une couleur");
       }
@@ -1562,16 +1562,16 @@ export default function AdminSuperPanel() {
         order_id: Number(orderForm.id),
         status: Boolean(orderForm.status),
         payment_amount: Number(orderForm.payment_amount) || null,
-        num_chassis: String(orderForm.num_chassis),
         delivery_status: String(orderForm.delivery_status),
       };
+      if (orderForm.num_chassis) {
+        payload.num_chassis = String(orderForm.num_chassis);
+      }
 
       if (!payload.order_id || isNaN(payload.order_id)) {
         throw new Error("ID de commande invalide");
       }
-      if (!payload.num_chassis) {
-        throw new Error("Veuillez sélectionner un numéro de châssis");
-      }
+
       if (!['shipping', 'arrived', 'showroom'].includes(payload.delivery_status)) {
         throw new Error("Statut de livraison invalide");
       }
