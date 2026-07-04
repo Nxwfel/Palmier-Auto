@@ -1,0 +1,5338 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ShowRoom System1",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "main"
+        ],
+        "summary": "Home",
+        "operationId": "home__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "tags": [
+          "main"
+        ],
+        "summary": "Home",
+        "operationId": "home__head",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/download_static_files/{key}": {
+      "get": {
+        "tags": [
+          "main"
+        ],
+        "summary": "Download Static Files",
+        "operationId": "download_static_files_download_static_files__key__get",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/login": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Login",
+        "operationId": "login_users_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/loginUser"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/super_admin/": {
+      "get": {
+        "tags": [
+          "super_admin"
+        ],
+        "summary": "Get The Super Admin",
+        "operationId": "get_the_super_admin_super_admin__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "super_admin"
+        ],
+        "summary": "Modify Super Admin",
+        "operationId": "modify_super_admin_super_admin__put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateSuperAdmin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/social_links/": {
+      "get": {
+        "tags": [
+          "social_links"
+        ],
+        "summary": "Get All Social Links",
+        "operationId": "get_all_social_links_social_links__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "social_links"
+        ],
+        "summary": "Modify Social Links",
+        "operationId": "modify_social_links_social_links__put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateSocialLinks"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/marketers/": {
+      "get": {
+        "tags": [
+          "marketers"
+        ],
+        "summary": "Get All Marketers",
+        "operationId": "get_all_marketers_marketers__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "marketers"
+        ],
+        "summary": "Add Marketer",
+        "operationId": "add_marketer_marketers__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addMarketer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "marketers"
+        ],
+        "summary": "Modify Marketer",
+        "operationId": "modify_marketer_marketers__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateMarketer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "marketers"
+        ],
+        "summary": "Remove Marketer",
+        "operationId": "remove_marketer_marketers__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "marketer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Marketer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/marketers/marketer": {
+      "post": {
+        "tags": [
+          "marketers"
+        ],
+        "summary": "Get One Marketer",
+        "operationId": "get_one_marketer_marketers_marketer_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/commercials/random_password": {
+      "get": {
+        "tags": [
+          "commercials"
+        ],
+        "summary": "Get Random Password",
+        "operationId": "get_random_password_commercials_random_password_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/commercials/": {
+      "get": {
+        "tags": [
+          "commercials"
+        ],
+        "summary": "Get All Commercials",
+        "operationId": "get_all_commercials_commercials__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "commercials"
+        ],
+        "summary": "Add Commercial",
+        "operationId": "add_commercial_commercials__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addCommercial"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "commercials"
+        ],
+        "summary": "Modify Commercial",
+        "operationId": "modify_commercial_commercials__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateCommercial"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "commercials"
+        ],
+        "summary": "Remove Commercial",
+        "operationId": "remove_commercial_commercials__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "commercial_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Commercial Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/commercials/phone_numbers_wilayas": {
+      "get": {
+        "tags": [
+          "commercials"
+        ],
+        "summary": "Get All Commercials Phone Numbers Wilayas",
+        "operationId": "get_all_commercials_phone_numbers_wilayas_commercials_phone_numbers_wilayas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/commercials/commercial": {
+      "post": {
+        "tags": [
+          "commercials"
+        ],
+        "summary": "Get One Commercial",
+        "operationId": "get_one_commercial_commercials_commercial_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/commercials/clients": {
+      "get": {
+        "tags": [
+          "commercials"
+        ],
+        "summary": "Get All Commercial Clients",
+        "operationId": "get_all_commercial_clients_commercials_clients_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/suppliers/": {
+      "get": {
+        "tags": [
+          "suppliers"
+        ],
+        "summary": "Get All Suppliers",
+        "operationId": "get_all_suppliers_suppliers__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "suppliers"
+        ],
+        "summary": "Add Supplier",
+        "operationId": "add_supplier_suppliers__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addSupplier"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "suppliers"
+        ],
+        "summary": "Modify Supplier",
+        "operationId": "modify_supplier_suppliers__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateSupplier"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "suppliers"
+        ],
+        "summary": "Remove Supplier",
+        "operationId": "remove_supplier_suppliers__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "supplier_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Supplier Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/suppliers_items/": {
+      "get": {
+        "tags": [
+          "suppliers_items"
+        ],
+        "summary": "Get All Suppliers Items",
+        "operationId": "get_all_suppliers_items_suppliers_items__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "suppliers_items"
+        ],
+        "summary": "Add One Supplier Item",
+        "operationId": "add_one_supplier_item_suppliers_items__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addSupplierItem"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "suppliers_items"
+        ],
+        "summary": "Modify Supplier Item",
+        "operationId": "modify_supplier_item_suppliers_items__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateSupplierItem"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "suppliers_items"
+        ],
+        "summary": "Remove Supplier Item",
+        "operationId": "remove_supplier_item_suppliers_items__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "supplier_item_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Supplier Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accountants/": {
+      "get": {
+        "tags": [
+          "accountants"
+        ],
+        "summary": "Get All Accountants",
+        "operationId": "get_all_accountants_accountants__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "accountants"
+        ],
+        "summary": "Add Accountant",
+        "operationId": "add_accountant_accountants__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addAccountant"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "accountants"
+        ],
+        "summary": "Modify Accountant",
+        "operationId": "modify_accountant_accountants__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateAccountant"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "accountants"
+        ],
+        "summary": "Remove Accountant",
+        "operationId": "remove_accountant_accountants__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "accountant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Accountant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accountants/accountant": {
+      "post": {
+        "tags": [
+          "accountants"
+        ],
+        "summary": "Get One Accountant",
+        "operationId": "get_one_accountant_accountants_accountant_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/clients/": {
+      "get": {
+        "tags": [
+          "clients"
+        ],
+        "summary": "Get All Clients",
+        "operationId": "get_all_clients_clients__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "clients"
+        ],
+        "summary": "Add Client",
+        "operationId": "add_client_clients__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addClient"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "clients"
+        ],
+        "summary": "Modify Client",
+        "operationId": "modify_client_clients__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateClient"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "clients"
+        ],
+        "summary": "Remove Client",
+        "operationId": "remove_client_clients__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clients/client": {
+      "post": {
+        "tags": [
+          "clients"
+        ],
+        "summary": "Get One Client",
+        "operationId": "get_one_client_clients_client_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/clients/client/images": {
+      "get": {
+        "tags": [
+          "clients"
+        ],
+        "summary": "Get Client Images",
+        "description": "For Client",
+        "operationId": "get_client_images_clients_client_images_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/clients/{client_id}/images": {
+      "get": {
+        "tags": [
+          "clients"
+        ],
+        "summary": "Get Client Images",
+        "description": "For Superadmin, Commercial, accountant",
+        "operationId": "get_client_images_clients__client_id__images_get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clients/images": {
+      "post": {
+        "tags": [
+          "clients"
+        ],
+        "summary": "Add Client Image",
+        "operationId": "add_client_image_clients_images_post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_client_image_clients_images_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "clients"
+        ],
+        "summary": "Delete Client Image",
+        "operationId": "delete_client_image_clients_images_delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Client Id"
+            }
+          },
+          {
+            "name": "image_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/currencies/": {
+      "get": {
+        "tags": [
+          "currencies"
+        ],
+        "summary": "Get All Currencies",
+        "operationId": "get_all_currencies_currencies__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "currencies"
+        ],
+        "summary": "Add Currency",
+        "operationId": "add_currency_currencies__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addCurrency"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "currencies"
+        ],
+        "summary": "Modify Currencies",
+        "operationId": "modify_currencies_currencies__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateCurrency"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "currencies"
+        ],
+        "summary": "Remove Currency",
+        "operationId": "remove_currency_currencies__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "currency_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Currency Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cars/all": {
+      "post": {
+        "tags": [
+          "cars"
+        ],
+        "summary": "Get All Cars",
+        "operationId": "get_all_cars_cars_all_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/getCars"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cars/{car_id}/images": {
+      "get": {
+        "tags": [
+          "cars"
+        ],
+        "summary": "Get Car Images",
+        "operationId": "get_car_images_cars__car_id__images_get",
+        "parameters": [
+          {
+            "name": "car_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Car Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cars/": {
+      "post": {
+        "tags": [
+          "cars"
+        ],
+        "summary": "Add Car",
+        "operationId": "add_car_cars__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_car_cars__post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "cars"
+        ],
+        "summary": "Modify Car",
+        "operationId": "modify_car_cars__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_modify_car_cars__put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "cars"
+        ],
+        "summary": "Remove Car",
+        "operationId": "remove_car_cars__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "car_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Car Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/commissions/": {
+      "get": {
+        "tags": [
+          "commissions"
+        ],
+        "summary": "Get All Commissions",
+        "operationId": "get_all_commissions_commissions__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "commissions"
+        ],
+        "summary": "Add Commission",
+        "operationId": "add_commission_commissions__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addCommission"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "commissions"
+        ],
+        "summary": "Modify Commission",
+        "operationId": "modify_commission_commissions__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateCommission"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "commissions"
+        ],
+        "summary": "Remove Commission",
+        "operationId": "remove_commission_commissions__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "commission_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Commission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Get All Orders",
+        "operationId": "get_all_orders_orders__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Add Order",
+        "operationId": "add_order_orders__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Modify Order",
+        "operationId": "modify_order_orders__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Remove Order",
+        "operationId": "remove_order_orders__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/client/": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Get All Client Orders",
+        "operationId": "get_all_client_orders_orders_client__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/cars_requests/": {
+      "get": {
+        "tags": [
+          "cars_requests"
+        ],
+        "summary": "Get All Cars Requests",
+        "operationId": "get_all_cars_requests_cars_requests__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cars_requests"
+        ],
+        "summary": "Add Car Request",
+        "operationId": "add_car_request_cars_requests__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addCarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "cars_requests"
+        ],
+        "summary": "Modify Car Request",
+        "operationId": "modify_car_request_cars_requests__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateCarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "cars_requests"
+        ],
+        "summary": "Remove Car Request",
+        "operationId": "remove_car_request_cars_requests__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "car_request_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Car Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cars_requests/client/": {
+      "get": {
+        "tags": [
+          "cars_requests"
+        ],
+        "summary": "Get All Client Cars Requests",
+        "operationId": "get_all_client_cars_requests_cars_requests_client__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/notifications/": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Get All Notifications",
+        "operationId": "get_all_notifications_notifications__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/wholesale_clients/": {
+      "get": {
+        "tags": [
+          "wholesale_clients"
+        ],
+        "summary": "Get All Wholesale Clients",
+        "operationId": "get_all_wholesale_clients_wholesale_clients__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "wholesale_clients"
+        ],
+        "summary": "Add Wholesale Client",
+        "operationId": "add_wholesale_client_wholesale_clients__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addWholesaleClient"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "wholesale_clients"
+        ],
+        "summary": "Modify Wholesale Client",
+        "operationId": "modify_wholesale_client_wholesale_clients__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateWholesaleClient"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "wholesale_clients"
+        ],
+        "summary": "Remove Wholesale Client",
+        "operationId": "remove_wholesale_client_wholesale_clients__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wholesale_clients/client": {
+      "get": {
+        "tags": [
+          "wholesale_clients"
+        ],
+        "summary": "Get One Wholesale Client",
+        "operationId": "get_one_wholesale_client_wholesale_clients_client_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/wholesale_clients/client/images": {
+      "get": {
+        "tags": [
+          "wholesale_clients"
+        ],
+        "summary": "Get Wholesaleclient Images",
+        "description": "For Wholesale Client",
+        "operationId": "get_wholesaleclient_images_wholesale_clients_client_images_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/wholesale_clients/{client_id}/images": {
+      "get": {
+        "tags": [
+          "wholesale_clients"
+        ],
+        "summary": "Get Wholesaleclient Images",
+        "description": "For Superadmin, Commercial, accountant",
+        "operationId": "get_wholesaleclient_images_wholesale_clients__client_id__images_get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "wholesaleclient_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Wholesaleclient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wholesale_clients/images": {
+      "post": {
+        "tags": [
+          "wholesale_clients"
+        ],
+        "summary": "Add Wholesaleclient Image",
+        "operationId": "add_wholesaleclient_image_wholesale_clients_images_post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "wholesaleclient_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Wholesaleclient Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_wholesaleclient_image_wholesale_clients_images_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "wholesale_clients"
+        ],
+        "summary": "Delete Wholesaleclient Image",
+        "operationId": "delete_wholesaleclient_image_wholesale_clients_images_delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "wholesaleclient_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Wholesaleclient Id"
+            }
+          },
+          {
+            "name": "image_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wholesale_orders/": {
+      "get": {
+        "tags": [
+          "wholesale_orders"
+        ],
+        "summary": "Get All Wholesale Orders",
+        "operationId": "get_all_wholesale_orders_wholesale_orders__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "wholesale_orders"
+        ],
+        "summary": "Add Wholesale Order",
+        "operationId": "add_wholesale_order_wholesale_orders__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addWholesaleOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "wholesale_orders"
+        ],
+        "summary": "Modify Wholesale Order",
+        "operationId": "modify_wholesale_order_wholesale_orders__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateWholesaleOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "wholesale_orders"
+        ],
+        "summary": "Remove Wholesale Order",
+        "operationId": "remove_wholesale_order_wholesale_orders__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wholesale_orders/client/": {
+      "get": {
+        "tags": [
+          "wholesale_orders"
+        ],
+        "summary": "Get All Client Wholesale Orders",
+        "operationId": "get_all_client_wholesale_orders_wholesale_orders_client__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/cash_register/": {
+      "get": {
+        "tags": [
+          "cash_register"
+        ],
+        "summary": "Get All Cash Registers",
+        "operationId": "get_all_cash_registers_cash_register__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cash_register"
+        ],
+        "summary": "Create Cash Register",
+        "operationId": "create_cash_register_cash_register__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addCashRegister"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "cash_register"
+        ],
+        "summary": "Modify Cash Register",
+        "operationId": "modify_cash_register_cash_register__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateCashRegister"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "cash_register"
+        ],
+        "summary": "Remove Cash Register",
+        "operationId": "remove_cash_register_cash_register__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cash_register_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cash Register Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/commercials_cash_registers/all": {
+      "get": {
+        "tags": [
+          "commercials_cash_registers"
+        ],
+        "summary": "Get All Commercials Cash Registers",
+        "operationId": "get_all_commercials_cash_registers_commercials_cash_registers_all_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/commercials_cash_registers/": {
+      "get": {
+        "tags": [
+          "commercials_cash_registers"
+        ],
+        "summary": "Get Own Commercial Cash Register",
+        "operationId": "get_own_commercial_cash_register_commercials_cash_registers__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/commercials_cash_registers/{commercial_cash_register_id}": {
+      "delete": {
+        "tags": [
+          "commercials_cash_registers"
+        ],
+        "summary": "Remove Commercial Cash Register",
+        "operationId": "remove_commercial_cash_register_commercials_cash_registers__commercial_cash_register_id__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "commercial_cash_register_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Commercial Cash Register Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cash_registers_requests/": {
+      "get": {
+        "tags": [
+          "cash_registers_requests"
+        ],
+        "summary": "Get All Cash Registers Requests",
+        "operationId": "get_all_cash_registers_requests_cash_registers_requests__get",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cash_registers_requests"
+        ],
+        "summary": "Create Cash Register Request",
+        "operationId": "create_cash_register_request_cash_registers_requests__post",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "title": "Amount"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cash_registers_requests/own": {
+      "get": {
+        "tags": [
+          "cash_registers_requests"
+        ],
+        "summary": "Get Own Cash Register Requests",
+        "operationId": "get_own_cash_register_requests_cash_registers_requests_own_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/cash_registers_requests/{cash_register_request_id}": {
+      "put": {
+        "tags": [
+          "cash_registers_requests"
+        ],
+        "summary": "Modify Cash Register Request",
+        "operationId": "modify_cash_register_request_cash_registers_requests__cash_register_request_id__put",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cash_register_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cash Register Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "cash_registers_requests"
+        ],
+        "summary": "Remove Cash Register Request",
+        "operationId": "remove_cash_register_request_cash_registers_requests__cash_register_request_id__delete",
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cash_register_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cash Register Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/earnings/monthly": {
+      "get": {
+        "tags": [
+          "earnings"
+        ],
+        "summary": "Get All Monthly Earnings",
+        "operationId": "get_all_monthly_earnings_earnings_monthly_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/earnings/commercial_yearly": {
+      "get": {
+        "tags": [
+          "earnings"
+        ],
+        "summary": "Get All Yearly Earnings Per Commercial",
+        "operationId": "get_all_yearly_earnings_per_commercial_earnings_commercial_yearly_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/earnings/yearly": {
+      "get": {
+        "tags": [
+          "earnings"
+        ],
+        "summary": "Get All Yearly Earnings",
+        "operationId": "get_all_yearly_earnings_earnings_yearly_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/earnings/": {
+      "put": {
+        "tags": [
+          "earnings"
+        ],
+        "summary": "Modify Earnings",
+        "operationId": "modify_earnings_earnings__put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateEarnings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/expenses/monthly": {
+      "get": {
+        "tags": [
+          "expenses"
+        ],
+        "summary": "Get All Monthly Expenses",
+        "operationId": "get_all_monthly_expenses_expenses_monthly_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/expenses/yearly": {
+      "get": {
+        "tags": [
+          "expenses"
+        ],
+        "summary": "Get All Yearly Expenses",
+        "operationId": "get_all_yearly_expenses_expenses_yearly_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/expenses/": {
+      "put": {
+        "tags": [
+          "expenses"
+        ],
+        "summary": "Modify Expenses",
+        "operationId": "modify_expenses_expenses__put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateExpenses"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    },
+    "/transactions/": {
+      "get": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Get All Transactions",
+        "operationId": "get_all_transactions_transactions__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JwtAccessBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_add_car_cars__post": {
+        "properties": {
+          "currency_id": {
+            "type": "integer",
+            "title": "Currency Id"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "color": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Color"
+          },
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          },
+          "power": {
+            "type": "string",
+            "title": "Power"
+          },
+          "fuel_type": {
+            "type": "string",
+            "title": "Fuel Type"
+          },
+          "milage": {
+            "type": "number",
+            "title": "Milage"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "wholesale_price": {
+            "type": "number",
+            "title": "Wholesale Price"
+          },
+          "shipping_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Shipping Date"
+          },
+          "arriving_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Arriving Date"
+          },
+          "images": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "contentMediaType": "application/octet-stream"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Images"
+          }
+        },
+        "type": "object",
+        "required": [
+          "currency_id",
+          "model",
+          "color",
+          "year",
+          "engine",
+          "power",
+          "fuel_type",
+          "milage",
+          "country",
+          "quantity",
+          "price",
+          "wholesale_price",
+          "shipping_date",
+          "arriving_date"
+        ],
+        "title": "Body_add_car_cars__post"
+      },
+      "Body_add_client_image_clients_images_post": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "Body_add_client_image_clients_images_post"
+      },
+      "Body_add_wholesaleclient_image_wholesale_clients_images_post": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "Body_add_wholesaleclient_image_wholesale_clients_images_post"
+      },
+      "Body_modify_car_cars__put": {
+        "properties": {
+          "car_id": {
+            "type": "integer",
+            "title": "Car Id"
+          },
+          "currency_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency Id"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "power": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power"
+          },
+          "fuel_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fuel Type"
+          },
+          "milage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milage"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "wholesale_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wholesale Price"
+          },
+          "shipping_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipping Date"
+          },
+          "arriving_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arriving Date"
+          },
+          "images": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "contentMediaType": "application/octet-stream"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Images"
+          }
+        },
+        "type": "object",
+        "required": [
+          "car_id"
+        ],
+        "title": "Body_modify_car_cars__put"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "addAccountant": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "surname": {
+            "type": "string",
+            "title": "Surname"
+          },
+          "phone_number": {
+            "type": "string",
+            "title": "Phone Number"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "surname",
+          "phone_number",
+          "address"
+        ],
+        "title": "addAccountant"
+      },
+      "addCarRequest": {
+        "properties": {
+          "client_id": {
+            "type": "integer",
+            "title": "Client Id"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color"
+          },
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          },
+          "power": {
+            "type": "string",
+            "title": "Power"
+          },
+          "fuel_type": {
+            "type": "string",
+            "title": "Fuel Type"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "status": {
+            "type": "boolean",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "client_id",
+          "model",
+          "color",
+          "year",
+          "engine",
+          "power",
+          "fuel_type",
+          "country",
+          "status"
+        ],
+        "title": "addCarRequest"
+      },
+      "addCashRegister": {
+        "properties": {
+          "balance": {
+            "type": "number",
+            "title": "Balance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "balance"
+        ],
+        "title": "addCashRegister"
+      },
+      "addClient": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "surname": {
+            "type": "string",
+            "title": "Surname"
+          },
+          "nin": {
+            "type": "string",
+            "title": "Nin"
+          },
+          "passport_number": {
+            "type": "string",
+            "title": "Passport Number"
+          },
+          "phone_number": {
+            "type": "string",
+            "title": "Phone Number"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "wilaya": {
+            "type": "string",
+            "title": "Wilaya"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "surname",
+          "nin",
+          "passport_number",
+          "phone_number",
+          "password",
+          "wilaya",
+          "address"
+        ],
+        "title": "addClient"
+      },
+      "addCommercial": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "surname": {
+            "type": "string",
+            "title": "Surname"
+          },
+          "phone_number": {
+            "type": "string",
+            "title": "Phone Number"
+          },
+          "wilayas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Wilayas"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "surname",
+          "phone_number",
+          "wilayas",
+          "address"
+        ],
+        "title": "addCommercial"
+      },
+      "addCommission": {
+        "properties": {
+          "car_id": {
+            "type": "integer",
+            "title": "Car Id"
+          },
+          "commercial_id": {
+            "type": "integer",
+            "title": "Commercial Id"
+          },
+          "commercial_commission": {
+            "type": "number",
+            "title": "Commercial Commission"
+          }
+        },
+        "type": "object",
+        "required": [
+          "car_id",
+          "commercial_id",
+          "commercial_commission"
+        ],
+        "title": "addCommission"
+      },
+      "addCurrency": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "exchange_rate_to_dzd": {
+            "type": "number",
+            "title": "Exchange Rate To Dzd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "exchange_rate_to_dzd"
+        ],
+        "title": "addCurrency"
+      },
+      "addMarketer": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "surname": {
+            "type": "string",
+            "title": "Surname"
+          },
+          "phone_number": {
+            "type": "string",
+            "title": "Phone Number"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "surname",
+          "phone_number",
+          "address"
+        ],
+        "title": "addMarketer"
+      },
+      "addOrder": {
+        "properties": {
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "car_id": {
+            "type": "integer",
+            "title": "Car Id"
+          },
+          "car_color": {
+            "type": "string",
+            "title": "Car Color"
+          },
+          "delivery_status": {
+            "type": "string",
+            "enum": [
+              "shipping",
+              "arrived",
+              "showroom"
+            ],
+            "title": "Delivery Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "car_id",
+          "car_color",
+          "delivery_status"
+        ],
+        "title": "addOrder"
+      },
+      "addSupplier": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "surname": {
+            "type": "string",
+            "title": "Surname"
+          },
+          "phone_number": {
+            "type": "string",
+            "title": "Phone Number"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "surname",
+          "phone_number",
+          "address"
+        ],
+        "title": "addSupplier"
+      },
+      "addSupplierItem": {
+        "properties": {
+          "car_id": {
+            "type": "integer",
+            "title": "Car Id"
+          },
+          "supplier_id": {
+            "type": "integer",
+            "title": "Supplier Id"
+          },
+          "currency_id": {
+            "type": "integer",
+            "title": "Currency Id"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "car_id",
+          "supplier_id",
+          "currency_id",
+          "price"
+        ],
+        "title": "addSupplierItem"
+      },
+      "addWholesaleClient": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "surname": {
+            "type": "string",
+            "title": "Surname"
+          },
+          "phone_number": {
+            "type": "string",
+            "title": "Phone Number"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "surname",
+          "phone_number",
+          "address",
+          "company_name"
+        ],
+        "title": "addWholesaleClient"
+      },
+      "addWholesaleOrder": {
+        "properties": {
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "car_id": {
+            "type": "integer",
+            "title": "Car Id"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          },
+          "delivery_status": {
+            "type": "string",
+            "enum": [
+              "shipping",
+              "arrived",
+              "showroom"
+            ],
+            "title": "Delivery Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "car_id",
+          "quantity",
+          "delivery_status"
+        ],
+        "title": "addWholesaleOrder"
+      },
+      "getCars": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "power": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power"
+          },
+          "fuel_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fuel Type"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "shipping_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipping Date"
+          },
+          "arriving_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arriving Date"
+          }
+        },
+        "type": "object",
+        "title": "getCars"
+      },
+      "loginUser": {
+        "properties": {
+          "phone_number": {
+            "type": "string",
+            "title": "Phone Number"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "phone_number",
+          "password"
+        ],
+        "title": "loginUser"
+      },
+      "updateAccountant": {
+        "properties": {
+          "accountant_id": {
+            "type": "integer",
+            "title": "Accountant Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "surname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surname"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accountant_id"
+        ],
+        "title": "updateAccountant"
+      },
+      "updateCarRequest": {
+        "properties": {
+          "car_request_id": {
+            "type": "integer",
+            "title": "Car Request Id"
+          },
+          "status": {
+            "type": "boolean",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "car_request_id",
+          "status"
+        ],
+        "title": "updateCarRequest"
+      },
+      "updateCashRegister": {
+        "properties": {
+          "balance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance"
+          }
+        },
+        "type": "object",
+        "title": "updateCashRegister"
+      },
+      "updateClient": {
+        "properties": {
+          "commercial_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commercial Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "surname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surname"
+          },
+          "nin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nin"
+          },
+          "passport_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passport Number"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "wilaya": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wilaya"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "title": "updateClient"
+      },
+      "updateCommercial": {
+        "properties": {
+          "commercial_id": {
+            "type": "integer",
+            "title": "Commercial Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "surname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surname"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "wilayas": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wilayas"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "commercial_id"
+        ],
+        "title": "updateCommercial"
+      },
+      "updateCommission": {
+        "properties": {
+          "commission_id": {
+            "type": "integer",
+            "title": "Commission Id"
+          },
+          "commercial_commission": {
+            "type": "number",
+            "title": "Commercial Commission"
+          }
+        },
+        "type": "object",
+        "required": [
+          "commission_id",
+          "commercial_commission"
+        ],
+        "title": "updateCommission"
+      },
+      "updateCurrency": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "exchange_rate_to_dzd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange Rate To Dzd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "updateCurrency"
+      },
+      "updateEarnings": {
+        "properties": {
+          "commercial_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commercial Id"
+          },
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "month": {
+            "type": "integer",
+            "title": "Month"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "commercial_id",
+          "year",
+          "month",
+          "amount"
+        ],
+        "title": "updateEarnings"
+      },
+      "updateExpenses": {
+        "properties": {
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "month": {
+            "type": "integer",
+            "title": "Month"
+          },
+          "purchases": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchases"
+          },
+          "transport": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transport"
+          },
+          "other": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year",
+          "month"
+        ],
+        "title": "updateExpenses"
+      },
+      "updateMarketer": {
+        "properties": {
+          "marketer_id": {
+            "type": "integer",
+            "title": "Marketer Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "surname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surname"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "marketer_id"
+        ],
+        "title": "updateMarketer"
+      },
+      "updateOrder": {
+        "properties": {
+          "order_id": {
+            "type": "integer",
+            "title": "Order Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "payment_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Amount"
+          },
+          "delivery_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "shipping",
+                  "arrived",
+                  "showroom"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_id"
+        ],
+        "title": "updateOrder"
+      },
+      "updateSocialLinks": {
+        "properties": {
+          "facebook": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facebook"
+          },
+          "instagram": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instagram"
+          },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          }
+        },
+        "type": "object",
+        "title": "updateSocialLinks"
+      },
+      "updateSuperAdmin": {
+        "properties": {
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "title": "updateSuperAdmin"
+      },
+      "updateSupplier": {
+        "properties": {
+          "supplier_id": {
+            "type": "integer",
+            "title": "Supplier Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "surname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surname"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "supplier_id"
+        ],
+        "title": "updateSupplier"
+      },
+      "updateSupplierItem": {
+        "properties": {
+          "supplier_item_id": {
+            "type": "integer",
+            "title": "Supplier Item Id"
+          },
+          "supplier_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Id"
+          },
+          "payment_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Amount"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "supplier_item_id"
+        ],
+        "title": "updateSupplierItem"
+      },
+      "updateWholesaleClient": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "surname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surname"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          }
+        },
+        "type": "object",
+        "title": "updateWholesaleClient"
+      },
+      "updateWholesaleOrder": {
+        "properties": {
+          "order_id": {
+            "type": "integer",
+            "title": "Order Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "payment_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Amount"
+          },
+          "delivery_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "shipping",
+                  "arrived",
+                  "showroom"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_id"
+        ],
+        "title": "updateWholesaleOrder"
+      }
+    },
+    "securitySchemes": {
+      "JwtAccessBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

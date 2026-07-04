@@ -601,10 +601,24 @@ export default function AdminSuperPanel() {
     client_id: "",
     car_id: "",
     car_color: "",
+    num_chassis: "",
     delivery_status: "shipping",
     payment_amount: 0,
     status: true,
   });
+
+  const getAvailableChassis = (carId, currentOrderId = null) => {
+    if (!carId) return [];
+    const car = cars.find((c) => c.id === Number(carId));
+    if (!car || !car.num_chassis || !Array.isArray(car.num_chassis)) return [];
+
+    const usedChassis = orders
+      .filter((o) => o.car_id === Number(carId) && o.id !== currentOrderId)
+      .map((o) => o.num_chassis)
+      .filter(Boolean);
+
+    return car.num_chassis.filter((chassis) => !usedChassis.includes(chassis));
+  };
 
   const [supplierItemForm, setSupplierItemForm] = useState({
     car_id: "",
@@ -765,6 +779,7 @@ export default function AdminSuperPanel() {
         client_id: Number(orderForm.client_id),
         car_id: Number(orderForm.car_id),
         car_color: String(orderForm.car_color),
+        num_chassis: String(orderForm.num_chassis),
         delivery_status: String(orderForm.delivery_status),
       };
 
@@ -773,6 +788,9 @@ export default function AdminSuperPanel() {
       }
       if (!payload.car_id || isNaN(payload.car_id)) {
         throw new Error("Veuillez sélectionner une voiture");
+      }
+      if (!payload.num_chassis) {
+        throw new Error("Veuillez sélectionner un numéro de châssis");
       }
       if (!payload.car_color) {
         throw new Error("Veuillez spécifier une couleur");
@@ -801,6 +819,7 @@ export default function AdminSuperPanel() {
         client_id: "",
         car_id: "",
         car_color: "",
+        num_chassis: "",
         delivery_status: "shipping",
         payment_amount: 0,
         status: true,
@@ -1543,11 +1562,15 @@ export default function AdminSuperPanel() {
         order_id: Number(orderForm.id),
         status: Boolean(orderForm.status),
         payment_amount: Number(orderForm.payment_amount) || null,
+        num_chassis: String(orderForm.num_chassis),
         delivery_status: String(orderForm.delivery_status),
       };
 
       if (!payload.order_id || isNaN(payload.order_id)) {
         throw new Error("ID de commande invalide");
+      }
+      if (!payload.num_chassis) {
+        throw new Error("Veuillez sélectionner un numéro de châssis");
       }
       if (!['shipping', 'arrived', 'showroom'].includes(payload.delivery_status)) {
         throw new Error("Statut de livraison invalide");
@@ -1572,6 +1595,7 @@ export default function AdminSuperPanel() {
         client_id: "",
         car_id: "",
         car_color: "",
+        num_chassis: "",
         delivery_status: "shipping",
         payment_amount: 0,
         status: true,
@@ -2276,10 +2300,11 @@ export default function AdminSuperPanel() {
 
   const handleEditOrder = (order) => {
     setOrderForm({
-      id: order.order_id || order.id,
+      id: order.id || order.order_id,
       client_id: order.client_id,
       car_id: order.car_id,
       car_color: order.car_color,
+      num_chassis: order.num_chassis || "",
       delivery_status: order.delivery_status,
       payment_amount: order.payment_amount || 0,
       status: order.status !== undefined ? order.status : true,
@@ -3781,6 +3806,24 @@ export default function AdminSuperPanel() {
               />
             </div>
 
+            {/* Num Chassis */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Numéro de Châssis *
+              </label>
+              <select
+                value={orderForm.num_chassis}
+                onChange={(e) => setOrderForm({ ...orderForm, num_chassis: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                required
+              >
+                <option value="">Sélectionner un châssis</option>
+                {getAvailableChassis(orderForm.car_id).map((chassis, idx) => (
+                  <option key={idx} value={chassis}>{chassis}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Delivery Status */}
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-2">
@@ -3943,6 +3986,27 @@ export default function AdminSuperPanel() {
                 placeholder="Ex: Rouge, Noir, Blanc..."
                 required
               />
+            </div>
+
+            {/* Num Chassis */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Numéro de Châssis *
+              </label>
+              <select
+                value={orderForm.num_chassis}
+                onChange={(e) => setOrderForm({ ...orderForm, num_chassis: e.target.value })}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                required
+              >
+                <option value="">Sélectionner un châssis</option>
+                {getAvailableChassis(orderForm.car_id, orderForm.id).map((chassis, idx) => (
+                  <option key={idx} value={chassis}>{chassis}</option>
+                ))}
+                {orderForm.num_chassis && !getAvailableChassis(orderForm.car_id, orderForm.id).includes(orderForm.num_chassis) && (
+                  <option value={orderForm.num_chassis}>{orderForm.num_chassis}</option>
+                )}
+              </select>
             </div>
 
             {/* Delivery Status - VALEURS CORRIGÉES */}

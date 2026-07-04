@@ -86,6 +86,38 @@ const Contact = () => {
         className='h-[50vh] md:h-[55vh] w-screen flex justify-center items-center bg-black/20'
       />
 
+      {/* Business Description Section */}
+      <section className='w-screen bg-slate-50 py-10 px-4 md:px-8'>
+        <div className='mx-auto max-w-6xl space-y-6 text-neutral-800'>
+          <h2 className='text-3xl font-semibold'>À propos de Palmier Auto</h2>
+          <p className='text-sm leading-8'>
+            Palmier Auto est un concessionnaire automobile complet et responsable, dédié à offrir une expérience d’achat de véhicules moderne, transparente et personnalisée. Depuis nos premiers jours, nous nous efforçons de répondre aux besoins des conducteurs qui recherchent une qualité supérieure, une sélection unique et un service attentif. Notre équipe s’engage à accompagner chaque client depuis le premier contact jusqu’à la livraison du véhicule, en apportant des conseils clairs et des solutions parfaitement adaptées.
+          </p>
+          <p className='text-sm leading-8'>
+            Spécialisés dans l’importation de véhicules en provenance d’Europe, d’Asie, d’Amérique du Nord et du Moyen-Orient, nous sélectionnons rigoureusement des modèles qui respectent nos exigences de fiabilité, de sécurité et de performance. Chaque voiture est inspectée avec soin, évaluée selon des normes strictes, puis préparée pour la route afin d’assurer une expérience de conduite optimale dès le premier jour. Nous proposons des véhicules neufs et d’occasion, des SUV, des berlines, des utilitaires et des modèles haut de gamme, afin de répondre aux attentes des particuliers et des professionnels.
+          </p>
+          <p className='text-sm leading-8'>
+            Nos services vont au-delà de la vente. Palmier Auto accompagne aussi ses clients sur les démarches administratives, le financement, l’assurance et la logistique. Nous sommes là pour faciliter les formalités d’immatriculation, proposer des solutions de paiement flexibles et assurer le suivi après-vente. Parce que chaque acheteur mérite de se sentir soutenu, nous nous engageons à fournir un service client disponible, courtois et réactif. Notre objectif est de transformer chaque interaction en une relation de confiance durable.
+          </p>
+          <p className='text-sm leading-8'>
+            Pour les professionnels, nous apportons des solutions personnalisées pour les flottes, les sociétés de transport et les agents commerciaux. Nous proposons des conseils de sélection adaptés aux besoins d’usage, des véhicules avec des options de maintenance maîtrisées, et des partenariats solides pour garantir un approvisionnement constant. Pour les particuliers, nous mettons l’accent sur la transparence des prix, la clarté des informations et les garanties qui apportent la tranquillité d’esprit.
+          </p>
+          <p className='text-sm leading-8'>
+            Situés à Colomb-Béchar, nous sommes fiers de notre présence locale tout en conservant une portée internationale grâce à nos fournisseurs. Nous créons un lien entre les meilleures opportunités du marché mondial et les attentes des clients algériens. Notre approche consiste à proposer des véhicules qui combinent style, confort et économie, en respectant les normes de sécurité et les exigences environnementales. Nous sélectionnons des automobiles capables de rouler sur des routes variées, en tenant compte du climat, des conditions de circulation et des préférences locales.
+          </p>
+          <p className='text-sm leading-8'>
+            Palmier Auto valorise également l’innovation numérique. Notre site web présente une vitrine claire et intuitive où vous pouvez consulter l’inventaire, découvrir les caractéristiques techniques, et prendre contact facilement. Nous utilisons des images de haute qualité pour illustrer notre offre et aider chaque visiteur à visualiser le véhicule qui correspond à ses attentes. Les images de notre page d’accueil sont fournies par http://magnific.com, ce qui contribue à donner une meilleure lisibilité et un rendu professionnel à notre présentation.
+          </p>
+          <p className='text-sm leading-8'>
+            En choisissant Palmier Auto, vous choisissez une entreprise qui place la satisfaction client au cœur de son activité. Vous bénéficiez d’une relation transparente, d’une assistance personnalisée et d’un véritable partenaire pour vos projets automobiles. Nous sommes à votre disposition pour répondre à vos questions, organiser une visite, ou élaborer une offre sur mesure. Notre mission est de vous faire vivre une expérience positive et fiable, qu’il s’agisse d’une première acquisition ou d’un renouvellement de véhicule.
+          </p>
+          <p className='text-sm leading-8'>
+            Merci de faire confiance à Palmier Auto. Nous poursuivons notre engagement pour des véhicules soigneusement choisis, un service attentif et une communication honnête. Notre ambition est de vous aider à trouver le véhicule idéal, en respectant votre budget, vos attentes et votre style de vie. Nous sommes déterminés à offrir un service professionnel qui valorise chaque client, qu’il s’agisse d’un conducteur particulier, d’un manager de flotte ou d’un professionnel à la recherche d’une solution fiable.
+          </p>
+          <p className='text-xs text-neutral-500'>Les images de la page d’accueil sont issues de http://magnific.com.</p>
+        </div>
+      </section>
+
       {/* Footer Section */}
       <div className='w-screen h-auto flex flex-col lg:flex-row justify-between items-start lg:items-center py-6 px-4 md:px-8 gap-6 lg:gap-4 bg-white border-t border-neutral-200'>
 

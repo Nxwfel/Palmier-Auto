@@ -1,0 +1,494 @@
+﻿diff --git a/src/Pages/AdminO.jsx b/src/Pages/AdminO.jsx
+index 7c641d4..e102fe2 100644
+--- a/src/Pages/AdminO.jsx
++++ b/src/Pages/AdminO.jsx
+@@ -40,7 +40,7 @@ const CommercialCarsModal = ({
+   currencyList,
+   supplierItems,
+   onCarUpdate,
+-  onCarDelete
++  onCarDelete,
+ }) => {
+   const [editingCarId, setEditingCarId] = useState(null);
+   const [editCarForm, setEditCarForm] = useState(null);
+@@ -53,6 +53,19 @@ const CommercialCarsModal = ({
+     return supplier ? `${supplier.name} ${supplier.surname}` : 'Unknown';
+   };
+ 
++  const getAvailableChassis = (carId, currentOrderId = null) => {
++    if (!carId) return [];
++    const car = cars.find((c) => c.id === Number(carId));
++    if (!car || !car.num_chassis || !Array.isArray(car.num_chassis)) return [];
++
++    const usedChassis = orders
++      .filter((o) => o.car_id === Number(carId) && o.id !== currentOrderId)
++      .map((o) => o.num_chassis)
++      .filter(Boolean);
++
++    return car.num_chassis.filter((chassis) => !usedChassis.includes(chassis));
++  };
++
+   const convertToDZD = (price, currencyId) => {
+     const currency = currencyList.find(c => c.id === currencyId);
+     return price * (currency?.exchange_rate_to_dzd || 1);
+@@ -601,6 +614,7 @@ export default function AdminSuperPanel() {
+     client_id: "",
+     car_id: "",
+     car_color: "",
++    num_chassis: "",
+     delivery_status: "shipping",
+     payment_amount: 0,
+     status: true,
+@@ -765,6 +779,7 @@ export default function AdminSuperPanel() {
+         client_id: Number(orderForm.client_id),
+         car_id: Number(orderForm.car_id),
+         car_color: String(orderForm.car_color),
++        num_chassis: String(orderForm.num_chassis),
+         delivery_status: String(orderForm.delivery_status),
+       };
+ 
+@@ -774,6 +789,9 @@ export default function AdminSuperPanel() {
+       if (!payload.car_id || isNaN(payload.car_id)) {
+         throw new Error("Veuillez s├⌐lectionner une voiture");
+       }
++      if (!payload.num_chassis) {
++        throw new Error("Veuillez s├⌐lectionner un num├⌐ro de ch├óssis");
++      }
+       if (!payload.car_color) {
+         throw new Error("Veuillez sp├⌐cifier une couleur");
+       }
+@@ -801,6 +819,7 @@ export default function AdminSuperPanel() {
+         client_id: "",
+         car_id: "",
+         car_color: "",
++        num_chassis: "",
+         delivery_status: "shipping",
+         payment_amount: 0,
+         status: true,
+@@ -1543,12 +1562,16 @@ export default function AdminSuperPanel() {
+         order_id: Number(orderForm.id),
+         status: Boolean(orderForm.status),
+         payment_amount: Number(orderForm.payment_amount) || null,
++        num_chassis: String(orderForm.num_chassis),
+         delivery_status: String(orderForm.delivery_status),
+       };
+ 
+       if (!payload.order_id || isNaN(payload.order_id)) {
+         throw new Error("ID de commande invalide");
+       }
++      if (!payload.num_chassis) {
++        throw new Error("Veuillez s├⌐lectionner un num├⌐ro de ch├óssis");
++      }
+       if (!['shipping', 'arrived', 'showroom'].includes(payload.delivery_status)) {
+         throw new Error("Statut de livraison invalide");
+       }
+@@ -1572,6 +1595,7 @@ export default function AdminSuperPanel() {
+         client_id: "",
+         car_id: "",
+         car_color: "",
++        num_chassis: "",
+         delivery_status: "shipping",
+         payment_amount: 0,
+         status: true,
+@@ -2280,6 +2304,7 @@ export default function AdminSuperPanel() {
+       client_id: order.client_id,
+       car_id: order.car_id,
+       car_color: order.car_color,
++      num_chassis: order.num_chassis || "",
+       delivery_status: order.delivery_status,
+       payment_amount: order.payment_amount || 0,
+       status: order.status !== undefined ? order.status : true,
+@@ -3346,384 +3371,15 @@ export default function AdminSuperPanel() {
+                 <h2 className="text-3xl font-semibold">Ordre Client</h2>
+                 <button
+                   onClick={() => {
+-                    setOrderForm({ client_id: "", car_id: "", quantity: 1, delivery_status: "shipping" });
+-                    setShowAddOrder(true);
+-                  }}
+-                  className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+-                >
+-                  Ajouter un Ordre +
+-                </button>
+-              </div>
+-              <Card>
+-                <div className="overflow-x-auto">
+-                  <table className="w-full">
+-                    <thead>
+-                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+-                        <th className="py-3 px-3">ID</th>
+-                        <th className="py-3 px-3">Client</th>
+-                        <th className="py-3 px-3">Num Tel</th>
+-                        <th className="py-3 px-3">Address</th>
+-                        <th className="py-3 px-3">Voiture</th>
+-                        <th className="py-3 px-3">Total (DZD)</th>
+-                        <th className="py-3 px-3">Pay├⌐ (DZD)</th>
+-                        <th className="py-3 px-3">Status</th>
+-                        <th className="py-3 px-3">Cr├⌐e</th>
+-                        <th className="py-3 px-3 text-right">Actions</th>
+-                      </tr>
+-                    </thead>
+-                    <tbody>
+-                      {filteredClientOrders.map((order, i) => {
+-                        const client = clients.find(c => c.id === order.client_id) || {};
+-                        const car = cars.find(c => c.id === order.car_id) || {};
+-                        const currency = currencyList.find(c => c.id === car.currency_id);
+-                        const rate = currency?.exchange_rate_to_dzd || 1;
+-                        const unitPrice = car.price ? (car.price * rate) : (order.price_dzd || 0);
+-                        const totalValue = unitPrice;
+-                        const paid = order.payment_amount || 0;
+-                        return (
+-                          <tr key={(order.id || order.order_id) ?? `corder-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
+-                            <td className="py-3 px-3 font-mono text-emerald-400">{order.id || order.order_id}</td>
+-                            <td className="py-3 px-3">
+-                              {client.name} {client.surname}
+-                              <div className="text-xs text-neutral-400">{client.company_name || ''}</div>
+-                            </td>
+-                            <td className="py-3 px-3 text-sm text-neutral-400">{client.phone_number || order.client_phone || 'ΓÇö'}</td>
+-                            <td className="py-3 px-3 text-xs text-neutral-400">{client.address || 'ΓÇö'}</td>
+-                            <td className="py-3 px-3">
+-                              {car.model || 'ΓÇö'} #{car.id || order.car_id}
+-                              <div className="text-xs text-neutral-500">{car.color} ┬╖ {car.year}</div>
+-                            </td>
+-                            <td className="py-3 px-3 text-purple-400">{Number(totalValue || 0).toLocaleString()}</td>
+-                            <td className="py-3 px-3 text-blue-400">{Number(paid).toLocaleString()}</td>
+-                            <td className="py-3 px-3">
+-                              <span className={`px-2 py-1 rounded text-xs ${order.delivery_status === 'showroom' ? 'bg-green-500/20 text-green-400' :
+-                                order.delivery_status === 'arrived' ? 'bg-blue-500/20 text-blue-400' :
+-                                  'bg-yellow-500/20 text-yellow-400'
+-                                }`}>
+-                                {order.delivery_status}
+-                              </span>
+-                            </td>
+-                            <td className="py-3 px-3 text-sm text-neutral-400">
+-                              {order.created_at ? new Date(order.created_at).toLocaleString() : 'ΓÇö'}
+-                            </td>
+-                            <td className="py-3 px-3 text-right space-x-2">
+-                              <button onClick={() => handleEditOrder(order)}
+-                                className="text-blue-400">Modifier</button>
+-                              <button
+-                                onClick={() => handleDeleteOrder(order.id || order.order_id)}
+-                                className="text-red-400 hover:text-red-300"
+-                              >
+-                                Supprimer
+-                              </button>
+-                            </td>
+-                          </tr>
+-                        );
+-                      })}
+-                    </tbody>
+-                  </table>
+-                </div>
+-              </Card>
+-            </motion.div>
+-          )}
+-          {tab === "car_requests" && (
+-            <motion.div>
+-              <div className="flex justify-between items-center mb-6">
+-                <h2 className="text-3xl">Requetes</h2>
+-                {/* Optional: Add button to create request */}
+-              </div>
+-              <Card>
+-                <table className="w-full">
+-                  <thead>...</thead>
+-                  <tbody>
+-                    {filteredCarRequests.map(req => {
+-                      const client = clients.find(c => c.id === req.client_id) || {};
+-                      return (
+-                        <tr key={req.id}>
+-                          <td>{req.id}</td>
+-                          <td>{client.name} {client.surname}</td>
+-                          <td>{req.model} ({req.color})</td>
+-                          <td>{req.year}</td>
+-                          <td>{req.country}</td>
+-                          <td>
+-                            <span className={`px-2 py-1 rounded text-xs ${req.status ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+-                              }`}>
+-                              {req.status ? 'Accepted' : 'Pending'}
+-                            </span>
+-                          </td>
+-                        </tr>
+-                      );
+-                    })}
+-                  </tbody>
+-                </table>
+-              </Card>
+-            </motion.div>
+-          )}
+-
+-          {tab === "social_media" && (
+-            <motion.div
+-              key="socialmedia"
+-              initial={{ opacity: 0, y: 10 }}
+-              animate={{ opacity: 1, y: 0 }}
+-              exit={{ opacity: 0, y: -10 }}
+-              transition={{ duration: 0.4 }}
+-            >
+-              <h1 className="text-3xl font-main mb-6">Liens Sociaux</h1>
+-              <Card>
+-                <form onSubmit={SubmitSocials} className="space-y-4">
+-                  <div>
+-                    <label className="block text-sm font-medium mb-2">Facebook</label>
+-                    <input
+-                      type="text"
+-                      value={socialsform.facebook}
+-                      onChange={(e) => setSocialsform({ ...socialsform, facebook: e.target.value })}
+-                      className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
+-                    />
+-                  </div>
+-                  <div>
+-                    <label className="block text-sm font-medium mb-2">Instagram</label>
+-                    <input
+-                      type="text"
+-                      value={socialsform.instagram}
+-                      onChange={(e) => setSocialsform({ ...socialsform, instagram: e.target.value })}
+-                      className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
+-                    />
+-                  </div>
+-                  <div>
+-                    <label className="block text-sm font-medium mb-2">Whatsapp</label>
+-                    <input
+-                      type="text"
+-                      value={socialsform.whatsapp}
+-                      onChange={(e) => setSocialsform({ ...socialsform, twitter: e.target.value })}
+-                      className="w-full p-2 border border-neutral-700 rounded bg-neutral-800 text-white"
+-                    />
+-                  </div>
+-                  <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
+-                    Mettre ├á jour
+-                  </button>
+-                </form>
+-              </Card>
+-            </motion.div>
+-          )}
+-
+-          {tab === "supplierItems" && (
+-            <motion.div
+-              key="supplierItems"
+-              initial={{ opacity: 0, y: 10 }}
+-              animate={{ opacity: 1, y: 0 }}
+-              exit={{ opacity: 0, y: -10 }}
+-              transition={{ duration: 0.4 }}
+-            >
+-              <h1 className="text-3xl font-main mb-6">├ël├⌐ments Fournisseurs</h1>
+-              <button
+-                onClick={() => handleEditOrAddSupplierItem()}
+-                className="mb-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded"
+-              >
+-                Γ₧ò Ajouter ├ël├⌐ment
+-              </button>
+-              <Card>
+-                <div className="overflow-x-auto">
+-                  <table className="w-full text-sm">
+-                    <thead>
+-                      <tr className="text-gray-400 border-b border-neutral-700">
+-                        <th className="py-3 px-4 text-left">ID Voiture</th>
+-                        <th className="py-3 px-4 text-left">ID Fournisseur</th>
+-                        <th className="py-3 px-4 text-left">Prix (Devise)</th>
+-                        <th className="py-3 px-4 text-left">Prix (DZD)</th>
+-                        <th className="py-3 px-4 text-left">Pay├⌐ (DZD)</th>
+-                        <th className="py-3 px-4 text-left">Reste (DZD)</th>
+-                        <th className="py-3 px-4 text-left">Actions</th>
+-                      </tr>
+-                    </thead>
+-                    <tbody>
+-                      {filteredSupplierItems.map((item) => {
+-                        const currency = currencyList.find(c => c.id === item.currency_id);
+-                        const rate = currency?.exchange_rate_to_dzd || 1;
+-                        const priceDZD = (item.price || 0) * rate;
+-                        const paid = item.payment_amount || 0;
+-                        const remaining = priceDZD - paid;
+-
+-                        const editablePrice = editingSupplierItem[item.supplier_item_id]?.price ?? item.price ?? 0;
+-                        const editablePaid = editingSupplierItem[item.supplier_item_id]?.payment_amount ?? item.payment_amount ?? 0;
+-                        const editablePriceDZD = editablePrice * rate;
+-                        const editableRemaining = editablePriceDZD - editablePaid;
+-
+-                        return (
+-                          <tr key={item.supplier_item_id} className="border-b border-neutral-800/50 hover:bg-white/5">
+-                            <td className="py-4 px-4">{item.car_id}</td>
+-                            <td className="py-4 px-4">{getSupplierName(item.supplier_id)}</td>
+-                            <td className="py-4 px-4">{(item.price || 0).toLocaleString()} {currency?.code.toUpperCase() || 'N/A'}</td>
+-                            <td className="py-4 px-4">{priceDZD.toLocaleString()} DZD</td>
+-                            <td className="py-4 px-4">{paid.toLocaleString()} DZD</td>
+-                            <td className={`py-4 px-4 font-medium ${remaining > 0 ? 'text-red-400' : 'text-green-400'}`}>
+-                              {remaining > 0 ? `${remaining.toLocaleString()} DZD` : 'Γ£à Pay├⌐'}
+-                            </td>
+-                            <td className="py-4 px-4">
+-
+-                              <button
+-                                onClick={() => handleDeleteSupplierItem(item.supplier_item_id)}
+-                                className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded"
+-                              >
+-                                ≡ƒùæ∩╕Å
+-                              </button>
+-                            </td>
+-                          </tr>
+-                        );
+-                      })}
+-                    </tbody>
+-                  </table>
+-                </div>
+-              </Card>
+-            </motion.div>
+-          )}
+-
+-          {tab === "clients" && (
+-            <motion.div key="clients" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+-              <div className="flex items-center justify-between mb-6">
+-                <h2 className="text-3xl font-semibold">Gestion des Clients</h2>
+-                <div className="flex items-center gap-3">
+-                  <button
+-                    onClick={() => {
+-                      setClientForm({ id: null, name: "", surname: "", nin: "", passport_number: "", phone_number: "", password: "", wilaya: "", address: "" });
+-                      setShowAddClient(true);
+-                    }}
+-                    className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400"
+-                  >
+-                    Ajouter un Client +
+-                  </button>
+-                </div>
+-              </div>
+-
+-              {/* Stats Cards */}
+-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+-                <div className="bg-emerald-500/10 rounded-lg p-4 border border-emerald-500/30">
+-                  <div className="text-sm text-emerald-400 mb-1">Total Clients</div>
+-                  <div className="text-2xl font-bold text-emerald-400">{clients.length}</div>
+-                </div>
+-                <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
+-                  <div className="text-sm text-blue-400 mb-1">Commandes Totales</div>
+-                  <div className="text-2xl font-bold text-blue-400">{orders.length}</div>
+-                </div>
+-                <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/30">
+-                  <div className="text-sm text-purple-400 mb-1">Clients Actifs</div>
+-                  <div className="text-2xl font-bold text-purple-400">
+-                    {clients.filter(c => orders.some(o => o.client_id === c.id)).length}
+-                  </div>
+-                </div>
+-                <div className="bg-amber-500/10 rounded-lg p-4 border border-amber-500/30">
+-                  <div className="text-sm text-amber-400 mb-1">R├⌐sultats</div>
+-                  <div className="text-2xl font-bold text-amber-400">{filteredClients.length}</div>
+-                </div>
+-              </div>
+-
+-              <Card>
+-                <div className="overflow-x-auto">
+-                  <table className="w-full">
+-                    <thead>
+-                      <tr className="text-left text-neutral-400 text-sm border-b border-neutral-800">
+-                        <th className="py-3 px-3">ID</th>
+-                        <th className="py-3 px-3">Nom</th>
+-                        <th className="py-3 px-3">NIN</th>
+-                        <th className="py-3 px-3">Passeport</th>
+-                        <th className="py-3 px-3">T├⌐l├⌐phone</th>
+-                        <th className="py-3 px-3">Wilaya</th>
+-                        <th className="py-3 px-3">Adresse</th>
+-                        <th className="py-3 px-3">Commandes</th>
+-                        <th className="py-3 px-3">Cr├⌐├⌐</th>
+-                        <th className="py-3 px-3 text-right">Actions</th>
+-                      </tr>
+-                    </thead>
+-                    <tbody>
+-                      {filteredClients.length === 0 ? (
+-                        <tr>
+-                          <td colSpan="10" className="py-8 text-center text-neutral-500">
+-                            <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+-                            Aucun client trouv├⌐
+-                          </td>
+-                        </tr>
+-                      ) : (
+-                        filteredClients.map((client) => {
+-                          const clientOrders = orders.filter(o => o.client_id === client.id);
+-                          const totalPaid = clientOrders.reduce((sum, o) => sum + (o.payment_amount || 0), 0);
+-                          return (
+-                            <tr key={client.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5 transition">
+-                              <td className="py-3 px-3 font-mono text-emerald-400">{client.id}</td>
+-                              <td className="py-3 px-3">
+-                                <div className="font-medium">{client.name} {client.surname}</div>
+-                              </td>
+-                              <td className="py-3 px-3 text-sm text-neutral-400 font-mono">{client.nin || 'ΓÇö'}</td>
+-                              <td className="py-3 px-3 text-sm text-neutral-400 font-mono">{client.passport_number || 'ΓÇö'}</td>
+-                              <td className="py-3 px-3 text-sm">{client.phone_number || 'ΓÇö'}</td>
+-                              <td className="py-3 px-3">
+-                                {client.wilaya ? (
+-                                  <span className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400">{client.wilaya}</span>
+-                                ) : 'ΓÇö'}
+-                              </td>
+-                              <td className="py-3 px-3 text-sm text-neutral-400 max-w-[150px] truncate">{client.address || 'ΓÇö'}</td>
+-                              <td className="py-3 px-3">
+-                                <div className="flex flex-col">
+-                                  <span className="text-sm font-medium">{clientOrders.length}</span>
+-                                  {totalPaid > 0 && (
+-                                    <span className="text-xs text-emerald-400">{totalPaid.toLocaleString()} DZD</span>
+-                                  )}
+-                                </div>
+-                              </td>
+-                              <td className="py-3 px-3 text-sm text-neutral-400">
+-                                {client.created_at ? new Date(client.created_at).toLocaleDateString() : 'ΓÇö'}
+-                              </td>
+-                              <td className="py-3 px-3 text-right">
+-                                <div className="flex justify-end gap-2">
+-                                  <button
+-                                    onClick={() => handleViewClientImages(client)}
+-                                    className="text-purple-400 hover:text-purple-300 p-1"
+-                                    title="Voir les images"
+-                                  >
+-                                    <ImageIcon className="w-4 h-4" />
+-                                  </button>
+-                                  <button
+-                                    onClick={() => handleEditClientOpen(client)}
+-                                    className="text-blue-400 hover:text-blue-300 p-1"
+-                                    title="Modifier"
+-                                  >
+-                                    <Edit2 className="w-4 h-4" />
+-                                  </button>
+-                                  <button
+-                                    onClick={() => handleDeleteClient(client.id)}
+-                                    className="text-red-400 hover:text-red-300 p-1"
+-                                    title="Supprimer"
+-                                  >
+-                                    <Trash2 className="w-4 h-4" />
+-                                  </button>
+-                                </div>
+-                              </td>
+-                            </tr>
+-                          );
+-                        })
+-                      )}
+-                    </tbody>
+-                  </table>
+-                </div>
+-              </Card>
+-            </motion.div>
+-          )}
+-
+-        </AnimatePresence>
+-
+-        <Modal
+-          open={showAddOrder}
+-          onClose={() => setShowAddOrder(false)}
+-          title="Ajouter une Commande"
+-        >
+-          <form onSubmit={handleOrderSubmit} className="space-y-4">
+-            {/* Client Selection */}
+-            <div>
+-              <label className="block text-sm font-medium text-neutral-300 mb-2">
+-                Client *
+-              </label>
+-              <select
+-                value={orderForm.client_id}
+-                onChange={(e) => setOrderForm({ ...orderForm, client_id: e.target.value })}
+-                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
+-                required
++                    setOrderForm({
++                      id: null,
++                      client_id: "",
++                      car_id: "",
++                      car_color: "",
++                      num_chassis: "",
++                      delivery_status: "shipping",
++                      payment_amount: 0,
++                      status: true,
+               >
+                 <option value="">S├⌐lectionner un client</option>
+                 {clients.map((client) => (

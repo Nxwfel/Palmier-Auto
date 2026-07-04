@@ -154,6 +154,7 @@ const Commercials = () => {
     client_id: null,
     car_id: null,
     car_color: "",
+    num_chassis: "",
     custom_price: "",
     delivery_status: "shipping"
   });
@@ -168,7 +169,20 @@ const Commercials = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [editingOrderId, setEditingOrderId] = useState(null);
-  const [editForm, setEditForm] = useState({ payment_amount: "", delivery_status: "" });
+  const [editForm, setEditForm] = useState({ payment_amount: "", delivery_status: "", num_chassis: "" });
+
+  const getAvailableChassis = (carId, currentOrderId = null) => {
+    if (!carId) return [];
+    const car = cars.find((c) => c.id === Number(carId));
+    if (!car || !car.num_chassis || !Array.isArray(car.num_chassis)) return [];
+
+    const usedChassis = orders
+      .filter((o) => o.car_id === Number(carId) && (o.order_id || o.id) !== currentOrderId)
+      .map((o) => o.num_chassis)
+      .filter(Boolean);
+
+    return car.num_chassis.filter((chassis) => !usedChassis.includes(chassis));
+  };
 
   const [editingClientId, setEditingClientId] = useState(null);
   const [editClientForm, setEditClientForm] = useState({
@@ -773,13 +787,13 @@ const Commercials = () => {
   };
 
   const handleAddOrder = async () => {
-    const { client_id, car_id, car_color, delivery_status } = newOrder;
+    const { client_id, car_id, car_color, num_chassis, delivery_status } = newOrder;
 
     const clientId = Number(client_id);
     const carId = Number(car_id);
 
-    if (!clientId || !carId || !car_color) {
-      alert("⚠️ Sélectionnez un client, une voiture et une couleur.");
+    if (!clientId || !carId || !car_color || !num_chassis) {
+      alert("⚠️ Sélectionnez un client, une voiture, une couleur et un châssis.");
       return;
     }
 
@@ -787,6 +801,7 @@ const Commercials = () => {
       client_id: clientId,
       car_id: carId,
       car_color,
+      num_chassis: String(num_chassis),
       delivery_status,
       ...(newOrder.custom_price !== "" && { custom_price: parseFloat(newOrder.custom_price) })
     };
@@ -853,7 +868,7 @@ const Commercials = () => {
 
       alert("✅ Commande ajoutée !");
       setShowContractPrompt(true);
-      setNewOrder({ client_id: null, car_id: null, car_color: "", custom_price: "", delivery_status: "shipping" });
+      setNewOrder({ client_id: null, car_id: null, car_color: "", num_chassis: "", custom_price: "", delivery_status: "shipping" });
       fetchOrders();
     } catch (err) {
       if (err.message === "UNAUTHORIZED") {
@@ -1266,6 +1281,12 @@ const Commercials = () => {
     const body = { order_id: orderId };
     if (editForm.payment_amount !== "") body.payment_amount = parseFloat(editForm.payment_amount);
     if (editForm.delivery_status) body.delivery_status = editForm.delivery_status;
+    if (editForm.num_chassis) body.num_chassis = String(editForm.num_chassis);
+
+    if (!body.num_chassis && editForm.num_chassis !== undefined) {
+      alert("⚠️ Sélectionnez un châssis.");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -1827,7 +1848,7 @@ const Commercials = () => {
           <div className="space-y-8">
             <div className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
               <h2 className="text-2xl font-semibold mb-6">Nouvelle Commande</h2>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <SearchableSelect
                   value={newOrder.client_id ?? ""}
                   onChange={val => setNewOrder(prev => ({ ...prev, client_id: val ? Number(val) : null }))}
@@ -1843,12 +1864,24 @@ const Commercials = () => {
                 />
 
                 {newOrder.car_id && (
-                  <SearchableSelect
-                    value={newOrder.car_color}
-                    onChange={val => setNewOrder(prev => ({ ...prev, car_color: val }))}
-                    placeholder="Sélectionner la couleur"
-                    options={getAvailableColors(newOrder.car_id).map(color => ({ value: color, label: color }))}
-                  />
+                  <>
+                    <SearchableSelect
+                      value={newOrder.car_color}
+                      onChange={val => setNewOrder(prev => ({ ...prev, car_color: val }))}
+                      placeholder="Sélectionner la couleur"
+                      options={getAvailableColors(newOrder.car_id).map(color => ({ value: color, label: color }))}
+                    />
+                    <select
+                      value={newOrder.num_chassis}
+                      onChange={e => setNewOrder(prev => ({ ...prev, num_chassis: e.target.value }))}
+                      className="bg-neutral-800 p-4 rounded-lg placeholder:text-neutral-500 w-full"
+                    >
+                      <option value="">Sélectionner un châssis</option>
+                      {getAvailableChassis(newOrder.car_id).map((chassis, idx) => (
+                        <option key={idx} value={chassis}>{chassis}</option>
+                      ))}
+                    </select>
+                  </>
                 )}
 
                 <input
@@ -1917,6 +1950,19 @@ const Commercials = () => {
                             <option value="arrived">Arrivé</option>
                             <option value="showroom">Showroom</option>
                           </select>
+                          <select
+                            value={editForm.num_chassis}
+                            onChange={e => setEditForm({ ...editForm, num_chassis: e.target.value })}
+                            className="w-full bg-neutral-800 p-3 rounded-lg"
+                          >
+                            <option value="">Sélectionner un châssis</option>
+                            {getAvailableChassis(order.car_id, order.order_id).map((chassis, idx) => (
+                              <option key={idx} value={chassis}>{chassis}</option>
+                            ))}
+                            {order.num_chassis && !getAvailableChassis(order.car_id, order.order_id).includes(order.num_chassis) && (
+                              <option value={order.num_chassis}>{order.num_chassis}</option>
+                            )}
+                          </select>
                           <div className="flex gap-3">
                             <button
                               onClick={() => handleUpdateOrder(order.order_id)}
@@ -1951,7 +1997,8 @@ const Commercials = () => {
                                   setEditingOrderId(order.order_id);
                                   setEditForm({
                                     payment_amount: order.payment_amount?.toString() || "",
-                                    delivery_status: order.delivery_status || "shipping"
+                                    delivery_status: order.delivery_status || "shipping",
+                                    num_chassis: order.num_chassis || ""
                                   });
                                 }}
                                 className="text-blue-400 hover:text-blue-300 transition-colors"
