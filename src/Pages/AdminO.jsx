@@ -3809,13 +3809,12 @@ export default function AdminSuperPanel() {
             {/* Num Chassis */}
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-2">
-                Numéro de Châssis *
+                Numéro de Châssis (Optionnel)
               </label>
               <select
                 value={orderForm.num_chassis}
                 onChange={(e) => setOrderForm({ ...orderForm, num_chassis: e.target.value })}
                 className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-                required
               >
                 <option value="">Sélectionner un châssis</option>
                 {getAvailableChassis(orderForm.car_id).map((chassis, idx) => (
@@ -3991,13 +3990,12 @@ export default function AdminSuperPanel() {
             {/* Num Chassis */}
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-2">
-                Numéro de Châssis *
+                Numéro de Châssis (Optionnel)
               </label>
               <select
                 value={orderForm.num_chassis}
                 onChange={(e) => setOrderForm({ ...orderForm, num_chassis: e.target.value })}
                 className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-neutral-100 focus:outline-none focus:border-emerald-500"
-                required
               >
                 <option value="">Sélectionner un châssis</option>
                 {getAvailableChassis(orderForm.car_id, orderForm.id).map((chassis, idx) => (
