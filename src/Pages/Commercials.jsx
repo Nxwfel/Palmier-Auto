@@ -1205,7 +1205,7 @@ const Commercials = () => {
         </div>
         <div class="term-item">
             <span class="term-number">2-</span>
-            <span>يتعهد المشتري بدفع المبلغ ${formattedTotal} دج في أجل أقصاه 3 أياماً من تاريخ العقد.</span>
+            <span>يتعهد المشتري بدفع المبلغ ${formattedTotal} دج.</span>
         </div>
         <div class="term-item">
             <span class="term-number">3-</span>
