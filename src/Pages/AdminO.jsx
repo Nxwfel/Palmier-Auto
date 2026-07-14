@@ -22,6 +22,7 @@ import {
   Banknote,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../lib/api";
 
 // Reusable UI
 const Card = ({ children, className = "" }) => (
@@ -74,7 +75,10 @@ const CommercialCarsModal = ({
       country: car.country || "",
       quantity: car.quantity || "",
       price: car.price || "",
+      min_price: car.min_price || "",
+      max_price: car.max_price || "",
       wholesale_price: car.wholesale_price || "",
+      num_chassis: Array.isArray(car.num_chassis) ? car.num_chassis.join(", ") : (car.num_chassis || ""),
       shipping_date: car.shipping_date || "",
       arriving_date: car.arriving_date || "",
       customs_cleared: car.customs_cleared ?? false,
@@ -90,6 +94,11 @@ const CommercialCarsModal = ({
   const handleSaveCarEdit = async () => {
     if (!editCarForm) return;
 
+    if (parseFloat(editCarForm.price) < parseFloat(editCarForm.min_price) || parseFloat(editCarForm.price) > parseFloat(editCarForm.max_price)) {
+      alert(`Erreur: Le prix doit être entre ${editCarForm.min_price} et ${editCarForm.max_price}.`);
+      return;
+    }
+
     try {
       const formDataToSend = new FormData();
       formDataToSend.append("car_id", editCarForm.car_id);
@@ -103,6 +112,12 @@ const CommercialCarsModal = ({
         formDataToSend.append("color", color);
       });
 
+      // Handle num_chassis as array
+      if (editCarForm.num_chassis) {
+        const chassisArray = editCarForm.num_chassis.split(',').map(c => c.trim()).filter(c => c);
+        chassisArray.forEach(c => formDataToSend.append('num_chassis', c));
+      }
+
       formDataToSend.append("year", editCarForm.year || "");
       formDataToSend.append("engine", editCarForm.engine || "");
       formDataToSend.append("power", editCarForm.power || "");
@@ -111,6 +126,8 @@ const CommercialCarsModal = ({
       formDataToSend.append("country", editCarForm.country || "");
       formDataToSend.append("quantity", editCarForm.quantity || "");
       formDataToSend.append("price", editCarForm.price || "");
+      formDataToSend.append("min_price", editCarForm.min_price || "");
+      formDataToSend.append("max_price", editCarForm.max_price || "");
       formDataToSend.append("wholesale_price", editCarForm.wholesale_price || "");
       formDataToSend.append("shipping_date", editCarForm.shipping_date || "");
       formDataToSend.append("arriving_date", editCarForm.arriving_date || "");
@@ -124,17 +141,28 @@ const CommercialCarsModal = ({
         body: formDataToSend,
       });
 
-      if (response.ok) {
-        alert("Car updated successfully!");
-        setEditingCarId(null);
-        setEditCarForm(null);
-        onCarUpdate?.();
-      } else {
-        alert("Failed to update car");
+      if (!response.ok) {
+        if (response.status === 422) {
+          const errorData = await response.json().catch(() => ({}));
+          let msg = "Validation Error";
+          if (Array.isArray(errorData.detail)) {
+            msg = errorData.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+          } else if (errorData.detail) {
+            msg = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+          }
+          throw new Error(`HTTP 422:\n${msg}`);
+        }
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
+
+      alert("Car updated successfully!");
+      setEditingCarId(null);
+      setEditCarForm(null);
+      onCarUpdate?.();
     } catch (error) {
       console.error("Edit error:", error);
-      alert("Error updating car");
+      alert("Error updating car: " + error.message);
     }
   };
 
@@ -207,7 +235,10 @@ const CommercialCarsModal = ({
                             <input name="quantity" type="number" value={editCarForm.quantity} onChange={handleEditCarChange} placeholder="Quantity" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="country" value={editCarForm.country} onChange={handleEditCarChange} placeholder="Country" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="price" type="number" step="0.01" value={editCarForm.price} onChange={handleEditCarChange} placeholder="Price" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="min_price" type="number" step="0.01" value={editCarForm.min_price} onChange={handleEditCarChange} placeholder="Min Price" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="max_price" type="number" step="0.01" value={editCarForm.max_price} onChange={handleEditCarChange} placeholder="Max Price" className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="wholesale_price" type="number" step="0.01" value={editCarForm.wholesale_price} onChange={handleEditCarChange} placeholder="Wholesale Price" className="bg-neutral-700 p-2 rounded text-sm" />
+                            <input name="num_chassis" value={editCarForm.num_chassis} onChange={handleEditCarChange} placeholder="Num Chassis (comma-separated)" className="bg-neutral-700 p-2 rounded text-sm md:col-span-3" />
                             <input name="shipping_date" type="date" value={editCarForm.shipping_date} onChange={handleEditCarChange} className="bg-neutral-700 p-2 rounded text-sm" />
                             <input name="arriving_date" type="date" value={editCarForm.arriving_date} onChange={handleEditCarChange} className="bg-neutral-700 p-2 rounded text-sm" />
                             <label className="flex items-center gap-2 col-span-3 cursor-pointer bg-neutral-700 px-3 py-2 rounded text-sm">
@@ -375,61 +406,7 @@ const Modal = ({ open, onClose, title, children }) => (
   </AnimatePresence>
 );
 
-// ✅ Centralized Auth-Aware Fetch (handles both JSON and FormData) with proper redirects
-const apiFetch = async (url, options = {}) => {
-  const token = localStorage.getItem("authToken");
 
-  if (!token && !url.includes("/users/login")) {
-    if (window.location.pathname !== "/adminlogin") {
-      window.location.href = "/adminlogin";
-    }
-    throw new Error("No authentication token found. Please login again.");
-  }
-
-  const headers = {
-    ...(token && { "Authorization": `Bearer ${token}` }),
-    ...options.headers,
-  };
-
-  // Only set Content-Type for JSON, not for FormData (let browser handle it)
-  if (!(options.body instanceof FormData)) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      timeout: 30000
-    });
-
-    // 401: Unauthorized (Session expired/Invalid token)
-    if (response.status === 401) {
-      localStorage.removeItem("authToken");
-      window.location.href = "/adminlogin";
-      throw new Error("UNAUTHORIZED");
-    }
-
-    // 403: Forbidden (Role mismatch/Insufficient permissions)
-    if (response.status === 403) {
-      throw new Error("FORBIDDEN");
-    }
-
-    return response;
-  } catch (error) {
-    // Auto-redirect for any authentication-related error thrown above
-    if (error.message === "UNAUTHORIZED" || error.message.includes("No authentication token found")) {
-      if (window.location.pathname !== "/adminlogin") {
-        window.location.href = "/adminlogin";
-      }
-    }
-    console.error("API Fetch Error:", {
-      url,
-      message: error.message,
-    });
-    throw error;
-  }
-};
 
 export default function AdminSuperPanel() {
   const API_BASE = 'https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com';
@@ -526,6 +503,7 @@ export default function AdminSuperPanel() {
     min_price: "",
     max_price: "",
     wholesale_price: "",
+    num_chassis: "",
     shippingDate: "",
     arrivingDate: "",
     currency_id: "",
@@ -590,6 +568,9 @@ export default function AdminSuperPanel() {
   const [clientLoading, setClientLoading] = useState(false);
   const [clientImages, setClientImages] = useState([]);
   const [showClientImages, setShowClientImages] = useState(false);
+  const [showCarImages, setShowCarImages] = useState(false);
+  const [selectedCarForImages, setSelectedCarForImages] = useState(null);
+  const [carImages, setCarImages] = useState([]);
   const [selectedClientForImages, setSelectedClientForImages] = useState(null);
 
   const pushLog = (actor, action) => {
@@ -1642,13 +1623,18 @@ export default function AdminSuperPanel() {
     pushLog(agent, "Opened Add Commercial modal");
   };
 
-  // ✅ FIX: Updated handleSubmitCar to handle colors as array
   const handleSubmitCar = async (e) => {
     e.preventDefault();
     if (!carForm.model || !carForm.currency_id || !carForm.quantity || !carForm.color || !carForm.min_price || !carForm.max_price) {
-      alert("Model, Currency, Quantity, Colors, Min Price, and Max Price are required");
+      alert("Please fill in all required fields.");
       return;
     }
+
+    if (parseFloat(carForm.price) < parseFloat(carForm.min_price) || parseFloat(carForm.price) > parseFloat(carForm.max_price)) {
+      alert(`Erreur: Le prix doit être entre ${carForm.min_price} et ${carForm.max_price}.`);
+      return;
+    }
+
     try {
       const formData = new FormData();
 
@@ -1659,11 +1645,15 @@ export default function AdminSuperPanel() {
       formData.append('model', carForm.model);
       formData.append('description', carForm.description || "");
 
-      // ✅ FIX: Handle colors as array - split comma-separated input
       const colorsArray = carForm.color.split(',').map(c => c.trim()).filter(c => c);
       colorsArray.forEach(color => {
         formData.append('color', color);
       });
+
+      if (carForm.num_chassis) {
+        const chassisArray = carForm.num_chassis.split(',').map(c => c.trim()).filter(c => c);
+        chassisArray.forEach(c => formData.append('num_chassis', c));
+      }
 
       formData.append('year', parseInt(carForm.year) || new Date().getFullYear());
       formData.append('quantity', parseInt(carForm.quantity) || 1);
@@ -1696,6 +1686,16 @@ export default function AdminSuperPanel() {
       });
 
       if (!response.ok) {
+        if (response.status === 422) {
+          const errorData = await response.json().catch(() => ({}));
+          let msg = "Validation Error";
+          if (Array.isArray(errorData.detail)) {
+            msg = errorData.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+          } else if (errorData.detail) {
+            msg = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+          }
+          throw new Error(`HTTP 422:\n${msg}`);
+        }
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
@@ -1735,6 +1735,7 @@ export default function AdminSuperPanel() {
       min_price: car.min_price || "",
       max_price: car.max_price || "",
       wholesale_price: car.wholesale_price || "",
+      num_chassis: Array.isArray(car.num_chassis) ? car.num_chassis.join(', ') : (car.num_chassis || ""),
       shippingDate: car.shipping_date || "",
       arrivingDate: car.arriving_date || "",
       currency_id: car.currency_id || "",
@@ -1753,6 +1754,7 @@ export default function AdminSuperPanel() {
       });
       if (!response.ok) throw new Error('Failed to delete car');
       setCars((p) => p.filter((c) => c.id !== id));
+      await fetchCars(); // Re-fetch all cars to be safe
       pushLog("Admin", `Deleted car ${id}`);
     } catch (err) {
       console.error("Error deleting car:", err);
@@ -2506,6 +2508,24 @@ export default function AdminSuperPanel() {
                               <td className="py-3 px-3 text-right">
                                 <button onClick={() => handleEdit(car)} className="text-blue-400 mr-2">
                                   <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={async () => {
+                                  setSelectedCarForImages(car);
+                                  setCarImages([]);
+                                  setShowCarImages(true);
+                                  try {
+                                    const res = await apiFetch(`${API_BASE}/cars/${car.id}/images`);
+                                    if (res.ok) {
+                                      const data = await res.json();
+                                      setCarImages(Array.isArray(data) ? data : []);
+                                    } else {
+                                      setCarImages(Array.isArray(car.images) ? car.images : []);
+                                    }
+                                  } catch (err) {
+                                    setCarImages(Array.isArray(car.images) ? car.images : []);
+                                  }
+                                }} className="text-emerald-400 mr-2" title="Voir les images">
+                                  <ImageIcon className="w-4 h-4" />
                                 </button>
                                 <button onClick={() => handleDelete(car.id)} className="text-red-400">
                                   <Trash2 className="w-4 h-4" />
@@ -4198,6 +4218,7 @@ export default function AdminSuperPanel() {
               <input type="number" step="0.01" value={carForm.min_price} onChange={(e) => setCarForm({ ...carForm, min_price: e.target.value })} placeholder="Min Price *" className="bg-neutral-800 p-2 rounded text-sm" required />
               <input type="number" step="0.01" value={carForm.max_price} onChange={(e) => setCarForm({ ...carForm, max_price: e.target.value })} placeholder="Max Price *" className="bg-neutral-800 p-2 rounded text-sm" required />
               <input type="number" step="0.01" value={carForm.wholesale_price} onChange={(e) => setCarForm({ ...carForm, wholesale_price: e.target.value })} placeholder="Wholesale Price" className="bg-neutral-800 p-2 rounded text-sm" />
+              <input value={carForm.num_chassis} onChange={(e) => setCarForm({ ...carForm, num_chassis: e.target.value })} placeholder="Num Chassis (comma-separated)" className="bg-neutral-800 p-2 rounded text-sm" />
               <input type="number" value={carForm.quantity} onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })} placeholder="Quantity *" className="bg-neutral-800 p-2 rounded text-sm" required />
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-neutral-400">Purchase Date</span>
@@ -4803,6 +4824,60 @@ export default function AdminSuperPanel() {
 
         />
       </main>
+
+      {/* Car Images Modal */}
+      <AnimatePresence>
+        {showCarImages && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowCarImages(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <ImageIcon className="text-emerald-400" /> 
+                  Images - {selectedCarForImages?.model}
+                </h2>
+                <button onClick={() => setShowCarImages(false)} className="text-neutral-400 hover:text-white transition">
+                  <X size={24} />
+                </button>
+              </div>
+
+              {carImages.length === 0 ? (
+                <div className="text-center py-12 text-neutral-500">
+                  <ImageIcon size={48} className="mx-auto mb-4 opacity-20" />
+                  <p>Aucune image disponible.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {carImages.map((img, i) => {
+                    const src = typeof img === 'string' ? img : (img.url || img.image_url || `${API_BASE}/download_static_files/${img.key || img.image_key}`);
+                    return (
+                      <div key={i} className="aspect-video bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700">
+                        <img 
+                          src={src} 
+                          alt={`Car view ${i+1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text fill=%22%23999%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22>No Image</text></svg>'; }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
