@@ -457,8 +457,7 @@ export default function AdminSuperPanel() {
       }
     }
     fetchSocials();
-  }
-  ), [];
+  }, []);
   const [socialsform, setSocialsform] = useState({
     facebook: "", instagram: "", whatsapp: ""
   });
