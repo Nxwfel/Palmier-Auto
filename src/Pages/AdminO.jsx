@@ -502,7 +502,7 @@ export default function AdminSuperPanel() {
     min_price: "",
     max_price: "",
     wholesale_price: "",
-    num_chassis: "",
+    num_chassis: "string",
     shippingDate: "",
     arrivingDate: "",
     currency_id: "",
@@ -760,10 +760,8 @@ export default function AdminSuperPanel() {
         car_id: Number(orderForm.car_id),
         car_color: String(orderForm.car_color),
         delivery_status: String(orderForm.delivery_status),
+        num_chassis: String(orderForm.num_chassis || ""),
       };
-      if (orderForm.num_chassis) {
-        payload.num_chassis = String(orderForm.num_chassis);
-      }
 
       if (!payload.client_id || isNaN(payload.client_id)) {
         throw new Error("Veuillez sélectionner un client");
@@ -1543,10 +1541,8 @@ export default function AdminSuperPanel() {
         status: Boolean(orderForm.status),
         payment_amount: Number(orderForm.payment_amount) || null,
         delivery_status: String(orderForm.delivery_status),
+        num_chassis: String(orderForm.num_chassis || ""),
       };
-      if (orderForm.num_chassis) {
-        payload.num_chassis = String(orderForm.num_chassis);
-      }
 
       if (!payload.order_id || isNaN(payload.order_id)) {
         throw new Error("ID de commande invalide");
