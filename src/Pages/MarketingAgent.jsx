@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Car, X, Image as ImageIcon, Search } from "lucide-react";
+import { Car, X, Image as ImageIcon, Search, Plus } from "lucide-react";
 import { parseColors } from "../lib/utils";
 import { apiFetch } from "../lib/api";
 
@@ -21,6 +21,33 @@ const MarketingAgent = () => {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
+  const [showAddCar, setShowAddCar] = useState(false);
+  const [addCarLoading, setAddCarLoading] = useState(false);
+  const [addCarError, setAddCarError] = useState("");
+  const [addCarSuccess, setAddCarSuccess] = useState("");
+  const initialCarForm = {
+    model: "",
+    description: "",
+    color: "",
+    year: "",
+    engine: "",
+    power: "",
+    fuelType: "",
+    milage: "",
+    country: "",
+    price: "",
+    min_price: "",
+    max_price: "",
+    wholesale_price: "",
+    num_chassis: "",
+    shippingDate: "",
+    arrivingDate: "",
+    currency_id: "",
+    quantity: "",
+    customs_cleared: false,
+    imageFiles: [],
+  };
+  const [carForm, setCarForm] = useState(initialCarForm);
 
   // View images
   const [showCarImages, setShowCarImages] = useState(false);
@@ -96,6 +123,98 @@ const MarketingAgent = () => {
 
   const clearFilter = () => {
     setFilter({ model: "", color: "", yearFrom: "", yearTo: "", country: "" });
+  };
+
+  const openAddCarModal = () => {
+    setCarForm(initialCarForm);
+    setAddCarError("");
+    setAddCarSuccess("");
+    setShowAddCar(true);
+  };
+
+  const handleSubmitCar = async (e) => {
+    e.preventDefault();
+    if (!carForm.model || !carForm.currency_id || !carForm.quantity || !carForm.color || !carForm.min_price || !carForm.max_price) {
+      setAddCarError("Please fill in all required fields.");
+      return;
+    }
+
+    if (parseFloat(carForm.price) < parseFloat(carForm.min_price) || parseFloat(carForm.price) > parseFloat(carForm.max_price)) {
+      setAddCarError(`Erreur: Le prix doit être entre ${carForm.min_price} et ${carForm.max_price}.`);
+      return;
+    }
+
+    try {
+      setAddCarLoading(true);
+      setAddCarError("");
+      setAddCarSuccess("");
+
+      const formData = new FormData();
+      formData.append("model", carForm.model);
+      formData.append("description", carForm.description || "");
+
+      const colorsArray = carForm.color.split(",").map((c) => c.trim()).filter(Boolean);
+      colorsArray.forEach((color) => {
+        formData.append("color", color);
+      });
+
+      if (carForm.num_chassis) {
+        const chassisArray = carForm.num_chassis.split(",").map((c) => c.trim()).filter(Boolean);
+        chassisArray.forEach((chassis) => formData.append("num_chassis", chassis));
+      }
+
+      formData.append("year", parseInt(carForm.year, 10) || new Date().getFullYear());
+      formData.append("quantity", parseInt(carForm.quantity, 10) || 1);
+      formData.append("engine", carForm.engine);
+      formData.append("power", carForm.power);
+      formData.append("fuel_type", carForm.fuelType);
+      formData.append("milage", parseFloat(carForm.milage) || 0);
+      formData.append("country", carForm.country);
+      formData.append("price", parseFloat(carForm.price) || 0);
+      formData.append("min_price", parseFloat(carForm.min_price));
+      formData.append("max_price", parseFloat(carForm.max_price));
+      formData.append("wholesale_price", parseFloat(carForm.wholesale_price) || 0);
+      formData.append("shipping_date", carForm.shippingDate || new Date().toISOString().split("T")[0]);
+      formData.append("arriving_date", carForm.arrivingDate || new Date().toISOString().split("T")[0]);
+      formData.append("currency_id", parseInt(carForm.currency_id, 10));
+      formData.append("customs_cleared", carForm.customs_cleared ? "true" : "false");
+
+      if (carForm.imageFiles && carForm.imageFiles.length > 0) {
+        Array.from(carForm.imageFiles).forEach((file) => {
+          formData.append("images", file);
+        });
+      }
+
+      const response = await apiFetch(`${API_BASE_URL}/cars/`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        if (response.status === 422) {
+          const errorData = await response.json().catch(() => ({}));
+          let msg = "Validation Error";
+          if (Array.isArray(errorData.detail)) {
+            msg = errorData.detail.map((e) => `${e.loc.join(".")}: ${e.msg}`).join("\n");
+          } else if (errorData.detail) {
+            msg = typeof errorData.detail === "string" ? errorData.detail : JSON.stringify(errorData.detail);
+          }
+          throw new Error(`HTTP 422:\n${msg}`);
+        }
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      setShowAddCar(false);
+      setCarForm(initialCarForm);
+      setAddCarSuccess("Voiture ajoutée avec succès.");
+      await fetchAllData();
+    } catch (err) {
+      console.error("Error saving car:", err);
+      setAddCarError("Error saving car: " + err.message);
+    } finally {
+      setAddCarLoading(false);
+    }
   };
 
   const filteredCars = useMemo(() => {
@@ -194,13 +313,21 @@ const MarketingAgent = () => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
         </svg>
 
-        <div className="flex justify-between items-center mb-6">
-          <div
-            onClick={() => setShowFilter(true)}
-            className="flex items-center justify-center gap-2 p-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 transition cursor-pointer"
-          >
-            <Search size={20} className="text-emerald-400" />
-            <h1 className="text-sm font-sans">Filtrer</h1>
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <div
+              onClick={() => setShowFilter(true)}
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 transition cursor-pointer"
+            >
+              <Search size={20} className="text-emerald-400" />
+              <h1 className="text-sm font-sans">Filtrer</h1>
+            </div>
+            <button
+              onClick={openAddCarModal}
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 transition text-sm font-medium"
+            >
+              <Plus size={18} /> Ajouter une voiture
+            </button>
           </div>
           <h1 className="text-sm text-neutral-400">Total: {filteredCars.length}</h1>
         </div>
@@ -348,6 +475,226 @@ const MarketingAgent = () => {
                   })}
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAddCar && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowAddCar(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-white">Ajouter une voiture</h2>
+                <button onClick={() => setShowAddCar(false)} className="text-neutral-400 hover:text-white transition">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitCar} className="space-y-4">
+                {addCarError && (
+                  <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                    {addCarError}
+                  </div>
+                )}
+                {addCarSuccess && (
+                  <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+                    {addCarSuccess}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <select
+                    value={carForm.currency_id}
+                    onChange={(e) => setCarForm({ ...carForm, currency_id: e.target.value })}
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                    required
+                  >
+                    <option value="">Sélectionner la devise</option>
+                    {currencies.map((curr) => (
+                      <option key={curr.id} value={curr.id}>
+                        {curr.name} ({curr.code?.toUpperCase() || ""})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    autoFocus
+                    value={carForm.model}
+                    onChange={(e) => setCarForm({ ...carForm, model: e.target.value })}
+                    placeholder="Modèle *"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                    required
+                  />
+                  <input
+                    value={carForm.color}
+                    onChange={(e) => setCarForm({ ...carForm, color: e.target.value })}
+                    placeholder="Couleurs (séparées par des virgules) *"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                    required
+                  />
+
+                  <textarea
+                    value={carForm.description}
+                    onChange={(e) => setCarForm({ ...carForm, description: e.target.value })}
+                    placeholder="Description (optionnelle)"
+                    className="bg-neutral-800 p-2 rounded text-sm md:col-span-3 min-h-[80px]"
+                    rows="3"
+                  />
+
+                  <input
+                    type="number"
+                    value={carForm.year}
+                    onChange={(e) => setCarForm({ ...carForm, year: e.target.value })}
+                    placeholder="Année"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                  />
+                  <input
+                    value={carForm.engine}
+                    onChange={(e) => setCarForm({ ...carForm, engine: e.target.value })}
+                    placeholder="Moteur"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                  />
+                  <input
+                    value={carForm.power}
+                    onChange={(e) => setCarForm({ ...carForm, power: e.target.value })}
+                    placeholder="Puissance"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                  />
+                  <input
+                    value={carForm.fuelType}
+                    onChange={(e) => setCarForm({ ...carForm, fuelType: e.target.value })}
+                    placeholder="Carburant"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={carForm.milage}
+                    onChange={(e) => setCarForm({ ...carForm, milage: e.target.value })}
+                    placeholder="Kilométrage"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                  />
+                  <input
+                    value={carForm.country}
+                    onChange={(e) => setCarForm({ ...carForm, country: e.target.value })}
+                    placeholder="Pays"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={carForm.price}
+                    onChange={(e) => setCarForm({ ...carForm, price: e.target.value })}
+                    placeholder="Prix *"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                    required
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={carForm.min_price}
+                    onChange={(e) => setCarForm({ ...carForm, min_price: e.target.value })}
+                    placeholder="Prix min *"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                    required
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={carForm.max_price}
+                    onChange={(e) => setCarForm({ ...carForm, max_price: e.target.value })}
+                    placeholder="Prix max *"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                    required
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={carForm.wholesale_price}
+                    onChange={(e) => setCarForm({ ...carForm, wholesale_price: e.target.value })}
+                    placeholder="Prix gros"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                  />
+                  <input
+                    value={carForm.num_chassis}
+                    onChange={(e) => setCarForm({ ...carForm, num_chassis: e.target.value })}
+                    placeholder="Numéro de chassis (séparés par des virgules)"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                  />
+                  <input
+                    type="number"
+                    value={carForm.quantity}
+                    onChange={(e) => setCarForm({ ...carForm, quantity: e.target.value })}
+                    placeholder="Quantité *"
+                    className="bg-neutral-800 p-2 rounded text-sm"
+                    required
+                  />
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-neutral-400">Date d'achat</span>
+                    <input
+                      type="date"
+                      value={carForm.shippingDate}
+                      onChange={(e) => setCarForm({ ...carForm, shippingDate: e.target.value })}
+                      className="bg-neutral-800 p-2 rounded text-sm"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-neutral-400">Date d'arrivée</span>
+                    <input
+                      type="date"
+                      value={carForm.arrivingDate}
+                      onChange={(e) => setCarForm({ ...carForm, arrivingDate: e.target.value })}
+                      className="bg-neutral-800 p-2 rounded text-sm"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 col-span-3 cursor-pointer bg-neutral-800/60 px-3 py-2 rounded text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!!carForm.customs_cleared}
+                      onChange={(e) => setCarForm({ ...carForm, customs_cleared: e.target.checked })}
+                      className="w-4 h-4 rounded accent-emerald-500"
+                    />
+                    <span className="text-neutral-300">Dédouanée</span>
+                  </label>
+                </div>
+
+                <div className="mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer bg-neutral-800 px-3 py-2 rounded text-sm">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => setCarForm({ ...carForm, imageFiles: Array.from(e.target.files) })}
+                      className="hidden"
+                    />
+                    📸 Ajouter des images
+                  </label>
+                  {carForm.imageFiles && carForm.imageFiles.length > 0 && (
+                    <p className="text-xs text-neutral-400 mt-2">{carForm.imageFiles.length} fichier(s) sélectionné(s)</p>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button type="button" onClick={() => setShowAddCar(false)} className="px-4 py-2 rounded bg-neutral-800/60 text-sm">
+                    Annuler
+                  </button>
+                  <button type="submit" disabled={addCarLoading} className="px-4 py-2 rounded bg-emerald-500/20 text-emerald-400 text-sm disabled:opacity-60">
+                    {addCarLoading ? "Enregistrement..." : "➕ Enregistrer"}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}
