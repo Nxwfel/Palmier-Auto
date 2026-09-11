@@ -6,7 +6,7 @@ import gsap from "gsap";
 import AdBanner from "../Components/AdBanner";
 
 // ✅ CRITICAL: No trailing spaces!
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim(); // Removed trailing spaces
+const API_BASE_URL = "https://api-auto-prod.palmierdz.com/prod".trim(); // Removed trailing spaces
 
 const CarDetails = () => {
   const { id } = useParams(); // ✅ Get car ID from URL

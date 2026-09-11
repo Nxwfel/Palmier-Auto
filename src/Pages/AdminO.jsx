@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Pagination from "../Components/Pagination";
 import { parseColors } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -23,6 +24,9 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
+import CommercialStats from "./CommercialStats";
+import CommercialDeepDiveModal from "../Components/CommercialDeepDiveModal";
+
 
 // Reusable UI
 const Card = ({ children, className = "" }) => (
@@ -136,7 +140,7 @@ const CommercialCarsModal = ({
         formDataToSend.append("images", file);
       });
 
-      const response = await apiFetch(`https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com/cars/`, {
+      const response = await apiFetch(`https://api-auto-prod.palmierdz.com/prod/cars/`, {
         method: "PUT",
         body: formDataToSend,
       });
@@ -409,7 +413,7 @@ const Modal = ({ open, onClose, title, children }) => (
 
 
 export default function AdminSuperPanel() {
-  const API_BASE = 'https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com';
+  const API_BASE = 'https://api-auto-prod.palmierdz.com/prod';
   const [showEditOrder, setShowEditOrder] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
   const [passwordModalType, setPasswordModalType] = useState(null);
@@ -426,6 +430,20 @@ export default function AdminSuperPanel() {
   const [Caisse, setCaisse] = useState({ balance: 0 });
   const [cars, setCars] = useState([]);
   const [tab, setTab] = useState("");
+  const [pageCars, setPagecars] = useState(1);
+  const [pageCommRegs, setPagecommregs] = useState(1);
+  const [pageCashReqs, setPagecashreqs] = useState(1);
+  const [pageTransactions, setPagetransactions] = useState(1);
+  const [pageFournisseurs, setPagefournisseurs] = useState(1);
+  const [pageCommercials, setPagecommercials] = useState(1);
+  const [pageMarketers, setPagemarketers] = useState(1);
+  const [pageAccountants, setPageaccountants] = useState(1);
+  const [pageWholesaleClients, setPagewholesaleclients] = useState(1);
+  const [pageWholesaleOrders, setPagewholesaleorders] = useState(1);
+  const [pageClientOrders, setPageclientorders] = useState(1);
+  const [pageCarRequests, setPagecarrequests] = useState(1);
+  const [pageSupplierItems, setPagesupplieritems] = useState(1);
+  const [pageClients, setPageclients] = useState(1);
   const [fournisseurs, setFournisseurs] = useState([]);
   const [commercials, setCommercials] = useState([]);
   const [marketers, setMarketers] = useState([]);
@@ -438,6 +456,7 @@ export default function AdminSuperPanel() {
   const [loading, setLoading] = useState(true);
   const [supplierItems, setSupplierItems] = useState([]);
   const [showCommercialCars, setShowCommercialCars] = useState(false);
+  const [selectedCommercialForStats, setSelectedCommercialForStats] = useState(null);
   const [selectedCommercial, setSelectedCommercial] = useState(null);
   const [showAddFournisseur, setShowAddFournisseur] = useState(false);
   const [loadingFournisseurs, setLoadingFournisseurs] = useState(false);
@@ -476,13 +495,13 @@ export default function AdminSuperPanel() {
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("❌ API Error:", errorData);
+        console.error(" API Error:", errorData);
         throw new Error(errorData.detail || "Failed to update social links");
       }
-      alert("✅ Social links updated successfully!");
+      alert(" Social links updated successfully!");
     } catch (err) {
       console.error("Update social links error:", err);
-      alert(`❌ Error: ${err.message}`);
+      alert(` Error: ${err.message}`);
     }
   };
   const [showAddCar, setShowAddCar] = useState(false);
@@ -2319,6 +2338,7 @@ export default function AdminSuperPanel() {
           { id: "fournisseurs", icon: CreditCard, label: "Fournisseurs" },
           { id: "supplierItems", icon: Package, label: "Éléments Fournisseurs" },
           { id: "commercials", icon: Users, label: "Commercials" },
+          { id: "commercial_stats", icon: TrendingUp, label: "Stats Commerciaux" },
           { id: "marketers", icon: Users, label: "Marketers" },
           { id: "accountants", icon: Users, label: "Accountants" },
           { id: "wholesale_clients", icon: Users, label: "Wholesale Clients" },
@@ -2488,7 +2508,7 @@ export default function AdminSuperPanel() {
                           <td colSpan="8" className="py-4 text-center text-neutral-500">Aucune Voiture trouvé</td>
                         </tr>
                       ) : (
-                        filteredCars.map((car) => {
+                        filteredCars.slice((pageCars - 1) * 20, pageCars * 20).map((car) => {
                           const commercial = commercials.find(c => c.id === car.commercial_id);
                           return (
                             <tr key={car.id} className="border-b border-neutral-800/40 hover:bg-white/5">
@@ -2532,6 +2552,7 @@ export default function AdminSuperPanel() {
                       )}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageCars} totalPages={Math.ceil(filteredCars.length / 20)} onPageChange={setPagecars} />
                 </div>
               </Card>
             </motion.div>
@@ -2550,7 +2571,7 @@ export default function AdminSuperPanel() {
                     <p className="text-neutral-500">Aucun solde trouvé.</p>
                   ) : (
                     <div className="space-y-4">
-                      {commercialRegisters.map((reg) => {
+                      {commercialRegisters.slice((pageCommRegs - 1) * 20, pageCommRegs * 20).map((reg) => {
                         const comm = commercials.find((c) => c.id === reg.commercial_id);
                         return (
                           <div key={reg.id} className="bg-neutral-800/40 p-4 rounded-xl border border-neutral-700 flex justify-between items-center">
@@ -2574,7 +2595,7 @@ export default function AdminSuperPanel() {
                     <p className="text-neutral-500">Aucune demande de versement.</p>
                   ) : (
                     <div className="space-y-4">
-                      {cashRequests.map((req) => {
+                      {cashRequests.slice((pageCashReqs - 1) * 20, pageCashReqs * 20).map((req) => {
                         const comm = commercials.find((c) => c.id === req.commercial_id);
                         return (
                           <div key={req.id} className="bg-neutral-800/40 p-4 rounded-xl border border-neutral-700">
@@ -2690,7 +2711,7 @@ export default function AdminSuperPanel() {
                               </td>
                             </tr>
                           ) : (
-                            filteredTransactions.map((transaction, i) => {
+                            filteredTransactions.slice((pageTransactions - 1) * 20, pageTransactions * 20).map((transaction, i) => {
                               const isRevenue = transaction.type === 'order' || transaction.type === 'wholesale';
                               return (
                                 <tr key={transaction.id || `trans-${i}`} className="border-b border-neutral-800/40 hover:bg-white/5">
@@ -2743,6 +2764,9 @@ export default function AdminSuperPanel() {
                           )}
                         </tbody>
                       </table>
+                  <Pagination currentPage={pageTransactions} totalPages={Math.ceil(filteredTransactions.length / 20)} onPageChange={setPagetransactions} />
+                  <Pagination currentPage={pageCashReqs} totalPages={Math.ceil(cashRequests.length / 20)} onPageChange={setPagecashreqs} />
+                  <Pagination currentPage={pageCommRegs} totalPages={Math.ceil(commercialRegisters.length / 20)} onPageChange={setPagecommregs} />
                     </div>
                   </>
                 )}
@@ -2774,7 +2798,7 @@ export default function AdminSuperPanel() {
                       <p className="text-gray-400">Aucun fournisseur trouvé.</p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredFournisseurs.map((f) => (
+                        {filteredFournisseurs.slice((pageFournisseurs - 1) * 20, pageFournisseurs * 20).map((f) => (
                           <div
                             key={f.id}
                             className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-purple-500 transition"
@@ -3099,6 +3123,12 @@ export default function AdminSuperPanel() {
             </motion.div>
           )}
 
+          {tab === "commercial_stats" && (
+            <motion.div key="commercial_stats" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <CommercialStats API_BASE={API_BASE} />
+            </motion.div>
+          )}
+
           {tab === "commercials" && (
             <motion.div key="commercials" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <div className="flex items-center justify-between mb-6">
@@ -3123,7 +3153,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredCommercials.map((cm) => {
+                      {filteredCommercials.slice((pageCommercials - 1) * 20, pageCommercials * 20).map((cm) => {
                         const soldCars = cars.filter(car => car.commercial_id === cm.id).length;
                         return (
                           <tr
@@ -3143,10 +3173,16 @@ export default function AdminSuperPanel() {
                             <td className="py-3 px-3 text-sm text-neutral-400">
                               {new Date(cm.created_at).toLocaleDateString()}
                             </td>
-                            <td className="py-3 px-3 text-sm text-neutral-400">
+                            <td className="py-3 px-3 text-sm flex gap-2">
                               <button
-                                onClick={() => { handledeleteCommercial(cm.id) }}
-                                className="text-red-500 hover:text-red-300"
+                                onClick={(e) => { e.stopPropagation(); setSelectedCommercialForStats(cm.id); }}
+                                className="text-blue-500 hover:text-blue-300 px-2 py-1 bg-blue-500/10 rounded-lg transition-colors"
+                              >
+                                Détails Stats
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handledeleteCommercial(cm.id) }}
+                                className="text-red-500 hover:text-red-300 px-2 py-1 bg-red-500/10 rounded-lg transition-colors"
                               >
                                 Supprimer
                               </button>
@@ -3156,8 +3192,15 @@ export default function AdminSuperPanel() {
                       })}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageCommercials} totalPages={Math.ceil(filteredCommercials.length / 20)} onPageChange={setPagecommercials} />
+                  <Pagination currentPage={pageFournisseurs} totalPages={Math.ceil(filteredFournisseurs.length / 20)} onPageChange={setPagefournisseurs} />
                 </div>
               </Card>
+              <CommercialDeepDiveModal 
+                commercialId={selectedCommercialForStats} 
+                onClose={() => setSelectedCommercialForStats(null)} 
+                API_BASE={API_BASE} 
+              />
             </motion.div>
           )}
 
@@ -3183,7 +3226,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredMarketers.map((marketer) => (
+                      {filteredMarketers.slice((pageMarketers - 1) * 20, pageMarketers * 20).map((marketer) => (
                         <tr key={marketer.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
                           <td className="py-3 px-3 font-mono text-emerald-400">{marketer.id}</td>
                           <td className="py-3 px-3">{marketer.name} {marketer.surname}</td>
@@ -3198,6 +3241,7 @@ export default function AdminSuperPanel() {
                       ))}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageMarketers} totalPages={Math.ceil(filteredMarketers.length / 20)} onPageChange={setPagemarketers} />
                 </div>
               </Card>
             </motion.div>
@@ -3225,7 +3269,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredAccountants.map((accountant) => (
+                      {filteredAccountants.slice((pageAccountants - 1) * 20, pageAccountants * 20).map((accountant) => (
                         <tr key={accountant.id} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
                           <td className="py-3 px-3 font-mono text-emerald-400">{accountant.id}</td>
                           <td className="py-3 px-3">{accountant.name} {accountant.surname}</td>
@@ -3240,6 +3284,7 @@ export default function AdminSuperPanel() {
                       ))}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageAccountants} totalPages={Math.ceil(filteredAccountants.length / 20)} onPageChange={setPageaccountants} />
                 </div>
               </Card>
             </motion.div>
@@ -3273,7 +3318,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredWholesaleClients.map((client, i) => (
+                      {filteredWholesaleClients.slice((pageWholesaleClients - 1) * 20, pageWholesaleClients * 20).map((client, i) => (
                         <tr key={client.id ?? `wclient-${i}`} className="border-b border-neutral-800/40 hover:bg-emerald-500/5">
                           <td className="py-3 px-3 font-mono text-emerald-400">{client.id}</td>
                           <td className="py-3 px-3">{client.name} {client.surname}</td>
@@ -3304,6 +3349,7 @@ export default function AdminSuperPanel() {
                       ))}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageWholesaleClients} totalPages={Math.ceil(filteredWholesaleClients.length / 20)} onPageChange={setPagewholesaleclients} />
                 </div>
               </Card>
             </motion.div>
@@ -3339,7 +3385,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredWholesaleOrders.map((order, i) => {
+                      {filteredWholesaleOrders.slice((pageWholesaleOrders - 1) * 20, pageWholesaleOrders * 20).map((order, i) => {
                         const client = wholesaleClients.find(c => c.id === order.client_id) || {};
                         const car = cars.find(c => c.id === order.car_id) || {};
                         const currency = currencyList.find(c => c.id === car.currency_id);
@@ -3376,6 +3422,7 @@ export default function AdminSuperPanel() {
                       })}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageWholesaleOrders} totalPages={Math.ceil(filteredWholesaleOrders.length / 20)} onPageChange={setPagewholesaleorders} />
                 </div>
               </Card>
             </motion.div>
@@ -3412,7 +3459,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredClientOrders.map((order, i) => {
+                      {filteredClientOrders.slice((pageClientOrders - 1) * 20, pageClientOrders * 20).map((order, i) => {
                         const client = clients.find(c => c.id === order.client_id) || {};
                         const car = cars.find(c => c.id === order.car_id) || {};
                         const currency = currencyList.find(c => c.id === car.currency_id);
@@ -3461,6 +3508,7 @@ export default function AdminSuperPanel() {
                       })}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageClientOrders} totalPages={Math.ceil(filteredClientOrders.length / 20)} onPageChange={setPageclientorders} />
                 </div>
               </Card>
             </motion.div>
@@ -3475,7 +3523,7 @@ export default function AdminSuperPanel() {
                 <table className="w-full">
                   <thead>...</thead>
                   <tbody>
-                    {filteredCarRequests.map(req => {
+                    {filteredCarRequests.slice((pageCarRequests - 1) * 20, pageCarRequests * 20).map(req => {
                       const client = clients.find(c => c.id === req.client_id) || {};
                       return (
                         <tr key={req.id}>
@@ -3495,6 +3543,7 @@ export default function AdminSuperPanel() {
                     })}
                   </tbody>
                 </table>
+                  <Pagination currentPage={pageCarRequests} totalPages={Math.ceil(filteredCarRequests.length / 20)} onPageChange={setPagecarrequests} />
               </Card>
             </motion.div>
           )}
@@ -3575,7 +3624,7 @@ export default function AdminSuperPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredSupplierItems.map((item) => {
+                      {filteredSupplierItems.slice((pageSupplierItems - 1) * 20, pageSupplierItems * 20).map((item) => {
                         const currency = currencyList.find(c => c.id === item.currency_id);
                         const rate = currency?.exchange_rate_to_dzd || 1;
                         const priceDZD = (item.price || 0) * rate;
@@ -3611,6 +3660,7 @@ export default function AdminSuperPanel() {
                       })}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageSupplierItems} totalPages={Math.ceil(filteredSupplierItems.length / 20)} onPageChange={setPagesupplieritems} />
                 </div>
               </Card>
             </motion.div>
@@ -3681,7 +3731,7 @@ export default function AdminSuperPanel() {
                           </td>
                         </tr>
                       ) : (
-                        filteredClients.map((client) => {
+                        filteredClients.slice((pageClients - 1) * 20, pageClients * 20).map((client) => {
                           const clientOrders = orders.filter(o => o.client_id === client.id);
                           const totalPaid = clientOrders.reduce((sum, o) => sum + (o.payment_amount || 0), 0);
                           return (
@@ -3741,6 +3791,7 @@ export default function AdminSuperPanel() {
                       )}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageClients} totalPages={Math.ceil(filteredClients.length / 20)} onPageChange={setPageclients} />
                 </div>
               </Card>
             </motion.div>

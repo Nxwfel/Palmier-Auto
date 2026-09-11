@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, SlidersHorizontal, X, ChevronRight, Loader2 } from "lucide-react";
 import AdBanner from "../Components/AdBanner";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
+const API_BASE_URL = "https://api-auto-prod.palmierdz.com/prod";
 
 const ITEMS_PER_PAGE = 10;
 

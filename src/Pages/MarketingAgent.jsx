@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
+import Pagination from "../Components/Pagination";
 import { motion, AnimatePresence } from "framer-motion";
 import { Car, X, Image as ImageIcon, Search, Plus } from "lucide-react";
 import { parseColors } from "../lib/utils";
 import { apiFetch } from "../lib/api";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
+const API_BASE_URL = "https://api-auto-prod.palmierdz.com/prod";
 
 const MarketingAgent = () => {
+  const [pageCars, setPagecars] = useState(1);
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -401,7 +403,7 @@ const MarketingAgent = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCars.map((car) => (
+                  {filteredCars.slice((pageCars - 1) * 20, pageCars * 20).map((car) => (
                     <tr key={car.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
                       <td className="p-2">{car.model}</td>
                       <td className="p-2">{car.color}</td>
@@ -421,6 +423,7 @@ const MarketingAgent = () => {
                   ))}
                 </tbody>
               </table>
+              <Pagination currentPage={pageCars} totalPages={Math.ceil(filteredCars.length / 20)} onPageChange={setPagecars} />
             </div>
           )}
         </motion.div>

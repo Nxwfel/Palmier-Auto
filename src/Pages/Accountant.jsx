@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
+import Pagination from "../Components/Pagination";
 import { motion, AnimatePresence } from "framer-motion";
 import { Car, DollarSign, Users, Upload, Trash2, Image as ImageIcon, Search } from "lucide-react";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com"; // Fixed trailing space
+const API_BASE_URL = "https://api-auto-prod.palmierdz.com/prod"; // Fixed trailing space
 
 const Accountant = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -551,7 +552,7 @@ const Accountant = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {todayOrders.slice(0, 5).map((order, i) => (
+                      {todayOrders.slice((pageTodayOrders - 1) * 20, pageTodayOrders * 20).map((order, i) => (
                         <tr key={i} className="border-b border-neutral-800/30">
                           <td>{order.client_name} {order.client_surname}</td>
                           <td>{order.car_model}</td>
@@ -563,6 +564,7 @@ const Accountant = () => {
                       )}
                     </tbody>
                   </table>
+                  <Pagination currentPage={pageTodayOrders} totalPages={Math.ceil(todayOrders.length / 20)} onPageChange={setPagetodayorders} />
                 </div>
               </div>
             </div>
@@ -621,7 +623,7 @@ const Accountant = () => {
             </div>
 
             <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-              {filteredClients.map(client => (
+              {filteredClients.slice((pageClients - 1) * 20, pageClients * 20).map(client => (
                 <motion.div
                   key={client.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -671,6 +673,7 @@ const Accountant = () => {
                 </motion.div>
               ))}
             </div>
+              <Pagination currentPage={pageClients} totalPages={Math.ceil(filteredClients.length / 20)} onPageChange={setPageclients} />
 
             {filteredClients.length === 0 && (
               <p className="text-center text-neutral-400 py-8">Aucun client trouvé</p>

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim();
+const API_BASE_URL = "https://api-auto-prod.palmierdz.com/prod".trim();
 
 const OrderForm = () => {
   const navigate = useNavigate();

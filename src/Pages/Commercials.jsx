@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import Pagination from "../Components/Pagination";
 import { parseColors } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, File, FileArchiveIcon, Car, LetterTextIcon, Printer, Upload, Trash2, Image as ImageIcon, Banknote, Edit2 } from "lucide-react";
@@ -76,7 +77,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   );
 };
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com";
+const API_BASE_URL = "https://api-auto-prod.palmierdz.com/prod";
 const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem('authToken');
 
@@ -1776,7 +1777,7 @@ const Commercials = () => {
                 {filteredClients.length === 0 ? (
                   <p className="text-neutral-500 p-4 text-center">Aucun client trouvé</p>
                 ) : (
-                  filteredClients.map(c => (
+                  filteredClients.slice((pageClients - 1) * 20, pageClients * 20).map(c => (
                     <div key={c.id} className="bg-neutral-800 p-4 rounded-lg">
                       {editingClientId === c.id ? (
                         <div className="space-y-4">
@@ -1835,6 +1836,7 @@ const Commercials = () => {
                     </div>
                   ))
                 )}
+                <Pagination currentPage={pageClients} totalPages={Math.ceil(filteredClients.length / 20)} onPageChange={setPageclients} />
               </div>
             </div>
           </div>
@@ -1926,109 +1928,112 @@ const Commercials = () => {
               {myOrders.length === 0 ? (
                 <p className="text-neutral-500 text-center py-6">Aucune commande</p>
               ) : (
-                <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-                  {myOrders.map(order => (
-                    <div key={order.order_id} className="bg-neutral-900/90 p-6 rounded-2xl border border-neutral-800">
-                      {editingOrderId === order.order_id ? (
-                        <div className="space-y-4">
-                          <input
-                            type="number"
-                            placeholder="Paiement (DZD)"
-                            value={editForm.payment_amount}
-                            onChange={e => setEditForm({ ...editForm, payment_amount: e.target.value })}
-                            className="w-full bg-neutral-800 p-3 rounded-lg"
-                          />
-                          <select
-                            value={editForm.delivery_status}
-                            onChange={e => setEditForm({ ...editForm, delivery_status: e.target.value })}
-                            className="w-full bg-neutral-800 p-3 rounded-lg"
-                          >
-                            <option value="shipping">En expédition</option>
-                            <option value="arrived">Arrivé</option>
-                            <option value="showroom">Showroom</option>
-                          </select>
-                          <select
-                            value={editForm.num_chassis}
-                            onChange={e => setEditForm({ ...editForm, num_chassis: e.target.value })}
-                            className="w-full bg-neutral-800 p-3 rounded-lg"
-                          >
-                            <option value="">Sélectionner un châssis</option>
-                            {getAvailableChassis(order.car_id, order.order_id).map((chassis, idx) => (
-                              <option key={idx} value={chassis}>{chassis}</option>
-                            ))}
-                            {order.num_chassis && !getAvailableChassis(order.car_id, order.order_id).includes(order.num_chassis) && (
-                              <option value={order.num_chassis}>{order.num_chassis}</option>
-                            )}
-                          </select>
-                          <div className="flex gap-3">
-                            <button
-                              onClick={() => handleUpdateOrder(order.order_id)}
-                              disabled={loading}
-                              className="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg disabled:opacity-50 transition-colors"
+                <>
+                  <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+                    {myOrders.slice((pageMyOrders - 1) * 20, pageMyOrders * 20).map(order => (
+                      <div key={order.order_id} className="bg-neutral-900/90 p-6 rounded-2xl border border-neutral-800">
+                        {editingOrderId === order.order_id ? (
+                          <div className="space-y-4">
+                            <input
+                              type="number"
+                              placeholder="Paiement (DZD)"
+                              value={editForm.payment_amount}
+                              onChange={e => setEditForm({ ...editForm, payment_amount: e.target.value })}
+                              className="w-full bg-neutral-800 p-3 rounded-lg"
+                            />
+                            <select
+                              value={editForm.delivery_status}
+                              onChange={e => setEditForm({ ...editForm, delivery_status: e.target.value })}
+                              className="w-full bg-neutral-800 p-3 rounded-lg"
                             >
-                              Sauvegarder
-                            </button>
-                            <button
-                              onClick={() => handlePrintContract(order)}
-                              disabled={loading}
-                              className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
+                              <option value="shipping">En expédition</option>
+                              <option value="arrived">Arrivé</option>
+                              <option value="showroom">Showroom</option>
+                            </select>
+                            <select
+                              value={editForm.num_chassis}
+                              onChange={e => setEditForm({ ...editForm, num_chassis: e.target.value })}
+                              className="w-full bg-neutral-800 p-3 rounded-lg"
                             >
-                              <Printer size={16} />
-                              Imprimer
-                            </button>
-                            <button
-                              onClick={() => setEditingOrderId(null)}
-                              className="flex-1 bg-neutral-700 hover:bg-neutral-600 py-2 rounded-lg transition-colors"
-                            >
-                              Annuler
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-xl font-bold">{order.car_model}</h3>
-                            <div className="flex gap-2">
+                              <option value="">Sélectionner un châssis</option>
+                              {getAvailableChassis(order.car_id, order.order_id).map((chassis, idx) => (
+                                <option key={idx} value={chassis}>{chassis}</option>
+                              ))}
+                              {order.num_chassis && !getAvailableChassis(order.car_id, order.order_id).includes(order.num_chassis) && (
+                                <option value={order.num_chassis}>{order.num_chassis}</option>
+                              )}
+                            </select>
+                            <div className="flex gap-3">
                               <button
-                                onClick={() => {
-                                  setEditingOrderId(order.order_id);
-                                  setEditForm({
-                                    payment_amount: order.payment_amount?.toString() || "",
-                                    delivery_status: order.delivery_status || "shipping",
-                                    num_chassis: order.num_chassis || ""
-                                  });
-                                }}
-                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                                onClick={() => handleUpdateOrder(order.order_id)}
+                                disabled={loading}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg disabled:opacity-50 transition-colors"
                               >
-                                Edit
+                                Sauvegarder
                               </button>
                               <button
-                                onClick={() => handleDeleteOrder(order.order_id)}
+                                onClick={() => handlePrintContract(order)}
                                 disabled={loading}
-                                className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
                               >
-                                Delete
+                                <Printer size={16} />
+                                Imprimer
+                              </button>
+                              <button
+                                onClick={() => setEditingOrderId(null)}
+                                className="flex-1 bg-neutral-700 hover:bg-neutral-600 py-2 rounded-lg transition-colors"
+                              >
+                                Annuler
                               </button>
                             </div>
                           </div>
-                          <p className="text-sm text-neutral-400">Client: {order.client_name} {order.client_surname}</p>
-                          <p className="text-sm text-neutral-400">Tel: {order.client_phone}</p>
-                          <p className="text-sm mt-3">Statut: <span className="text-white font-medium">{getStatusText(order.delivery_status)}</span></p>
-                          <p className="text-sm">Prix: <span className="text-green-400 font-medium">{order.price_dzd?.toLocaleString() || 0} DZD</span></p>
-                          <p className="text-sm">Payé: <span className="text-blue-400 font-medium">{order.payment_amount?.toLocaleString() || 0} DZD</span></p>
-                          <button
-                            onClick={() => handlePrintContract(order)}
-                            disabled={loading}
-                            className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                          >
-                            <Printer size={18} />
-                            Imprimer Contrat
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-start mb-4">
+                              <h3 className="text-xl font-bold">{order.car_model}</h3>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingOrderId(order.order_id);
+                                    setEditForm({
+                                      payment_amount: order.payment_amount?.toString() || "",
+                                      delivery_status: order.delivery_status || "shipping",
+                                      num_chassis: order.num_chassis || ""
+                                    });
+                                  }}
+                                  className="text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteOrder(order.order_id)}
+                                  disabled={loading}
+                                  className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-sm text-neutral-400">Client: {order.client_name} {order.client_surname}</p>
+                            <p className="text-sm text-neutral-400">Tel: {order.client_phone}</p>
+                            <p className="text-sm mt-3">Statut: <span className="text-white font-medium">{getStatusText(order.delivery_status)}</span></p>
+                            <p className="text-sm">Prix: <span className="text-green-400 font-medium">{order.price_dzd?.toLocaleString() || 0} DZD</span></p>
+                            <p className="text-sm">Payé: <span className="text-blue-400 font-medium">{order.payment_amount?.toLocaleString() || 0} DZD</span></p>
+                            <button
+                              onClick={() => handlePrintContract(order)}
+                              disabled={loading}
+                              className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Printer size={18} />
+                              Imprimer Contrat
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <Pagination currentPage={pageMyOrders} totalPages={Math.ceil(myOrders.length / 20)} onPageChange={setPagemyorders} />
+                </>
               )}
             </div>
 
@@ -2039,7 +2044,7 @@ const Commercials = () => {
                   Commandes des autres commerciaux ({otherOrders.length})
                 </h3>
                 <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-                  {otherOrders.map(order => (
+                  {otherOrders.slice((pageOtherOrders - 1) * 20, pageOtherOrders * 20).map(order => (
                     <div key={order.order_id} className="bg-neutral-900/90 p-6 rounded-2xl border border-neutral-800 opacity-80">
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="text-xl font-bold">{order.car_model}</h3>
@@ -2063,6 +2068,7 @@ const Commercials = () => {
                     </div>
                   ))}
                 </div>
+                <Pagination currentPage={pageOtherOrders} totalPages={Math.ceil(otherOrders.length / 20)} onPageChange={setPageotherorders} />
               </div>
             )}
           </div>
@@ -2074,7 +2080,7 @@ const Commercials = () => {
               <h2 className="text-3xl font-bold">Voitures Disponibles</h2>
             </div>
             <div className="grid lg:grid-cols-4 md:grid-cols-3 gap-6">
-              {filteredGroupedCars.map(g => {
+              {filteredGroupedCars.slice((pageGroupedCars - 1) * 20, pageGroupedCars * 20).map(g => {
                 const rep = getRepresentativeCar(g.model);
                 return (
                   <div
@@ -2103,6 +2109,7 @@ const Commercials = () => {
                 );
               })}
             </div>
+            <Pagination currentPage={pageGroupedCars} totalPages={Math.ceil(filteredGroupedCars.length / 20)} onPageChange={setPagegroupedcars} />
           </div>
         )}
 
@@ -2114,7 +2121,7 @@ const Commercials = () => {
             </div>
 
             <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-              {filteredClients.map(client => (
+              {filteredClients.slice((pageClients - 1) * 20, pageClients * 20).map(client => (
                 <div key={client.id} className="bg-neutral-900/80 p-6 rounded-2xl border border-neutral-800">
                   <div className="mb-4">
                     <h3 className="text-xl font-bold">{client.name} {client.surname}</h3>
@@ -2156,6 +2163,7 @@ const Commercials = () => {
                 </div>
               ))}
             </div>
+            <Pagination currentPage={pageClients} totalPages={Math.ceil(filteredClients.length / 20)} onPageChange={setPageclients} />
 
             {filteredClients.length === 0 && (
               <p className="text-center text-neutral-400 py-8">Aucun client trouvé</p>
@@ -2237,7 +2245,7 @@ const Commercials = () => {
                         <td colSpan="3" className="p-8 text-center text-neutral-500">Aucun versement trouvé</td>
                       </tr>
                     ) : (
-                      cashRequests.map(req => (
+                      cashRequests.slice((pageCashRequests - 1) * 20, pageCashRequests * 20).map(req => (
                         <tr key={req.id} className="border-b border-neutral-800/50 hover:bg-white/5">
                           <td className="p-4">{new Date(req.created_at).toLocaleDateString('fr-DZ')}</td>
                           <td className="p-4 font-semibold">{req.amount?.toLocaleString()} DZD</td>
@@ -2254,6 +2262,7 @@ const Commercials = () => {
                     )}
                   </tbody>
                 </table>
+                <Pagination currentPage={pageCashRequests} totalPages={Math.ceil(cashRequests.length / 20)} onPageChange={setPagecashrequests} />
               </div>
             </div>
           </div>

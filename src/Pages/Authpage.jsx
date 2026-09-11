@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, Phone, User, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim();
+const API_BASE_URL = "https://api-auto-prod.palmierdz.com/prod".trim();
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);

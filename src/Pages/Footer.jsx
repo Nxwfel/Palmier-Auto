@@ -13,7 +13,7 @@ const Footer = () => {
 
   const fetchLocations = async () => {
     try {
-      const response = await fetch('https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com/commercials/phone_numbers_wilayas')
+      const response = await fetch('https://api-auto-prod.palmierdz.com/prod/commercials/phone_numbers_wilayas')
       const data = await response.json()
       console.log('API Response:', data) // Debug log
       setLocations(data)

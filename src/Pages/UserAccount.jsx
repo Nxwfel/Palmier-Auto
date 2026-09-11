@@ -21,7 +21,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
 
-const API_BASE_URL = "https://showrommsys282yevirhdj8ejeiajisuebeo9oai.onrender.com".trim();
+const API_BASE_URL = "https://api-auto-prod.palmierdz.com/prod".trim();
 
 const Card = ({ children, className = "" }) => (
   <div
