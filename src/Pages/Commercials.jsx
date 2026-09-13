@@ -210,6 +210,13 @@ const Commercials = () => {
   const [cashRequests, setCashRequests] = useState([]);
   const [newCashRequestAmount, setNewCashRequestAmount] = useState("");
 
+  // Pagination states
+  const [pageClients, setPageclients] = useState(1);
+  const [pageMyOrders, setPagemyorders] = useState(1);
+  const [pageOtherOrders, setPageotherorders] = useState(1);
+  const [pageGroupedCars, setPagegroupedcars] = useState(1);
+  const [pageCashRequests, setPagecashrequests] = useState(1);
+
   const navigate = useNavigate();
 
   const currencyMap = useMemo(() => {
